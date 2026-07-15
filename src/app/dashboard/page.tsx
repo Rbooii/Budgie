@@ -13,6 +13,14 @@ import CashflowCard from "@/components/cashflow-card";
 import AssetGrowthCard from "@/components/asset-growth-card";
 import { QuickInsightEmptyState } from "@/components/quick-insight-empty-state";
 import { api } from "@/lib/api-client";
+import {
+  computeMonthlyNet,
+  computeGrowthData,
+  computeActiveMonths,
+  computeAccountNetThisMonth,
+  computeStartingAssets,
+  computeNetWorthDelta,
+} from "@/lib/dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -59,53 +67,20 @@ export default async function Dashboard() {
   const monthExpense = (expenseAgg._sum.amount ?? 0) + (feeAgg._sum.adminFee ?? 0);
   const monthLabel = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
-  const monthlyNet = new Array(12).fill(0);
-  for (const t of yearTxns) {
-    const m = new Date(t.date).getMonth();
-    if (m < 0 || m > 11) continue;
-    if (t.type === "income") monthlyNet[m] += t.amount;
-    else if (t.type === "expense") monthlyNet[m] -= t.amount;
-    else if (t.type === "transfer") monthlyNet[m] -= t.adminFee;
-  }
-  const yearNetEffect = monthlyNet.reduce((a, b) => a + b, 0);
-  const startingAssets = netWorth - yearNetEffect;
+  const monthlyNet = computeMonthlyNet(yearTxns);
+  const startingAssets = computeStartingAssets(netWorth, monthlyNet);
 
-  const accountNetThisMonth: Record<string, number> = {};
-  for (const t of yearTxns) {
-    const tm = new Date(t.date);
-    if (tm.getMonth() !== currentMonth) continue;
-    if (t.type === "income" && t.balanceAccountId) {
-      accountNetThisMonth[t.balanceAccountId] = (accountNetThisMonth[t.balanceAccountId] ?? 0) + t.amount;
-    } else if (t.type === "expense" && t.balanceAccountId) {
-      accountNetThisMonth[t.balanceAccountId] = (accountNetThisMonth[t.balanceAccountId] ?? 0) - t.amount;
-    } else if (t.type === "transfer") {
-      if (t.balanceAccountId) {
-        accountNetThisMonth[t.balanceAccountId] = (accountNetThisMonth[t.balanceAccountId] ?? 0) - (t.amount + t.adminFee);
-      }
-      if (t.toBalanceAccountId) {
-        accountNetThisMonth[t.toBalanceAccountId] = (accountNetThisMonth[t.toBalanceAccountId] ?? 0) + t.amount;
-      }
-    }
-  }
+  const accountNetThisMonth = computeAccountNetThisMonth(yearTxns, currentMonth);
 
-  const growthData: { month: number; value: number }[] = [];
-  let cumulative = startingAssets;
-  for (let m = 0; m <= currentMonth; m++) {
-    cumulative += monthlyNet[m];
-    growthData.push({ month: m, value: cumulative });
-  }
+  const growthData = computeGrowthData(monthlyNet, startingAssets, currentMonth);
 
-  const activeMonths: boolean[] = Array.from({ length: 12 }, (_, m) =>
-    yearTxns.some((t) => new Date(t.date).getMonth() === m),
+  const activeMonths = computeActiveMonths(yearTxns);
+
+  const { absoluteChange, deltaPct: netWorthDeltaPct } = computeNetWorthDelta(
+    accounts,
+    accountNetThisMonth,
+    netWorth,
   );
-
-  const lastMonthEndNetWorth = accounts.reduce((sum, a) => {
-    return sum + a.balance - (accountNetThisMonth[a.id] ?? 0);
-  }, 0);
-  const absoluteChange = netWorth - lastMonthEndNetWorth;
-  const netWorthDeltaPct = lastMonthEndNetWorth > 0
-    ? (absoluteChange / lastMonthEndNetWorth) * 100
-    : null;
 
   return (
     <main className="w-full min-h-screen flex flex-col md:flex-row bg-white text-black">
