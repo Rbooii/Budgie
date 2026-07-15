@@ -1,0 +1,1348 @@
+# Budgie — Architecture Reference
+
+A precise, copy-ready blueprint of this codebase's architecture. Written so that
+another engineer (human or AI) can analyze, reproduce, or extend the exact same
+structure. Every file path and snippet below reflects the real source.
+
+---
+
+## 1. Philosophy
+
+Budgie is a **full-stack TypeScript monorepo-style app** that deliberately
+separates concerns across two runtimes that share one process:
+
+- **Frontend / SSR**: Next.js 16 App Router (React Server Components).
+- **Backend / REST API**: Hono, mounted inside Next.js as a **catch-all Route
+  Handler** — NOT Next.js Server Actions. The API is plain HTTP/REST.
+
+The backend follows a strict **3-layer architecture**:
+
+```
+Router  →  Controller  →  Service  →  Prisma
+ (HTTP)    (I/O + types)  (logic)     (DB)
+```
+
+Each layer has a hard contract (see §5). Type safety is **end-to-end and
+generated**: Prisma schema → generated Zod schemas → Hono validation → typed
+controllers/services → typed RPC client for the frontend.
+
+---
+
+## 2. Tech Stack (pinned versions)
+
+| Concern            | Choice                                  | Version    |
+| ------------------ | --------------------------------------- | ---------- |
+| Runtime / pm       | Bun                                     | 1.3.x      |
+| Web framework      | Next.js (App Router, `src/` dir)        | 16.2.9     |
+| UI                  | React                                   | 19.2.x     |
+| API framework      | Hono                                    | 4.12.x     |
+| API↔Next glue      | `hono/vercel` `handle()`                | (in hono)  |
+| ORM                | Prisma                                  | 7.8.x      |
+| DB driver adapter  | `@prisma/adapter-pg` + `pg`             | 7.8.x / 8  |
+| Database           | PostgreSQL                              | —          |
+| Validation         | Zod                                     | 4.4.x      |
+| API↔Hono validator | `@hono/zod-validator`                   | 0.8.x      |
+| Zod-from-Prisma    | `prisma-zod-generator`                  | 2.1.x      |
+| Auth                | better-auth (email/password + Google + GitHub) | 1.6.x |
+| Styling            | Tailwind CSS v4                         | 4.3.x      |
+| PDF generation     | `jspdf` + `jspdf-autotable`             | 4.x / 5.x |
+| Lint               | ESLint 9 + `eslint-config-next`         | 9.x       |
+
+> **Note on Prisma 7:** Prisma 7 removed the built-in query engine. A **Driver
+> Adapter is mandatory** for direct DB access. We use `@prisma/adapter-pg`
+> (Postgres). There is no `@prisma/engines` Rust binary needed at runtime.
+
+---
+
+## 3. Repository Structure
+
+```
+budgie/
+├─ .env                              # DATABASE_URL + BETTER_AUTH_* + OAuth secrets (gitignored)
+├─ .gitignore
+├─ AGENTS.md                         # AI agent rules + build commands
+├─ CLAUDE.md                         # re-exports @AGENTS.md
+├─ ARCHITECTURE.md                   # this file
+├─ eslint.config.mjs                 # flat config; ignores generated code
+├─ next.config.ts
+├─ package.json                      # scripts + trustedDependencies
+├─ postcss.config.mjs
+├─ prisma.config.ts                  # Prisma 7 config (datasource URL here)
+├─ tsconfig.json                     # path alias @/* → ./src/*
+├─ prisma/
+│  └─ schema.prisma                  # datasource + 2 generators (client, zod)
+├─ public/                           # static assets
+└─ src/
+   ├─ app/                           # Next.js App Router
+   │  ├─ layout.tsx                  # root layout
+   │  ├─ page.tsx                    # home (RSC)
+   │  ├─ globals.css
+   │  ├─ budget/                      # budget page
+   │  ├─ chat/                       # chat page
+   │  ├─ dashboard/                  # main dashboard (RSC, force-dynamic)
+   │  ├─ transactions/               # transactions page + add sub-route
+   │  │  ├─ page.tsx                 # list (RSC, fetch via api.transactions.$get)
+   │  │  └─ add/
+   │  │     └─ page.tsx              # 3-step add wizard (RSC fetches accounts)
+   │  ├─ sign-in/                     # sign-in page
+   │  └─ api/
+   │     └─ [[...route]]/
+   │        └─ route.ts              # catch-all Route Handler → Hono (strips /api prefix)
+    ├─ components/                     # React UI (see §16 for transactions UI, §18 for dashboard)
+    │  ├─ account-card.tsx           # add-account-dialog, sidebar, …
+    │  ├─ add-transaction-wizard.tsx # 3-step flow (type → details → review), CategorySelect
+    │  ├─ transaction-item.tsx       # minimalist list row (tap → detail sheet)
+    │  ├─ transactions-view.tsx      # search + list + date grouping + delete
+    │  ├─ transaction-detail-sheet.tsx # bottom sheet with full info + confirm Dialog before delete
+    │  ├─ cashflow-card.tsx          # donut chart (income/expense), title prop, radius 64
+    │  ├─ asset-growth-card.tsx      # Apple-style bar chart (12-month asset trajectory), "use client" hover tooltip
+    │  ├─ quick-insight-empty-state.tsx # "use client" empty state when user has no transactions
+    │  └─ download-pdf-dialog.tsx   # jsPDF export (all / filtered / date range)
+    ├─ lib/
+    │  ├─ auth.ts                     # better-auth server instance (prismaAdapter)
+    │  ├─ auth-client.ts              # better-auth client
+    │  ├─ prisma.ts                   # PrismaClient singleton (PrismaPg adapter)
+    │  ├─ api-client.ts               # hono/client RPC, typed against App (SSR-aware baseURL)
+    │  ├─ font-size.ts                # helper
+    │  ├─ categories.ts               # premade per-type category lists (income/expense/transfer)
+    │  └─ format.ts                   # formatRupiah / formatBalanceInput / formatDate / formatTime / formatDateTimeLocalValue
+   ├─ server/                        # ALL backend logic lives here
+   │  ├─ index.ts                    # Hono app (NO basePath), mounts routers; exports type App
+   │  ├─ routes/                     # Layer 1: routers
+   │  │  ├─ budgets.ts
+   │  │  ├─ balance-accounts.ts
+   │  │  └─ transactions.ts
+   │  ├─ controllers/                # Layer 2: controllers
+   │  │  ├─ budgets.ts
+   │  │  ├─ balance-accounts.ts
+   │  │  └─ transactions.ts
+   │  ├─ services/                   # Layer 3: services
+   │  │  ├─ budgets.ts
+   │  │  ├─ balance-accounts.ts
+   │  │  ├─ transactions.ts          # $transaction balance auto-update (see §17)
+   │  │  └─ accounts.ts              # (reserved / empty)
+   │  ├─ middleware/
+   │  │  └─ auth.ts                  # requireAuth + AppEnv (Variables: user, session)
+   │  └─ schemas/
+    │  ├─ budget.ts                # app-level Zod (.pick + .extend on generated), z.enum(EXPENSE_CATEGORIES)
+    │  ├─ balance-account.ts
+    │  ├─ transaction.ts           # z.enum type + z.enum(ALL_CATEGORIES) + .refine() transfer + per-type category validation
+   │     ├─ account.ts
+   │     └─ generated/               # ⚠ generated by prisma-zod-generator (gitignored)
+   └─ generated/
+      └─ prisma/                     # ⚠ generated Prisma client (gitignored)
+```
+
+**Generated & gitignored** (never edit, never commit):
+- `src/generated/prisma/` — Prisma Client output.
+- `src/server/schemas/generated/` — Zod schemas derived from Prisma models.
+
+Both are produced by `bun run db:generate` / `prisma generate`.
+
+---
+
+## 4. Request Lifecycle
+
+```
+HTTP request
+   │
+   ▼
+Next.js App Router  →  src/app/api/[[...route]]/route.ts
+   (catch-all; strips "/api" prefix, then exports GET/POST/.../OPTIONS = handle(app))
+   │  Note: /api/auth/* is a SEPARATE handler → better-auth (src/app/api/auth/[...all])
+   │
+   ▼
+Hono app  (src/server/index.ts)          NO basePath — the route handler strips "/api"
+   │  - global logger()
+   │  - app.notFound / app.onError
+   │
+   ▼
+Router    (src/server/routes/budgets.ts)       e.g. POST /budgets
+   │  - .use("*", requireAuth) ← resolves session cookie → c.set("user","session")
+   │  - zValidator("json", CreateBudgetSchema) ← validates body, 400 on fail
+   │  - delegates to controller.create
+   │
+   ▼
+Controller (src/server/controllers/budgets.ts)
+   │  - c.get("user") → userId (ownership scoping)
+   │  - c.req.valid("json")  (typed via ValidatedContext<T>)
+   │  - parse path params, map errors to HTTP status
+   │  - calls service.createBudget(userId, body)
+   │
+   ▼
+Service   (src/server/services/budgets.ts)
+   │  - pure TS, no Hono imports, no c/Response
+   │  - prisma.budget.create({ data: { ...input, userId } })
+   │
+   ▼
+Prisma (src/lib/prisma.ts singleton)  →  Postgres via @prisma/adapter-pg
+   │
+   ▼
+Response flows back: service data → controller c.json(...) → Hono → Next → client
+```
+
+The frontend can consume the API two ways:
+- **Server Components** may import `prisma` directly for reads (see
+  `dashboard/page.tsx`), bypassing the HTTP layer entirely. This is preferred
+  for SSR reads — no cookie-forwarding needed.
+- **Client/Server code** may use the typed RPC client `api` from
+  `src/lib/api-client.ts` (`hc<App>(baseURL)`). The `baseURL` is
+  environment-aware: `/api` in the browser, `NEXT_PUBLIC_APP_URL + "/api"` on
+  the server. It gives end-to-end typed `api.budgets.$get()` /
+  `api.budgets.$post({ json: ... })`. See §6.5 for full usage patterns,
+  including the SSR cookie-forwarding gotcha.
+
+---
+
+## 5. The 3-Layer Backend — Contracts & Rules
+
+### Auth cross-cutting concern (`src/server/middleware/auth.ts`)
+Before the layers, there is one shared middleware. Every protected router
+mounts `requireAuth` via `.use("*", requireAuth)`. It calls better-auth's
+`auth.api.getSession({ headers: c.req.raw.headers })` against the **raw**
+incoming request (so the session cookie is present), returns `401` if absent,
+and on success stores `user` + `session` on the Hono context. The environment
+type that declares those variables is `AppEnv`:
+
+```ts
+// src/server/middleware/auth.ts
+export type AppEnv = {
+  Variables: {
+    user: typeof auth.$Infer.Session.user;
+    session: typeof auth.$Infer.Session.session;
+  };
+};
+
+export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session) return c.json({ error: "Unauthorized" }, 401);
+  c.set("user", session.user);
+  c.set("session", session.session);
+  await next();
+};
+```
+
+All routers and the root app are parameterized as `Hono<AppEnv>`, so
+`c.get("user")` is typed. Controllers therefore receive the authenticated user
+and **scope every query by `userId`** — no resource is ever read or written
+without ownership checks (see service layer).
+
+### Layer 1 — Router (`src/server/routes/<resource>.ts`)
+- A `new Hono<AppEnv>()` sub-app, **chained** (`.use(...).get(...).post(...)`)
+  so Hono infers route types for the RPC client. **Chaining must start with
+  `.use("*", requireAuth)`** — keep it as the first link so types flow.
+- **Only** wires: auth middleware + HTTP method + path + `zValidator` +
+  controller reference.
+- **Must not** import Prisma, `@/lib/prisma`, or services directly.
+- **Must not** contain business logic or conditional branches beyond routing.
+- The `.patch`/`.delete` handlers may wrap the controller in an arrow
+  (`(c) => controller.update(c)`) — this is intentional so Hono keeps the
+  validated-context type inference intact (a bare `controller.update` reference
+  can widen the context type and break `$patch` typing on the RPC client).
+
+```ts
+// src/server/routes/budgets.ts
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import * as controller from "@/server/controllers/budgets";
+import { CreateBudgetSchema, UpdateBudgetSchema } from "@/server/schemas/budget";
+import type { AppEnv } from "@/server/middleware/auth";
+import { requireAuth } from "@/server/middleware/auth";
+
+export const budgets = new Hono<AppEnv>()
+  .use("*", requireAuth)
+  .get("/", controller.list)
+  .get("/:id", controller.getOne)
+  .post("/", zValidator("json", CreateBudgetSchema), controller.create)
+  .patch("/:id", zValidator("json", UpdateBudgetSchema), (c) => controller.update(c))
+  .delete("/:id", controller.remove);
+```
+
+Routers are registered in `src/server/index.ts`:
+```ts
+app.route("/budgets", budgets);
+app.route("/balance-accounts", balanceAccounts);
+```
+
+### Layer 2 — Controller (`src/server/controllers/<resource>.ts`)
+- Imports Hono `Context` types **and** service functions. Does **not** import
+  Prisma.
+- Responsibilities: read `c.get("user")` for the authenticated user, read
+  path/query params, call `c.req.valid(...)`, invoke the service (passing
+  `user.id` for ownership scoping), map results/errors to HTTP responses
+  (`c.json`, `c.body`, status codes).
+- For routes with body validation, type the context as
+  `ValidatedContext<T>` (see §6) so `c.req.valid("json")` is typed — no `any`.
+  Non-validated handlers use `Context<AppEnv>`.
+
+```ts
+// src/server/controllers/budgets.ts
+import type { Context } from "hono";
+import { createBudget, ... } from "@/server/services/budgets";
+import type { CreateBudget, UpdateBudget } from "@/server/schemas/budget";
+import type { AppEnv } from "@/server/middleware/auth";
+
+type ValidatedContext<T> = Context<AppEnv, string, { out: { json: T } }>;
+
+export async function list(c: Context<AppEnv>) {
+  const user = c.get("user");
+  const items = await listBudgets(user.id);     // scoped by userId
+  return c.json(items);
+}
+
+export async function create(c: ValidatedContext<CreateBudget>) {
+  const user = c.get("user");
+  const body = c.req.valid("json");             // typed as CreateBudget
+  const created = await createBudget(user.id, body);
+  return c.json(created, 201);
+}
+```
+
+### Layer 3 — Service (`src/server/services/<resource>.ts`)
+- **Pure TypeScript modules.** No Hono import, no `Context`, no `Request`/`Response`.
+- Accepts plain TS arguments. The first argument is **always `userId: string`**
+  for user-owned resources — every Prisma `where` must filter by `{ userId }`,
+  and updates/deletes must first `findFirst({ where: { id, userId } })` to
+  assert ownership (throw `Error("Not found")` if not owned; the controller
+  maps that to 404).
+- The **only** layer allowed to import `@/lib/prisma`.
+- Unit-testable without spinning an HTTP server.
+
+```ts
+// src/server/services/budgets.ts
+import { prisma } from "@/lib/prisma";
+import type { CreateBudget, UpdateBudget } from "@/server/schemas/budget";
+
+export async function listBudgets(userId: string) {
+  return prisma.budget.findMany({ where: { userId }, orderBy: { createdAt: "desc" } });
+}
+
+export async function createBudget(userId: string, input: CreateBudget) {
+  return prisma.budget.create({ data: { ...input, userId } });
+}
+```
+
+**Layer rule summary**
+
+| Layer        | Imports Hono? | Imports Prisma? | Knows HTTP? | Knows DB? | Has `userId` scoping? |
+| ------------ | :-----------: | :--------------: | :---------: | :-------: | :--------------------: |
+| Router       | yes (Hono)    | no               | yes         | no        | no (gates auth only)   |
+| Controller   | yes (types)   | no               | yes         | no        | yes (reads `c.get("user")`) |
+| Service      | no            | yes              | no          | yes       | yes (filters every query)  |
+
+---
+
+## 6. Type-Safety Chain (the whole point)
+
+```
+prisma/schema.prisma
+   │  generator client  →  src/generated/prisma       (Prisma types)
+   │  generator zod     →  src/server/schemas/generated (Zod schemas)
+   ▼
+src/server/schemas/budget.ts
+   │  CreateBudgetSchema  = BudgetCreateInputObjectZodSchema            (from generated)
+   │  UpdateBudgetSchema  = BudgetUncheckedUpdateInputObjectZodSchema   (from generated)
+   │  type CreateBudget = z.infer<typeof CreateBudgetSchema>
+   ▼
+routes/budgets.ts  →  zValidator("json", CreateBudgetSchema)            (runtime + type)
+   ▼
+controllers/budgets.ts  →  ValidatedContext<CreateBudget>
+   │  c.req.valid("json") : CreateBudget                                 (no cast!)
+   ▼
+services/budgets.ts  →  createBudget(input: CreateBudget)               (typed DTO)
+   ▼
+prisma.budget.create({ data: input })                                   (Prisma-typed)
+   ▼
+src/lib/api-client.ts  →  hc<App>(baseURL)                             (RPC client)
+   │  baseURL = SSR ? NEXT_PUBLIC_APP_URL+"/api" : "/api"
+   │  api.budgets.$post({ json: {...} })  ← body typed as CreateBudget
+   ▼
+src/server/index.ts  exports `type App = typeof app`                    (single source of truth)
+```
+
+Key points:
+- **`App` type** is exported from `src/server/index.ts` (`export type App = typeof app`).
+  The RPC client, all controllers, and the route handler are typed against it.
+- **No `any`, no casts** in the validated path. `ValidatedContext<T>` threads
+  the Zod output type into `c.req.valid("json")` via Hono's `Context<I>`
+  third generic (`I['out']['json']`).
+- **Generated Zod schemas** reflect Prisma constraints (types, nullability,
+  defaults). App-level rules (e.g. password min length) are added by
+  **composing/extending** in `schemas/<resource>.ts`, never by hand-rewriting
+  the whole schema.
+
+### The `ValidatedContext` trick (why it exists)
+Hono's `c.req.valid(target)` is typed as
+`valid<T extends keyof I & keyof ValidationTargets>(t: T): I['out'][T]`.
+A plain `Context` has `I = {}`, so `keyof I` collapses to `never` and
+`c.req.valid("json")` won't even compile. By declaring
+`Context<Env, string, { out: { json: T } }>`, the `"json"` key becomes valid
+and the return type becomes `T`. This is the minimum typing needed to keep
+controllers as standalone functions (instead of inline handlers) without `any`.
+
+---
+
+## 6.5 Using the Typed RPC Client (`api`)
+
+`src/lib/api-client.ts` is the **single entry point** for the frontend to talk to
+the backend over HTTP, with end-to-end type safety:
+
+```ts
+// src/lib/api-client.ts
+import { hc } from "hono/client";
+import type { App } from "@/server";
+
+const baseURL =
+  typeof window === "undefined"
+    ? (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000") + "/api"
+    : "/api";
+
+export const api = hc<App>(baseURL);
+```
+
+- **Why two baseURLs?** In the browser, `/api` is a relative URL resolved
+  against the current page (same origin, cookies ride along automatically).
+  During SSR there is no origin, so it needs an absolute URL
+  (`NEXT_PUBLIC_APP_URL`/`api`). Without it, server-side `api.*` calls would
+  hit `localhost:<random>` and fail.
+- **`App` is `typeof app`** exported from `src/server/index.ts`. Every route
+  mounted with `app.route("/x", x)` automatically appears on `api.x` with
+  typed `$get`/`$post`/`$patch`/`$delete` methods. No extra wiring.
+
+### Method reference
+
+All methods return a standard `Response` (the body is **not** auto-parsed;
+call `await res.json()` / `await res.text()` yourself). Check `res.ok` or
+`res.status` first.
+
+| Operation | Call | Typed args |
+| --------- | ---- | ---------- |
+| List | `api.balanceAccounts.$get()` | none |
+| Get one | `api.balanceAccounts[":id"].$get({ param: { id } })` | `param.id: string` |
+| Create | `api.balanceAccounts.$post({ json: {...} })` | `json: CreateBalanceAccount` (Zod-validated) |
+| Update | `api.balanceAccounts[":id"].$patch({ param: { id }, json: {...} })` | `param.id` + `json: UpdateBalanceAccount` |
+| Delete | `api.balanceAccounts[":id"].$delete({ param: { id } })` | `param.id` (204 null body) |
+| Query | `api.x.$get({ query: { ... } })` | `query` typed by `zValidator("query", …)` on the route |
+
+> **Bracket access is mandatory** for two cases:
+> 1. **Resource names with hyphens** — `api["balance-accounts"]` (JS identifiers
+>    can't contain `-`).
+> 2. **Path params** — Hono exposes `:id` routes under the literal key `":id"`,
+>    so it's `api["balance-accounts"][":id"]`, not `api.balanceAccounts.id`.
+>
+> `api.budgets` works with dot access because `budgets` is a valid identifier.
+
+Hono's RPC client also exposes a helper to extract the response type without
+calling: `InferResponseType<typeof api.budgets.$get>`.
+
+### Reading the response
+
+```ts
+const res = await api["balance-accounts"].$get();
+if (res.ok) {
+  const data = await res.json();      // typed as the controller's return shape
+} else if (res.status === 401) {
+  // not authenticated
+} else {
+  const body = await res.text();
+}
+```
+
+### Client component pattern (this codebase's convention)
+
+Used in `src/components/add-account-dialog.tsx` and `account-card.tsx`. In
+client components the browser session cookie is sent automatically — no
+forwarding needed.
+
+```tsx
+"use client";
+const res = await api["balance-accounts"].$post({
+  json: { name, balance: 12000, currency: "IDR", type: "bank" },
+});
+if (!res.ok) {
+  let msg = "Failed to create account";
+  try { const body = JSON.parse(await res.text()); if (body?.error) msg = body.error; } catch {}
+  throw new Error(msg);
+}
+router.refresh();   // re-render RSC tree
+```
+
+### Server Component pattern — the cookie-forwarding gotcha
+
+`hc` uses `fetch`, which does **not** attach the incoming request's cookies
+when running on the server. An `api` call inside a Server Component will
+therefore hit `requireAuth` and return **401**, because the session cookie is
+missing. You must forward the headers yourself:
+
+```ts
+// app/some-page/page.tsx
+import { headers } from "next/headers";
+import { api } from "@/lib/api-client";
+
+const res = await api["balance-accounts"].$get(
+  {},                                   // first arg = typed request shape (empty for a bare GET)
+  { headers: await headers() },         // second arg = fetch init; cookies forwarded
+);
+```
+
+This is why `dashboard/page.tsx` reads accounts via `prisma` directly instead
+of `api` — for SSR reads, skipping the HTTP hop is simpler and avoids the
+forwarding dance. Use `api` in Server Components only when you specifically
+need to exercise the route (auth, validation, side effects). For mutations
+triggered from the client, `api` via a `"use client"` component is the norm.
+
+### Error / status shape
+
+Controllers in this repo respond with:
+- `200` + JSON body (the resource) on success,
+- `201` + JSON body on create,
+- `204` + empty body on delete,
+- `400` `{ error: string }` on invalid id / validation fail (zValidator returns 400),
+- `401` `{ error: "Unauthorized" }` from `requireAuth`,
+- `404` `{ error: "Not found" }`,
+- `500` `{ error: "Internal Server Error" }` from `app.onError`.
+
+---
+
+## 7. Mounting Hono inside Next.js
+
+### The catch-all Route Handler
+`src/app/api/[[...route]]/route.ts` (optional catch-all = `[[...route]]`, so
+`/api` itself also resolves). Because the Hono app is mounted **without** a
+`basePath`, the handler must strip the `/api` segment before forwarding to
+`handle(app)`:
+
+```ts
+import { handle } from "hono/vercel";
+import { app } from "@/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const stripApiPrefix =
+  (handler: (req: Request) => Response | Promise<Response>) =>
+  (req: Request) => {
+    const url = new URL(req.url);
+    url.pathname = url.pathname.replace(/^\/api/, "") || "/";
+    return handler(new Request(url, req));
+  };
+
+const honoHandler = stripApiPrefix(handle(app));
+
+export const GET = honoHandler;
+export const POST = honoHandler;
+export const PUT = honoHandler;
+export const PATCH = honoHandler;
+export const DELETE = honoHandler;
+export const OPTIONS = honoHandler;
+```
+
+- Why strip instead of `basePath`? `handle(app)` receives the raw Next.js
+  request whose URL still includes `/api`. `stripApiPrefix` rewrites the path
+  to what Hono's routes expect (e.g. `/budgets`), so the rest of the app stays
+  `basePath`-free and tests/controllers see plain paths.
+- Every HTTP method is exported to the same handler so Hono's own router decides.
+- `handle(app)` from `hono/vercel` returns a Next.js Route Handler function.
+- `runtime = "nodejs"` is required (the default edge runtime cannot run the pg
+  driver / Prisma adapter).
+- `dynamic = "force-dynamic"` prevents Next from trying to statically
+  prerender API responses.
+- **Separate handler:** `/api/auth/*` is served by `src/app/api/auth/[...all]/route.ts`
+  (better-auth's own handler), NOT by Hono. Keep any new API routes outside
+  `/api/auth/` so they don't collide.
+
+### The Hono app
+`src/server/index.ts`:
+```ts
+import { Hono } from "hono";
+import { logger } from "hono/logger";
+import { budgets } from "@/server/routes/budgets";
+import { balanceAccounts } from "@/server/routes/balance-accounts";
+import { transactions } from "@/server/routes/transactions";
+import type { AppEnv } from "@/server/middleware/auth";
+
+export const app = new Hono<AppEnv>()           // NO basePath — handler strips /api
+  .use(logger())
+  .get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }))
+  .route("/budgets", budgets)
+  .route("/balance-accounts", balanceAccounts)
+  .route("/transactions", transactions)
+  .notFound((c) => c.json({ error: "Not found" }, 404))
+  .onError((err, c) => {
+    console.error(err);
+    return c.json({ error: "Internal Server Error" }, 500);
+  });
+
+export type App = typeof app;
+```
+
+- No `basePath` — the route handler strips `/api` instead (see above).
+- Chained (`.use().get().route()...`) so `typeof app` exposes per-route types
+  to `hono/client`. The mounted sub-apps (`budgets`, `balanceAccounts`) are
+  themselves chained and typed against `AppEnv`.
+- Global `logger`, `notFound`, `onError` live here (cross-cutting concerns).
+- `export type App = typeof app` is the single source of truth consumed by
+  `src/lib/api-client.ts` and (implicitly) by `hono/vercel`'s `handle`.
+
+---
+
+## 8. Prisma 7 + Driver Adapter + better-auth Models
+
+### Schema (`prisma/schema.prisma`)
+The schema contains **two groups of models**: better-auth's auth models
+(`User`, `Session`, `Account`, `Verification`) and the domain models
+(`Budget`, `BalanceAccount`, `Transaction`). Every user-owned domain model has
+a `userId` field + `User` relation so ownership can be enforced in the service
+layer.
+
+```prisma
+generator client {
+  provider = "prisma-client"          // Prisma 7 new generator
+  output   = "../src/generated/prisma"
+}
+
+generator zod {
+  provider = "prisma-zod-generator"
+  output   = "../src/server/schemas/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}                                      // NOTE: no `url` field here (see prisma.config.ts)
+
+// ── better-auth models (required by better-auth's prismaAdapter) ──
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions       Session[]
+  accounts       Account[]
+  budgets        Budget[]
+  balanceAccounts BalanceAccount[]
+  transactions   Transaction[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ── Domain models ──
+model Budget {
+  id        Int      @id @default(autoincrement())
+  title     String
+  amount    Float
+  category  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([userId])
+}
+
+model BalanceAccount {
+  id        String   @id @default(cuid())
+  name      String
+  balance   Float    @default(0)
+  currency  String   @default("IDR")
+  type      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionsFrom Transaction[] @relation("TransactionFromAccount")
+  transactionsTo   Transaction[] @relation("TransactionToAccount")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("balance_account")
+}
+
+model Transaction {
+  id                String   @id @default(cuid())
+  name              String
+  amount            Float
+  type              String   // "income" | "expense" | "transfer"
+  category          String
+  date              DateTime
+  adminFee          Float    @default(0)
+  balanceAccountId   String?
+  toBalanceAccountId String?
+  userId            String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceAccount    BalanceAccount? @relation("TransactionFromAccount", fields: [balanceAccountId], references: [id], onDelete: SetNull)
+  toBalanceAccount  BalanceAccount? @relation("TransactionToAccount", fields: [toBalanceAccountId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+  @@map("transaction")
+}
+```
+
+- **`datasource` has no `url`** in Prisma 7 — the URL moved to `prisma.config.ts`.
+- **`@@map`** on the auth models matches better-auth's expected table names
+  (`user`, `session`, `account`, `verification`). `BalanceAccount` is mapped to
+  `balance_account`, `Transaction` to `transaction`.
+- **`userId` relations + `onDelete: Cascade`** ensure that deleting a user
+  cleans up their budgets, accounts, sessions, transactions, etc. — and that
+  the service layer can enforce ownership per-request.
+- **`Transaction` uses `onDelete: SetNull` on its `BalanceAccount` FKs.**
+  Deleting a `BalanceAccount` nulls the FK columns but **preserves the
+  transaction row** (history survives). The UI shows "Deleted account".
+- **`Transaction.balanceAccountId` / `toBalanceAccountId` are optional**
+  (`String?`) precisely because of `SetNull` — services must handle null
+  account lookups gracefully (the include returns `null`).
+
+### Config (`prisma.config.ts`)
+```ts
+import "dotenv/config";                         // loads .env for the CLI
+import { defineConfig } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: { path: "prisma/migrations" },
+  datasource: { url: process.env["DATABASE_URL"] },
+});
+```
+
+### Client singleton (`src/lib/prisma.ts`)
+```ts
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@/generated/prisma/client";
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
+
+function createPrismaClient() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is not set");
+  const adapter = new PrismaPg(url);            // Prisma 7 driver adapter
+  return new PrismaClient({ adapter });
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+```
+
+- `PrismaPg` accepts `pg.Pool | pg.PoolConfig | string`. Passing the connection
+  string is the common case.
+- The `globalThis` cache prevents exhausting DB connections during Next.js dev
+  hot-reload (which would otherwise instantiate a new client per reload).
+
+---
+
+## 9. Zod Auto-Generation
+
+`prisma-zod-generator` reads the Prisma schema and emits, per model, a family
+of Zod schemas under `src/server/schemas/generated/schemas/objects/`:
+
+| Generated export                            | Meaning                                  |
+| ------------------------------------------- | ---------------------------------------- |
+| `BudgetCreateInputObjectZodSchema`          | create input (respects defaults/optional)|
+| `BudgetUncheckedCreateInputObjectZodSchema`  | create incl. PK/foreign-key fields       |
+| `BudgetUncheckedUpdateInputObjectZodSchema`  | update (all fields optional)             |
+| `BudgetResultSchema` / `BudgetModelSchema`  | full row shape                           |
+
+The app **does not import these directly at call sites**. Instead,
+`src/server/schemas/<resource>.ts` is the only place that touches the generated
+schemas. It narrows the huge Prisma-generated shape down to the **API contract**
+by `.pick()`-ing just the fields the client is allowed to send, and `.extend()`-ing
+to override constraints (e.g. force all update fields to be required). The same
+pattern is used for `Budget` and `BalanceAccount`:
+
+```ts
+// src/server/schemas/budget.ts
+import { z } from "zod";
+import {
+  BudgetUncheckedCreateInputObjectZodSchema,
+  BudgetUncheckedUpdateInputObjectZodSchema,
+} from "@/server/schemas/generated/schemas/objects";
+
+export const CreateBudgetSchema = BudgetUncheckedCreateInputObjectZodSchema.pick({
+  title: true,
+  amount: true,
+  category: true,
+});
+
+export const UpdateBudgetSchema = BudgetUncheckedUpdateInputObjectZodSchema.pick({
+  title: true,
+  amount: true,
+  category: true,
+}).extend({
+  title: z.string(),
+  amount: z.number(),
+  category: z.string(),
+});
+
+export type CreateBudget = z.infer<typeof CreateBudgetSchema>;
+export type UpdateBudget = z.infer<typeof UpdateBudgetSchema>;
+```
+
+Why `.pick`? The unchecked input schema includes `userId` (a foreign key) — the
+client must **not** be allowed to set another user's id. By picking only the
+public fields, `userId` is excluded from the API contract; the controller
+injects `userId` from the authenticated session (`c.get("user").id`) before
+calling the service (see §5). The same reason applies to `BalanceAccount`.
+
+Why `.extend` on the update schema? `BudgetUncheckedUpdateInputObjectZodSchema`
+marks every field optional (Prisma update semantics). The app overrides that to
+make `title`/`amount`/`category` **required** on PATCH, so a client can't
+accidentally null them out.
+
+To add a new app-level rule (e.g. password min length), extend the picked
+schema the same way:
+```ts
+export const CreateUserSchema = UserUncheckedCreateInputObjectZodSchema
+  .pick({ email: true, name: true, password: true })
+  .extend({ password: z.string().min(8) });
+```
+
+### `Transaction` — the `.refine()` + `$transaction` resource (see §17)
+
+`Transaction` is the first resource that uses `.extend()` to **add fields not
+present in the generated schema** (the generated `TransactionUnchecked*`
+respects Prisma types but the app narrows `type` to a Zod enum and coerces
+`date`). It also adds a cross-field `.refine()`:
+
+```ts
+// src/server/schemas/transaction.ts
+export const CreateTransactionSchema =
+  TransactionUncheckedCreateInputObjectZodSchema.pick({
+    name: true, amount: true, type: true, category: true,
+    date: true, adminFee: true,
+    balanceAccountId: true, toBalanceAccountId: true,
+  }).extend({
+    name: z.string().min(1),
+    amount: z.number(),
+    type: z.enum(["income", "expense", "transfer"]),   // tighter than generated
+    category: z.enum(ALL_CATEGORIES),                   // premade list from src/lib/categories.ts
+    date: z.coerce.date(),                            // accept ISO string from JS
+    adminFee: z.number().min(0).default(0),
+    balanceAccountId: z.string().min(1),
+    toBalanceAccountId: z.string().nullable().optional(),
+  }).refine(
+    (v) =>
+      v.type !== "transfer" ||
+      (!!v.toBalanceAccountId &&
+        !!v.balanceAccountId &&
+        v.toBalanceAccountId !== v.balanceAccountId),
+    { message: "Transfer requires distinct source and destination accounts" },
+  ).refine(
+    (v) => CATEGORIES_BY_TYPE[v.type].includes(v.category),
+    { message: "Invalid category for this transaction type" },
+  );
+export type CreateTransaction = z.infer<typeof CreateTransactionSchema>;
+```
+
+- **No `UpdateTransactionSchema` exists.** Editing transactions is intentionally
+  not supported (mutating past transactions would require re-balancing accounts
+  in both directions — out of scope for now). Only `Create` + `Delete` (which
+  reverses the balance effect, see §17).
+- **`.refine()`** is a runtime-only check (not reflected in the TS type). It
+  runs after `.parse()` inside `zValidator`, returning 400 with the message
+  if the transfer invariant fails.
+- **`z.coerce.date()`** lets the API accept `"2026-07-14T10:30:00.000Z"` (a JS
+  Date instance would also pass). The service stores a Prisma `DateTime`.
+- **`z.enum(ALL_CATEGORIES)`** restricts `category` to a premade list defined
+  in `src/lib/categories.ts` — users cannot type custom categories. The second
+  `.refine()` validates that the category belongs to the selected transaction
+  type's list (e.g. "Salary" with type "expense" → 400). Per-type lists:
+  income (Salary, Bonus, Freelance, …), expense (Food & Drink, Rent,
+  Entertainment, …), transfer (Account Transfer, Savings, …).
+- **`Budget` schema** (`src/server/schemas/budget.ts`) also uses
+  `z.enum(EXPENSE_CATEGORIES)` from the shared `categories.ts` constant —
+  budgets are expense-oriented.
+
+---
+
+## 10. Configuration Files
+
+### `package.json` (scripts)
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:dev": "prisma db push && prisma generate"
+  }
+}
+```
+- `build` runs `prisma generate` first so CI/deploys always have fresh clients.
+- `db:dev` is the quick local loop: push schema changes to the DB and regenerate
+  the client + Zod in one go (no migration history, ideal for rapid dev).
+
+### `package.json` (lifecycle trust)
+```json
+{
+  "ignoreScripts": ["sharp", "unrs-resolver"],
+  "trustedDependencies": [
+    "@prisma/engines", "core-js", "prisma", "prisma-zod-generator", "sharp", "unrs-resolver"
+  ]
+}
+```
+- Bun blocks postinstall scripts by default. Listing packages in
+  `trustedDependencies` lets their scripts run automatically at install, so
+  `bun pm untrusted` reports **0 untrusted** — nothing blocked on the machine.
+
+### `tsconfig.json`
+- Path alias `@/* → ./src/*` is used everywhere (`@/lib/prisma`,
+  `@/server`, `@/generated/prisma/client`).
+
+### `eslint.config.mjs`
+- Flat config; extends `eslint-config-next` (core-web-vitals + TS).
+- `globalIgnores` excludes generated code so lint never flags generated files:
+  `src/generated/**`, `src/server/schemas/generated/**`.
+
+### `.gitignore` (project-specific additions)
+```
+.env*                              # secrets
+/src/generated/prisma              # generated client
+/src/server/schemas/generated      # generated zod
+*.tsbuildinfo
+```
+
+### `next.config.ts`
+- Currently minimal. Add `images`, `headers`, etc. here as needed.
+
+---
+
+## 11. Environment
+
+`.env` (gitignored):
+```
+# Prisma
+DATABASE_URL="postgresql://user:password@localhost:5432/budgie?schema=public"
+
+# better-auth
+BETTER_AUTH_URL="http://localhost:3000"
+BETTER_AUTH_SECRET="..."
+
+# OAuth (optional — leave blank to disable)
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+GITHUB_CLIENT_ID=""
+GITHUB_CLIENT_SECRET=""
+
+# RPC client SSR base URL (optional — defaults to http://localhost:3000)
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+- `DATABASE_URL` is loaded by `prisma.config.ts` via `import "dotenv/config"`.
+  At runtime, Next.js loads `.env` automatically (App Router reads env vars).
+- `BETTER_AUTH_URL` must match the public URL the app is served on (used by
+  better-auth for cookie domain + callbacks).
+- `BETTER_AUTH_SECRET` is the JWT/session signing key — generate with
+  `openssl rand -base64 32`.
+- `NEXT_PUBLIC_APP_URL` is read by `src/lib/api-client.ts` during SSR to build
+  the absolute `/api` base URL (since there is no origin on the server).
+
+---
+
+## 12. Commands
+
+```bash
+bun install                 # install (trusted scripts auto-run)
+bun run dev                 # next dev  (http://localhost:3000)
+bun run build               # prisma generate && next build
+bun run lint                # eslint
+bun run typecheck           # tsc --noEmit
+bun run db:generate         # regenerate Prisma client + Zod schemas
+bun run db:migrate          # prisma migrate dev (create + apply)
+bun run db:push             # push schema without migration history
+bun run db:studio           # prisma studio GUI
+bun pm untrusted            # should report 0 untrusted
+```
+
+Smoke test once running:
+```bash
+curl localhost:3000/api/health
+# List/create budgets — these require a valid better-auth session cookie,
+# so a bare curl will return 401. Test via the browser after signing in,
+# or attach the session cookie manually:
+curl localhost:3000/api/budgets -b 'better-auth.session_token=<token>'
+```
+
+---
+
+## 13. How to Add a New Resource (e.g. another model alongside `Transaction`)
+
+> `Transaction` (already implemented) is the canonical reference for a resource
+> that uses `.refine()` cross-field validation and a Prisma `$transaction` to
+> update related rows atomically. Follow the same 8-step checklist below for
+> any *new* resource, then see §17 for the Transaction-specific balance-update
+> pattern if your resource also mutates siblings on create/delete.
+
+1. **Prisma model**: add `model Transaction { ... userId String; user User @relation(...) }`
+   to `prisma/schema.prisma`. Every user-owned resource **must** have a `userId`
+   field + `User` relation so ownership scoping works (see §5 service layer).
+2. **Generate**: `bun run db:dev` (or `bun run db:migrate --name add_transaction`)
+   — regenerates Prisma client + Zod. New `TransactionCreateInputObjectZodSchema`
+   etc. appear.
+3. **App schema**: create `src/server/schemas/transaction.ts` exporting
+   `CreateTransactionSchema` / `UpdateTransactionSchema` by `.pick()`-ing the
+   public fields (exclude `userId`!) and `.extend()`-ing overrides, plus
+   `type Create*` / `type Update*` aliases (see §9 for the pattern).
+4. **Service**: `src/server/services/transaction.ts` — pure functions importing
+   `prisma` and the DTO types. **First arg is always `userId: string`**; every
+   Prisma query filters by `{ userId }`; update/delete do an ownership
+   `findFirst({ where: { id, userId } })` before mutating.
+5. **Controller**: `src/server/controllers/transaction.ts` — import service +
+   schema types; `c.get("user")` for `userId`; use `ValidatedContext<T>` for
+   validated handlers; map service `Error("Not found")` to 404.
+6. **Router**: `src/server/routes/transaction.ts` — `new Hono<AppEnv>()`
+   `.use("*", requireAuth).get().post()...` with `zValidator` (chained, see §5).
+7. **Mount**: in `src/server/index.ts`, add `.route("/transactions", transactions)`.
+   **Chained** with the existing `.route()` calls so `typeof app` stays inferred.
+8. **Verify**: `bun run lint && bun run typecheck && bun run build`.
+
+The typed RPC client (`api.transactions.$get()`) becomes available
+automatically once the router is mounted, because `App = typeof app`. For
+Server Component reads, prefer `prisma` directly (no cookie-forwarding needed);
+use `api` for client-triggered mutations. **In Server Components that use
+`api` for reads, always `await res.json()` then `Array.isArray(data)` guard
+before treating it as `T[]`** — a 401/500 response is an `{ error }` object, and
+a bare `as T[]` cast will crash the page (this happened during development of
+the transactions page; the guard is now baked in).
+
+---
+
+## 14. Gotchas & Breaking-Change Notes
+
+- **Prisma 7 needs a Driver Adapter.** `new PrismaClient()` with no adapter is a
+  type error (the options union requires `adapter` or `accelerateUrl`). Use
+  `@prisma/adapter-pg` for Postgres; swap to `@prisma/adapter-better-sqlite3`,
+  `@prisma/adapter-libsql`, etc. for other DBs.
+- **`datasource` block has no `url`.** The URL lives in `prisma.config.ts`
+  (`datasource.url = process.env.DATABASE_URL`). Don't add `url = env("...")` to
+  the schema.
+- **Next.js 16 Route Handlers**: `context.params` is a **Promise** (`await params`).
+  The catch-all `[[...route]]` handler ignores params and lets Hono route, so
+  this rarely matters — but if you add a typed dynamic Route Handler elsewhere,
+  await `params`.
+- **Pages that read the DB must be dynamic.** A Server Component that calls
+  Prisma at request time must set `export const dynamic = "force-dynamic"`, or
+  `next build` will try to prerender it and fail (no DB at build time).
+- **Generated code is gitignored.** After cloning, always run `bun run db:generate`
+  (or `bun run build`) before `bun run typecheck`/`bun run dev`, or imports from
+  `@/generated/prisma/client` and `@/server/schemas/generated/...` will not
+  resolve.
+- **Do not use Server Actions for backend logic.** All mutation/query goes
+  through Hono REST routes. Server Components may read via `prisma` directly for
+  SSR, but writes go through the API.
+- **`hono/vercel` `handle()` requires `runtime = "nodejs"`.** Don't set edge.
+- **Keep routers chained** (`.use().get().post().patch()`), not separate
+  `app.get(...)` statements — chaining is what lets `typeof app` expose
+  per-route types to `hono/client`. Start the chain with `.use("*", requireAuth)`.
+- **No `basePath` on the Hono app.** The catch-all Route Handler
+  (`src/app/api/[[...route]]/route.ts`) strips `/api` via `stripApiPrefix`
+  before forwarding to `handle(app)`. Don't add `.basePath("/api")` to the app
+  — it would double-prefix and break routes.
+- **`/api/auth/*` is a separate Route Handler** at `src/app/api/auth/[...all]/`
+  owned by better-auth, NOT Hono. Don't add an `auth` route to the Hono app,
+  and don't put any other handler under `/api/auth/`.
+- **`api` in Server Components needs cookie forwarding.** `hc` uses `fetch`,
+  which on the server does NOT auto-attach the incoming session cookie — bare
+  `api.x.$get()` will 401. Forward with `{ headers: Object.fromEntries(await headers()) }`
+  as the second arg (see §6.5). In Client Components cookies ride along
+  automatically. For SSR reads, prefer `prisma` directly.
+- **Never cast `await res.json()` to `T[]` without `Array.isArray` guard.** A
+  non-OK response body is `{ error: string }` — an object, not an array. The
+  bare cast compiles (TS trusts you) but throws `items.filter is not a
+  function` at render time. Pattern used in `transactions/page.tsx`:
+  ```ts
+  const res = await api.transactions.$get({}, { headers: Object.fromEntries(await headers()) });
+  if (res.status === 401) redirect("/sign-in");
+  let transactions: TransactionRow[] = [];
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error("[transactions] API error", res.status, body);
+  } else {
+    const data = await res.json();
+    transactions = Array.isArray(data) ? (data as TransactionRow[]) : [];
+  }
+  ```
+  Pages must **always** show a graceful fallback branch when `!res.ok`. Client
+  components (`TransactionsView`) additionally guard the prop with
+  `Array.isArray(transactions)` + `useMemo` so a malformed prop never reaches
+  `.filter()` (see `transactions-view.tsx`).
+- **`ReadonlyHeaders` is not `Record<string, string>`.** `next/headers`'s
+  `headers()` returns `ReadonlyHeaders`, but `hc`'s `init.headers` expects
+  `Record<string, string>`. Convert with `Object.fromEntries(await headers())`,
+  not a bare `await headers()`.
+- **Every user-owned resource must scope by `userId`.** The controller reads
+  `c.get("user").id`, the service filters every Prisma query by `{ userId }`,
+  and the app schema `.pick()`s away `userId` so the client can't forge it.
+  Skipping any of these is a privilege-escalation bug.
+- **better-auth `prismaAdapter` needs `provider: "postgresql"`.** It's set in
+  `src/lib/auth.ts`. If you switch DBs, change both Prisma and the adapter.
+
+---
+
+## 15. Reproducing This Architecture From Scratch
+
+1. `bunx create-next-app@latest . --ts --app --src-dir --tailwind --eslint --use-bun`
+2. `bun add hono @hono/zod-validator zod` and `bun add @prisma/client @prisma/adapter-pg pg`
+   and `bun add -D prisma @types/pg prisma-zod-generator dotenv @types/bun`
+3. `bun add better-auth` — auth layer (email/password + OAuth). See `src/lib/auth.ts`.
+4. `bunx prisma init --datasource-provider postgresql` → edit `prisma/schema.prisma`
+   (add both generators, set `output` paths) and `prisma.config.ts`. Add the
+   `User`/`Session`/`Account`/`Verification` models (better-auth requires these)
+   plus your domain models with `userId` relations.
+5. Add the `generator zod` block; define your models; `bun run db:migrate --name init`.
+6. Create `src/lib/prisma.ts` (singleton + `PrismaPg`).
+7. Create `src/lib/auth.ts` (better-auth instance using `prismaAdapter`) and
+   `src/app/api/auth/[...all]/route.ts` (better-auth's own handler — NOT Hono).
+8. Create `src/server/middleware/auth.ts` (`AppEnv` + `requireAuth`).
+9. Create `src/server/{index.ts, routes, controllers, services, schemas}` per §5.
+   Start each router chain with `.use("*", requireAuth)`.
+10. Create `src/app/api/[[...route]]/route.ts` per §7 (with `stripApiPrefix`).
+11. Create `src/lib/api-client.ts` — `hc<App>(baseURL)` with SSR-aware baseURL
+    (see §6.5), NOT a bare `hc<App>("/api")`.
+12. Update `package.json` scripts + `trustedDependencies` per §10.
+13. Add generated paths to `.gitignore` and `eslint.config.mjs` ignores.
+14. `bun run lint && bun run typecheck && bun run build`.
+
+You now have an identical, fully type-safe, authenticated, REST-based, 3-layer
+Next.js + Hono + Prisma + better-auth stack on Bun.
+
+---
+
+## 16. Transactions UI (frontend)
+
+The transactions feature is the richest UI in the app and lives across these
+components (all `"use client"` unless noted):
+
+| File | Role |
+| ---- | ---- |
+| `src/app/transactions/page.tsx` (RSC) | Auth gate + fetch via `api.transactions.$get` (cookie-forwarded) + `Array.isArray` guard → renders `<TransactionsView>`. Shows a graceful error branch if `!res.ok`. |
+| `src/app/transactions/add/page.tsx` (RSC) | Auth gate + fetch balance accounts (cookie-forwarded) → renders `<AddTransactionWizard>`. **No sidebar** — immersive centered flow. |
+| `src/components/transactions-view.tsx` | Search bar (client-side filter, debounced via `useMemo`) + Add button → `/transactions/add` + Download PDF button + **date-grouped list** (`Today` / `Yesterday` / `14 Jul 2026` headers). Owns `selected` state → opens detail sheet. Two empty states: "no transactions yet" (with CTA) and "no results" (minimalist). |
+| `src/components/transaction-item.tsx` | Minimalist row (Cash App / Wise style): 36px tinted icon (income green / expense soft-red / transfer orange) + name + `bank • category` subtitle + colored amount + time. Whole row is a `<button>` → opens detail sheet. Hairline divider, hover `bg-[#FAFAFA]`. No borders, no badges, no per-row delete. |
+| `src/components/transaction-detail-sheet.tsx` | Bottom sheet (mobile) / centered dialog (desktop) opened by tapping a row. Shows type chip + hero amount (colored) + detail rows (Bank / Category / Date / Time) + **Delete trigger** button (full-width `bg-[#FFBABA]`). The trigger does NOT delete directly — it opens a confirm `Dialog` (rendered as a **sibling** of the sheet scrim via a `<>` fragment, so scrim clicks don't bubble to the sheet's `onClose`). Confirm dialog: "Delete transaction?" + names the txn + amount + "cannot be undone" + `softred` Delete (`api.transactions[":id"].$delete`, `loading`-gated `onOpenChange`) + `outline` Cancel. On success → `setConfirmOpen(false)` + sheet `onClose()` + `router.refresh()`. |
+| `src/components/add-transaction-wizard.tsx` | 3-step wizard. **Top bar**: back chevron (left) + `1 of 3` (right). **Slim 2px progress track** (replaces chunky numbered stepper). **Step 1**: type cards (income/expense/transfer) — selecting a type resets the category. **Transfer card is disabled when `accounts.length < 2`** (desc swaps to "Add another account to transfer"). **Step 2**: hero amount at top (add-account style: currency prefix + `dynamicFontSize` + `formatBalanceInput`) + hairline-divided field list (bank, dest, name, **CategorySelect** (native `<select>` filtered by type from `src/lib/categories.ts`), admin fee, date). **Step 3**: hero amount + review rows + Confirm and Add. **Insufficient balance pre-check**: before the API call, the wizard checks `source.balance` client-side (expense: `amount > balance`, transfer: `amount + fee > balance`) and shows "Insufficient balance" instantly. **Single full-width CTA per step**. **No sidebar, no card chrome** — flush with background. **No-accounts guard**: the RSC `add/page.tsx` renders a §7.5 empty state (`Wallet` icon + `AddAccountDialog` inline) instead of the wizard when `accounts.length === 0`; on account creation `router.refresh()` swaps in the wizard automatically. |
+| `src/components/download-pdf-dialog.tsx` | Dialog with 3 scope options (All / Filtered by search / Date range). Generates PDF client-side via `jspdf` + `jspdf-autotable` (table of transactions + income/expense/transfer summary). Downloads `transactions.pdf`. |
+
+### Color tokens (transactions)
+| Type | Icon bg | Text |
+| ---- | ------- | ---- |
+| income (soft green) | `bg-[#A0FFA8]/30` | `text-[#1F9B29]` |
+| expense (soft red) | `bg-[#FFBABA]/40` | `text-[#D8000C]` |
+| transfer (soft orange) | `bg-[#FFD9A0]/40` | `text-[#B25B00]` |
+
+These mirror the existing `soft` / `softred` Button variants (§0 design system).
+The orange variant is new and transaction-specific.
+
+### Formatting helpers (`src/lib/format.ts`)
+- `formatRupiah(n)` → `"Rp 1.234.567,00"` (id-ID grouping, comma→dot).
+- `formatBalanceInput(raw)` → strips non-digits, groups with `id-ID`, keeps leading `-`.
+- `formatDate(d)` → `"14 Jul 2026"` (en-GB short).
+- `formatTime(d)` → `"2:30 pm"` (en-US hour12, lowercased).
+- `formatDateTimeLocalValue(date)` → `"2026-07-14T14:30"` (for `<input type="datetime-local">` default value).
+
+---
+
+## 17. The `$transaction` Balance-Update Pattern (Transaction service)
+
+`Transaction` is the only resource whose **create** and **delete** mutate a
+**sibling** model (`BalanceAccount.balance`) atomically. This is done inside a
+Prisma `$transaction` callback so the balance can never drift from the
+transaction history.
+
+### `createTransaction(userId, input)` — `src/server/services/transactions.ts`
+
+```ts
+return prisma.$transaction(async (tx) => {
+  // 1. Verify the source account is owned by this user (anti privilege escalation).
+  const source = await tx.balanceAccount.findFirst({
+    where: { id: input.balanceAccountId, userId },
+  });
+  if (!source) throw new Error("Account not found");
+
+  // 2. For transfers, verify destination is owned + ≠ source.
+  let dest = null;
+  if (input.type === "transfer") {
+    if (!input.toBalanceAccountId) throw new Error("Destination account required");
+    dest = await tx.balanceAccount.findFirst({
+      where: { id: input.toBalanceAccountId, userId },
+    });
+    if (!dest) throw new Error("Destination account not found");
+  }
+
+  // 3. Create the transaction row (with include so the response carries account names).
+  const txn = await tx.transaction.create({ data: { ... }, include: { balanceAccount: ..., toBalanceAccount: ... } });
+
+  // 4. Mutate the balance(s) based on type — all inside the same tx.
+  if (input.type === "income")      tx.balanceAccount.update({ where: { id: input.balanceAccountId },    data: { balance: { increment: input.amount } } });
+  if (input.type === "expense")     tx.balanceAccount.update({ where: { id: input.balanceAccountId },    data: { balance: { decrement: input.amount } } });
+  if (input.type === "transfer" && dest) {
+    tx.balanceAccount.update({ where: { id: input.balanceAccountId },       data: { balance: { decrement: input.amount + input.adminFee } } }); // source loses amount + fee
+    tx.balanceAccount.update({ where: { id: input.toBalanceAccountId! },    data: { balance: { increment: input.amount } } });                 // dest gains amount (fee stays with source)
+  }
+
+  return txn;
+});
+```
+
+### `deleteTransaction(userId, id)` — reverses the balance effect
+
+Before deleting, the service looks up the existing transaction (ownership
+check), then **applies the inverse balance mutation** inside a `$transaction`,
+then deletes the row:
+
+| type | create effect | delete effect (reverse) |
+| ---- | ------------- | ----------------------- |
+| income | source `+amount` | source `-amount` |
+| expense | source `-amount` | source `+amount` |
+| transfer | source `-(amount+adminFee)`, dest `+amount` | source `+(amount+adminFee)`, dest `-amount` |
+
+### Why this lives in the service (not the controller)
+
+The balance mutation is **business logic**, not HTTP I/O — it belongs in the
+service layer per §5. The controller just calls
+`createTransaction(user.id, body)` / `deleteTransaction(user.id, id)` and maps
+`Error("…not found")` to 404. The service is the **only** layer that touches
+`prisma.$transaction`, and it's still pure TS (no `Context`, no `Request`) so
+it remains unit-testable without HTTP.
+
+### Gotcha: `SetNull` means the account may be gone
+
+`Transaction.balanceAccountId` / `toBalanceAccountId` use `onDelete: SetNull`.
+A transaction can outlive its account — the `include` returns `balanceAccount:
+null`. The UI handles this by showing "Deleted account" in the row subtitle and
+detail sheet. The **delete** path must therefore guard `if (txn.balanceAccountId)`
+before attempting the reverse update (a null FK means there's nothing to
+reverse — the account was already deleted, taking its balance with it).
+
+### Balance guard — no negative balances (see §17)
+
+Both `createTransaction` and `deleteTransaction` guard against pushing a
+`BalanceAccount.balance` below 0:
+
+- **Create**: `expense` and `transfer` check `source.balance − (amount [+ adminFee]) < 0`
+  → `throw new Error("Insufficient balance")` → controller maps to 400.
+- **Delete**: `income` (source decremented) and `transfer` (dest decremented)
+  fetch the current account balance first and check if the reverse would go
+  negative. Expense refunds and transfer source refunds always increase, so
+  no guard needed.
+- **Controller error mapping**: `remove` now distinguishes "not found" → 404
+  from other errors → 400 (was a bare `catch → 404` that masked "Insufficient
+  balance"). `create` uses `.toLowerCase().includes("not found")` for
+  consistency.
+
+---
+
+## 18. Dashboard UI (frontend)
+
+The dashboard (`src/app/dashboard/page.tsx`, RSC, `force-dynamic`) is the main
+authenticated landing page. It fetches data via a mix of `prisma` direct reads
+(SSR, no cookie forwarding) and the typed RPC client (`api["balance-accounts"].$get`
+with cookie forwarding).
+
+### Data flow
+
+1. **Accounts + net worth**: `api["balance-accounts"].$get` (cookie-forwarded) →
+   `accounts[]`, `netWorth = sum(account.balance)`.
+2. **Current month cashflow**: three `prisma.transaction.aggregate` calls
+   (income `_sum.amount`, expense `_sum.amount`, transfer `_sum.adminFee`) →
+   `monthIncome`, `monthExpense` (expense + fees), `monthLabel`.
+3. **Asset growth trajectory**: `prisma.transaction.findMany` for this year
+   (`select: type, amount, adminFee, date, balanceAccountId, toBalanceAccountId`)
+   → JS computation: `monthlyNet[12]` (income `+amount`, expense `−amount`,
+   transfer `−adminFee`), `startingAssets = netWorth − yearNetEffect`,
+   cumulative asset value per month → `growthData[]`.
+4. **Net worth delta**: per-account net effect for current month
+   (`accountNetThisMonth`), `lastMonthEndNetWorth = sum(a.balance −
+   accountNetThisMonth[a.id])` for **all** accounts (back-dated transactions on
+   a new account reconstruct a last-month baseline). `deltaPct` = percentage
+   change (null when base ≤ 0 → display absolute instead).
+5. **Active months**: `activeMonths[12]` — `true` if that month had ≥1
+   transaction this year (computed from `yearTxns`). Passed to
+   `AssetGrowthCard` to distinguish "no activity" (grey placeholder bars) from
+   "active flat" (brown Stable bars).
+
+### Layout
+
+```
+<AccountTab />
+<BalanceSection value={netWorth} deltaPct={...} deltaAbsolute={...} />
+[Details] [Add Account]
+
+<h1>Your Accounts</h1>
+grid (1 col mobile / 2 sm / 3 lg) → <AccountCard> per account
+(empty message when accounts.length === 0)
+
+<h1>Quick Insight</h1>
+if yearTxns.length > 0:
+  grid (1 col mobile / 2 md) → <CashflowCard> + <AssetGrowthCard>
+else:
+  <QuickInsightEmptyState>  (Sparkles icon + "No insight yet" + Add transaction CTA)
+```
+
+### Components
+
+| File | Role |
+| ---- | ---- |
+| `src/components/balance-section.tsx` | Net worth hero. Shows "Your Net Worth" + eye-toggle + masked balance. Delta line: `deltaPct` as `+X.X% From last Month` (green/red by sign), or `+Rp … this month` (absolute, when last month's base was 0). `tabular-nums` on all numbers. |
+| `src/components/cashflow-card.tsx` | Donut chart (pure SVG, no library). `title` prop (default "Today's Cashflow"). Two arcs (income green gradient, expense red gradient) with 20° gap, `radius=64`, rendered `w-56 h-56`. Center: `+/- N mil` (color by sign) + rupiah. Breakdown rows: `bg-[#F2F2F2] rounded-[20px]` tiles. |
+| `src/components/asset-growth-card.tsx` | Apple-style bar chart (pure SVG). **`"use client"`** (hover state). 12 slots (Jan–Dec), `barW=16px`, gap ≈8px. Recorded months: growth-colored bars (green up / orange flat / red down vs previous month); no-activity months (`activeMonths[m]===false`) → grey `#E5E5E5` placeholder bars (~12px min). `rx` capped at `renderedH/2` (no oval short bars). **Hover tooltip**: HTML overlay (month+year + `formatRupiah`), tap toggles on mobile. Future months: no bar, faint label. YTD pill. Legend (Growth/Stable/Decline). Empty state: no bars + "No transactions yet" caption. |
+| `src/components/quick-insight-empty-state.tsx` | `"use client"`. §7.5 "Nothing exists yet" empty state shown when the user has no transactions. `Sparkles` icon + "No insight yet" + helper desc + `success` "Add transaction" CTA → `/transactions/add`. |
+| `src/components/sidebar.tsx` | Desktop: `md:sticky md:top-0 self-start` — pins to viewport top while content scrolls (stays in flex flow, no layout break). Mobile: fixed bottom tab bar (unchanged). |

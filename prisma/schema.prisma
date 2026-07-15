@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+generator zod {
+  provider = "prisma-zod-generator"
+  output   = "../src/server/schemas/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Budget {
+  id        Int      @id @default(autoincrement())
+  title     String
+  amount    Float
+  category  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([userId])
+}
+
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions       Session[]
+  accounts       Account[]
+  budgets        Budget[]
+  balanceAccounts BalanceAccount[]
+  transactions   Transaction[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model BalanceAccount {
+  id        String   @id @default(cuid())
+  name      String
+  balance   Float    @default(0)
+  currency  String   @default("IDR")
+  type      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionsFrom Transaction[] @relation("TransactionFromAccount")
+  transactionsTo   Transaction[] @relation("TransactionToAccount")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("balance_account")
+}
+
+model Transaction {
+  id                String   @id @default(cuid())
+  name              String
+  amount            Float
+  type              String
+  category          String
+  date              DateTime
+  adminFee          Float    @default(0)
+  balanceAccountId   String?
+  toBalanceAccountId String?
+  userId            String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceAccount    BalanceAccount? @relation("TransactionFromAccount", fields: [balanceAccountId], references: [id], onDelete: SetNull)
+  toBalanceAccount  BalanceAccount? @relation("TransactionToAccount", fields: [toBalanceAccountId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+  @@map("transaction")
+}
