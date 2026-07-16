@@ -43,13 +43,13 @@ function makeTxn(overrides: Partial<TransactionRow> = {}): TransactionRow {
 
 const sampleTxns: TransactionRow[] = [
   makeTxn({ id: "t1", name: "Salary", amount: 500000, type: "income", category: "Salary" }),
-  makeTxn({ id: "t2", name: "Groceries", amount: 200000, type: "expense", category: "Food & Drink" }),
+  makeTxn({ id: "t2", name: "Groceries", amount: 200000, type: "expense", category: "FoodAndDrink" }),
   makeTxn({
     id: "t3",
     name: "Transfer",
     amount: 100000,
     type: "transfer",
-    category: "Account Transfer",
+    category: "AccountTransfer",
     toBalanceAccountId: "acc-2",
     toBalanceAccount: { id: "acc-2", name: "GoPay", currency: "IDR" },
   }),

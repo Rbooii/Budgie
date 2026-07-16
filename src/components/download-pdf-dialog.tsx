@@ -8,6 +8,7 @@ import { Button } from "@/components/button";
 import { Download, FileDown, Search, CalendarRange } from "lucide-react";
 import type { TransactionRow } from "@/components/transaction-item";
 import { formatRupiah, formatDate, formatTime } from "@/lib/format";
+import { categoryLabel } from "@/lib/categories";
 
 type Scope = "all" | "filtered" | "range";
 
@@ -89,7 +90,7 @@ export function DownloadPdfDialog({
               : "—"
             : (t.balanceAccount?.name ?? "—"),
           t.type,
-          t.category,
+          categoryLabel(t.category),
           (t.type === "income" ? "+" : t.type === "expense" ? "-" : "") +
             formatRupiah(t.amount),
         ]),

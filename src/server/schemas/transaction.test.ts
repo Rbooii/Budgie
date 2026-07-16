@@ -6,7 +6,7 @@ const validBase = {
   name: "Grocery shopping",
   amount: 50000,
   type: "expense" as const,
-  category: "Food & Drink",
+  category: "FoodAndDrink",
   date: "2026-07-15T10:30:00.000Z",
   adminFee: 0,
   balanceAccountId: "acc-1",
@@ -33,7 +33,7 @@ describe("CreateTransactionSchema — valid cases", () => {
     const parsed = CreateTransactionSchema.parse({
       ...validBase,
       type: "transfer",
-      category: "Account Transfer",
+      category: "AccountTransfer",
       toBalanceAccountId: "acc-2",
     });
     expect(parsed.type).toBe("transfer");
@@ -77,7 +77,7 @@ describe("CreateTransactionSchema — transfer refine", () => {
       CreateTransactionSchema.parse({
         ...validBase,
         type: "transfer",
-        category: "Account Transfer",
+        category: "AccountTransfer",
         toBalanceAccountId: null,
       }),
     ).toThrow();
@@ -88,7 +88,7 @@ describe("CreateTransactionSchema — transfer refine", () => {
       CreateTransactionSchema.parse({
         ...validBase,
         type: "transfer",
-        category: "Account Transfer",
+        category: "AccountTransfer",
         toBalanceAccountId: "acc-1",
       }),
     ).toThrow();
@@ -117,7 +117,7 @@ describe("CreateTransactionSchema — per-type category refine", () => {
       CreateTransactionSchema.parse({
         ...validBase,
         type: "income",
-        category: "Food & Drink",
+        category: "FoodAndDrink",
       }),
     ).toThrow();
   });
@@ -127,7 +127,7 @@ describe("CreateTransactionSchema — per-type category refine", () => {
       CreateTransactionSchema.parse({
         ...validBase,
         type: "income",
-        category: "Account Transfer",
+        category: "AccountTransfer",
       }),
     ).toThrow();
   });
@@ -180,7 +180,7 @@ describe("CreateTransactionSchema — adminFee", () => {
     const parsed = CreateTransactionSchema.parse({
       ...validBase,
       type: "transfer",
-      category: "Account Transfer",
+      category: "AccountTransfer",
       toBalanceAccountId: "acc-2",
       adminFee: 2500,
     });

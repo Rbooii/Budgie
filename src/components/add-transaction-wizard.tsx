@@ -20,7 +20,7 @@ import {
   formatDateTimeLocalValue,
 } from "@/lib/format";
 import { dynamicFontSize } from "@/lib/font-size";
-import { CATEGORIES_BY_TYPE } from "@/lib/categories";
+import { CATEGORIES_BY_TYPE, categoryLabel } from "@/lib/categories";
 
 type TxType = "income" | "expense" | "transfer";
 type Step = 1 | 2 | 3;
@@ -360,7 +360,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
                       : (source?.name ?? "—")
                   }
                 />
-                <ReviewRow label="Category" value={category.trim()} />
+                <ReviewRow label="Category" value={categoryLabel(category.trim())} />
                 <ReviewRow
                   label="Date"
                   value={`${formatDate(date)} ${formatTime(date)}`}
@@ -568,7 +568,7 @@ function CategorySelect({
       </option>
       {options.map((c) => (
         <option key={c} value={c}>
-          {c}
+          {categoryLabel(c)}
         </option>
       ))}
     </select>

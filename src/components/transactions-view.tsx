@@ -11,6 +11,7 @@ import {
 import { DownloadPdfDialog } from "@/components/download-pdf-dialog";
 import { TransactionDetailSheet } from "@/components/transaction-detail-sheet";
 import { formatDate } from "@/lib/format";
+import { categoryLabel } from "@/lib/categories";
 
 interface TransactionsViewProps {
   transactions: TransactionRow[];
@@ -55,6 +56,7 @@ export function TransactionsView({ transactions }: TransactionsViewProps) {
           : (t.balanceAccount?.name ?? "");
       return (
         t.name.toLowerCase().includes(q) ||
+        categoryLabel(t.category).toLowerCase().includes(q) ||
         t.category.toLowerCase().includes(q) ||
         t.type.toLowerCase().includes(q) ||
         bank.toLowerCase().includes(q) ||

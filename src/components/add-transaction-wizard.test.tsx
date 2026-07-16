@@ -147,7 +147,7 @@ describe("AddTransactionWizard — step 3 (review) + submit", () => {
     if (nameInput) await user.type(nameInput, "Groceries");
 
     const categorySelect = screen.getAllByRole("combobox").pop()!;
-    await user.selectOptions(categorySelect as HTMLElement, "Food & Drink");
+    await user.selectOptions(categorySelect as HTMLElement, "FoodAndDrink");
 
     await user.click(screen.getByRole("button", { name: /continue/i }));
     return { user };

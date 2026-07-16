@@ -6,21 +6,23 @@ import {
 import { EXPENSE_CATEGORIES } from "@/lib/categories";
 
 export const CreateBudgetSchema = BudgetUncheckedCreateInputObjectZodSchema.pick({
-  title: true,
-  amount: true,
   category: true,
+  amount: true,
+  periodDays: true,
 }).extend({
   category: z.enum(EXPENSE_CATEGORIES),
+  amount: z.number().positive(),
+  periodDays: z.number().int().positive(),
 });
 
 export const UpdateBudgetSchema = BudgetUncheckedUpdateInputObjectZodSchema.pick({
-  title: true,
-  amount: true,
   category: true,
+  amount: true,
+  periodDays: true,
 }).extend({
-  title: z.string(),
-  amount: z.number(),
   category: z.enum(EXPENSE_CATEGORIES),
+  amount: z.number().positive(),
+  periodDays: z.number().int().positive(),
 });
 
 export type CreateBudget = z.infer<typeof CreateBudgetSchema>;

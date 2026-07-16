@@ -18,6 +18,7 @@ import {
   formatTime,
 } from "@/lib/format";
 import type { TransactionRow } from "@/components/transaction-item";
+import { categoryLabel } from "@/lib/categories";
 
 const TYPE_META: Record<
   string,
@@ -141,7 +142,7 @@ export function TransactionDetailSheet({
 
         <div className="flex flex-col rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]">
           <DetailRow label="Bank" value={bankLabel} />
-          <DetailRow label="Category" value={transaction.category} />
+          <DetailRow label="Category" value={categoryLabel(transaction.category)} />
           <DetailRow label="Date" value={formatDate(transaction.date)} />
           <DetailRow label="Time" value={formatTime(transaction.date)} />
         </div>

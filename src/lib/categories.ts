@@ -7,11 +7,11 @@ export const INCOME_CATEGORIES = [
   "Investment",
   "Gift",
   "Refund",
-  "Other Income",
+  "OtherIncome",
 ] as const;
 
 export const EXPENSE_CATEGORIES = [
-  "Food & Drink",
+  "FoodAndDrink",
   "Rent",
   "Entertainment",
   "Transportation",
@@ -20,14 +20,14 @@ export const EXPENSE_CATEGORIES = [
   "Healthcare",
   "Education",
   "Travel",
-  "Other Expense",
+  "OtherExpense",
 ] as const;
 
 export const TRANSFER_CATEGORIES = [
-  "Account Transfer",
+  "AccountTransfer",
   "Savings",
-  "Loan Payment",
-  "Other Transfer",
+  "LoanPayment",
+  "OtherTransfer",
 ] as const;
 
 export const CATEGORIES_BY_TYPE: Record<TransactionType, readonly string[]> = {
@@ -41,3 +41,35 @@ export const ALL_CATEGORIES = [
   ...EXPENSE_CATEGORIES,
   ...TRANSFER_CATEGORIES,
 ] as const;
+
+export type Category = (typeof ALL_CATEGORIES)[number];
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+  Salary: "Salary",
+  Bonus: "Bonus",
+  Freelance: "Freelance",
+  Investment: "Investment",
+  Gift: "Gift",
+  Refund: "Refund",
+  OtherIncome: "Other Income",
+
+  FoodAndDrink: "Food & Drink",
+  Rent: "Rent",
+  Entertainment: "Entertainment",
+  Transportation: "Transportation",
+  Shopping: "Shopping",
+  Utilities: "Utilities",
+  Healthcare: "Healthcare",
+  Education: "Education",
+  Travel: "Travel",
+  OtherExpense: "Other Expense",
+
+  AccountTransfer: "Account Transfer",
+  Savings: "Savings",
+  LoanPayment: "Loan Payment",
+  OtherTransfer: "Other Transfer",
+};
+
+export function categoryLabel(category: string): string {
+  return CATEGORY_LABELS[category as Category] ?? category;
+}

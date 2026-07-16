@@ -67,7 +67,7 @@ describe("TransactionsView — empty state", () => {
 describe("TransactionsView — with transactions", () => {
   const txns: TransactionRow[] = [
     makeTxn({ id: "t1", name: "Salary", category: "Salary", type: "income", date: "2026-07-15T14:30:00" }),
-    makeTxn({ id: "t2", name: "Groceries", category: "Food & Drink", type: "expense", date: "2026-07-15T09:00:00" }),
+    makeTxn({ id: "t2", name: "Groceries", category: "FoodAndDrink", type: "expense", date: "2026-07-15T09:00:00" }),
   ];
 
   it("renders all transactions", () => {
@@ -91,7 +91,7 @@ describe("TransactionsView — with transactions", () => {
 describe("TransactionsView — search filtering", () => {
   const txns: TransactionRow[] = [
     makeTxn({ id: "t1", name: "Salary", category: "Salary", type: "income" }),
-    makeTxn({ id: "t2", name: "Groceries", category: "Food & Drink", type: "expense" }),
+    makeTxn({ id: "t2", name: "Groceries", category: "FoodAndDrink", type: "expense" }),
   ];
 
   it("filters transactions by name", async () => {

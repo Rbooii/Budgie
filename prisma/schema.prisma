@@ -12,34 +12,19 @@ datasource db {
   provider = "postgresql"
 }
 
-model Budget {
-  id        Int      @id @default(autoincrement())
-  title     String
-  amount    Float
-  category  String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([category])
-  @@index([userId])
-}
-
-
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions       Session[]
-  accounts       Account[]
-  budgets        Budget[]
+  id              String           @id
+  name            String
+  email           String
+  emailVerified   Boolean          @default(false)
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  sessions        Session[]
+  accounts        Account[]
   balanceAccounts BalanceAccount[]
-  transactions   Transaction[]
+  transactions    Transaction[]
+  budgets         Budget[]
 
   @@unique([email])
   @@map("user")
@@ -94,41 +79,85 @@ model Verification {
 }
 
 model BalanceAccount {
-  id        String   @id @default(cuid())
-  name      String
-  balance   Float    @default(0)
-  currency  String   @default("IDR")
-  type      String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String        @id @default(cuid())
+  name             String
+  balance          Float         @default(0)
+  currency         String        @default("IDR")
+  type             String
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactionsFrom Transaction[] @relation("TransactionFromAccount")
   transactionsTo   Transaction[] @relation("TransactionToAccount")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([userId])
   @@map("balance_account")
 }
 
 model Transaction {
-  id                String   @id @default(cuid())
-  name              String
-  amount            Float
-  type              String
-  category          String
-  date              DateTime
-  adminFee          Float    @default(0)
+  id                 String          @id @default(cuid())
+  name               String
+  amount             Float
+  type               String
+  category           Category
+  date               DateTime
+  adminFee           Float           @default(0)
   balanceAccountId   String?
   toBalanceAccountId String?
-  userId            String
-  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  balanceAccount    BalanceAccount? @relation("TransactionFromAccount", fields: [balanceAccountId], references: [id], onDelete: SetNull)
-  toBalanceAccount  BalanceAccount? @relation("TransactionToAccount", fields: [toBalanceAccountId], references: [id], onDelete: SetNull)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  userId             String
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceAccount     BalanceAccount? @relation("TransactionFromAccount", fields: [balanceAccountId], references: [id], onDelete: SetNull)
+  toBalanceAccount   BalanceAccount? @relation("TransactionToAccount", fields: [toBalanceAccountId], references: [id], onDelete: SetNull)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@index([userId])
   @@index([date])
   @@index([type])
   @@map("transaction")
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  category   Category
+  amount     Float
+  currency   String   @default("IDR")
+  userId     String
+  periodDays Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, category])
+  @@index([userId])
+  @@map("budget")
+}
+
+enum Category {
+  Salary
+  Bonus
+  Freelance
+  Investment
+  Gift
+  Refund
+  OtherIncome     @map("Other Income")
+
+  FoodAndDrink    @map("Food & Drink")
+  Rent
+  Entertainment
+  Transportation
+  Shopping
+  Utilities
+  Healthcare
+  Education
+  Travel
+  OtherExpense    @map("Other Expense")
+
+  AccountTransfer @map("Account Transfer")
+  Savings
+  LoanPayment     @map("Loan Payment")
+  OtherTransfer   @map("Other Transfer")
+
+  @@map("category")
 }

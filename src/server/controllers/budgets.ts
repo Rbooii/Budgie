@@ -19,8 +19,8 @@ export async function list(c: Context<AppEnv>) {
 
 export async function getOne(c: Context<AppEnv>) {
   const user = c.get("user");
-  const id = Number(c.req.param("id"));
-  if (Number.isNaN(id)) return c.json({ error: "Invalid id" }, 400);
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "Invalid id" }, 400);
 
   const item = await getBudget(user.id, id);
   if (!item) return c.json({ error: "Not found" }, 404);
@@ -30,28 +30,38 @@ export async function getOne(c: Context<AppEnv>) {
 export async function create(c: ValidatedContext<CreateBudget>) {
   const user = c.get("user");
   const body = c.req.valid("json");
-  const created = await createBudget(user.id, body);
-  return c.json(created, 201);
+  try {
+    const created = await createBudget(user.id, body);
+    return c.json(created, 201);
+  } catch (err) {
+    if (err instanceof Error && err.message === "Budget for this category already exists") {
+      return c.json({ error: err.message }, 409);
+    }
+    throw err;
+  }
 }
 
 export async function update(c: ValidatedContext<UpdateBudget>) {
   const user = c.get("user");
-  const id = Number(c.req.param("id"));
-  if (Number.isNaN(id)) return c.json({ error: "Invalid id" }, 400);
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "Invalid id" }, 400);
 
   const body = c.req.valid("json");
   try {
     const updated = await updateBudget(user.id, id, body);
     return c.json(updated);
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === "Budget for this category already exists") {
+      return c.json({ error: err.message }, 409);
+    }
     return c.json({ error: "Not found" }, 404);
   }
 }
 
 export async function remove(c: Context<AppEnv>) {
   const user = c.get("user");
-  const id = Number(c.req.param("id"));
-  if (Number.isNaN(id)) return c.json({ error: "Invalid id" }, 400);
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "Invalid id" }, 400);
 
   try {
     await deleteBudget(user.id, id);

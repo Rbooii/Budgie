@@ -7,6 +7,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { formatRupiah, formatTime } from "@/lib/format";
+import { categoryLabel } from "@/lib/categories";
 
 export type TransactionRow = {
   id: string;
@@ -63,7 +64,7 @@ export function TransactionItem({ transaction, onClick }: TransactionItemProps) 
         ? `${transaction.balanceAccount.name} → ${transaction.toBalanceAccount.name}`
         : "—"
       : (transaction.balanceAccount?.name ?? "Deleted account")
-  } • ${transaction.category}`;
+  } • ${categoryLabel(transaction.category)}`;
 
   return (
     <button

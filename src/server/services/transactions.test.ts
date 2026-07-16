@@ -159,7 +159,7 @@ describe("createTransaction", () => {
     await createTransaction(USER_ID, {
       ...incomeInput,
       type: "expense",
-      category: "Food & Drink",
+      category: "FoodAndDrink",
       amount: 200000,
     });
 
@@ -176,7 +176,7 @@ describe("createTransaction", () => {
       createTransaction(USER_ID, {
         ...incomeInput,
         type: "expense",
-        category: "Food & Drink",
+        category: "FoodAndDrink",
         amount: 200,
       }),
     ).rejects.toThrow("Insufficient balance");
@@ -191,7 +191,7 @@ describe("createTransaction", () => {
     await createTransaction(USER_ID, {
       ...incomeInput,
       type: "expense",
-      category: "Food & Drink",
+      category: "FoodAndDrink",
       amount: 200,
     });
 
@@ -205,7 +205,7 @@ describe("createTransaction", () => {
       createTransaction(USER_ID, {
         ...incomeInput,
         type: "transfer",
-        category: "Account Transfer",
+        category: "AccountTransfer",
         toBalanceAccountId: null,
       }),
     ).rejects.toThrow("Destination account required");
@@ -220,7 +220,7 @@ describe("createTransaction", () => {
       createTransaction(USER_ID, {
         ...incomeInput,
         type: "transfer",
-        category: "Account Transfer",
+        category: "AccountTransfer",
         toBalanceAccountId: DEST_ID,
       }),
     ).rejects.toThrow("Destination account not found");
@@ -235,7 +235,7 @@ describe("createTransaction", () => {
       createTransaction(USER_ID, {
         ...incomeInput,
         type: "transfer",
-        category: "Account Transfer",
+        category: "AccountTransfer",
         amount: 250,
         adminFee: 100,
         toBalanceAccountId: DEST_ID,
@@ -253,7 +253,7 @@ describe("createTransaction", () => {
     await createTransaction(USER_ID, {
       ...incomeInput,
       type: "transfer",
-      category: "Account Transfer",
+      category: "AccountTransfer",
       amount: 300000,
       adminFee: 5000,
       toBalanceAccountId: DEST_ID,

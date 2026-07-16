@@ -40,7 +40,7 @@ beforeEach(() => {
 
 describe("list controller", () => {
   it("calls listBudgets with the user id and returns json", async () => {
-    const items = [{ id: 1, title: "A" }];
+    const items = [{ id: "1", amount: 100, category: "Rent", periodDays: 30 }];
     vi.mocked(listBudgets).mockResolvedValue(items as never);
     const c = mockContext();
 
@@ -52,8 +52,8 @@ describe("list controller", () => {
 });
 
 describe("getOne controller", () => {
-  it("returns 400 when the id is not a number", async () => {
-    const c = mockContext({ id: "abc" });
+  it("returns 400 when the id param is missing", async () => {
+    const c = mockContext();
     await controller.getOne(c);
     expect(c.json).toHaveBeenCalledWith({ error: "Invalid id" }, 400);
     expect(getBudget).not.toHaveBeenCalled();
@@ -61,14 +61,14 @@ describe("getOne controller", () => {
 
   it("returns 404 when the budget is not found", async () => {
     vi.mocked(getBudget).mockResolvedValue(null as never);
-    const c = mockContext({ id: "99" });
+    const c = mockContext({ id: "bud-99" });
     await controller.getOne(c);
-    expect(getBudget).toHaveBeenCalledWith(USER_ID, 99);
+    expect(getBudget).toHaveBeenCalledWith(USER_ID, "bud-99");
     expect(c.json).toHaveBeenCalledWith({ error: "Not found" }, 404);
   });
 
   it("returns the budget as json when found", async () => {
-    const budget = { id: 1, title: "A" };
+    const budget = { id: "1", amount: 100, category: "Rent", periodDays: 30 };
     vi.mocked(getBudget).mockResolvedValue(budget as never);
     const c = mockContext({ id: "1" });
     await controller.getOne(c);
@@ -78,8 +78,8 @@ describe("getOne controller", () => {
 
 describe("create controller", () => {
   it("passes validated body to createBudget and returns 201", async () => {
-    const body = { title: "New", amount: 100, category: "Rent" };
-    const created = { id: 1, ...body };
+    const body = { amount: 100, category: "Rent", periodDays: 30 };
+    const created = { id: "1", ...body };
     vi.mocked(createBudget).mockResolvedValue(created as never);
     const c = mockContext({}, body);
 
@@ -89,35 +89,61 @@ describe("create controller", () => {
     expect(createBudget).toHaveBeenCalledWith(USER_ID, body);
     expect(c.json).toHaveBeenCalledWith(created, 201);
   });
+
+  it("returns 409 when the service throws a duplicate-category error", async () => {
+    vi.mocked(createBudget).mockRejectedValue(
+      new Error("Budget for this category already exists") as never,
+    );
+    const c = mockContext({}, { amount: 100, category: "Rent", periodDays: 30 });
+
+    await controller.create(c);
+
+    expect(c.json).toHaveBeenCalledWith(
+      { error: "Budget for this category already exists" },
+      409,
+    );
+  });
 });
 
 describe("update controller", () => {
-  it("returns 400 when the id is not a number", async () => {
-    const c = mockContext({ id: "xyz" }, { title: "X", amount: 1, category: "Rent" });
+  it("returns 400 when the id param is missing", async () => {
+    const c = mockContext({}, { amount: 1, category: "Rent", periodDays: 30 });
     await controller.update(c);
     expect(c.json).toHaveBeenCalledWith({ error: "Invalid id" }, 400);
     expect(updateBudget).not.toHaveBeenCalled();
   });
 
+  it("returns 409 when the service throws a duplicate-category error", async () => {
+    vi.mocked(updateBudget).mockRejectedValue(
+      new Error("Budget for this category already exists") as never,
+    );
+    const c = mockContext({ id: "1" }, { amount: 1, category: "Rent", periodDays: 30 });
+    await controller.update(c);
+    expect(c.json).toHaveBeenCalledWith(
+      { error: "Budget for this category already exists" },
+      409,
+    );
+  });
+
   it("returns 404 when the service throws 'Not found'", async () => {
     vi.mocked(updateBudget).mockRejectedValue(new Error("Not found") as never);
-    const c = mockContext({ id: "1" }, { title: "X", amount: 1, category: "Rent" });
+    const c = mockContext({ id: "1" }, { amount: 1, category: "Rent", periodDays: 30 });
     await controller.update(c);
     expect(c.json).toHaveBeenCalledWith({ error: "Not found" }, 404);
   });
 
   it("returns the updated budget when successful", async () => {
-    const updated = { id: 1, title: "Updated" };
+    const updated = { id: "1", amount: 2, category: "Rent", periodDays: 30 };
     vi.mocked(updateBudget).mockResolvedValue(updated as never);
-    const c = mockContext({ id: "1" }, { title: "Updated", amount: 2, category: "Rent" });
+    const c = mockContext({ id: "1" }, { amount: 2, category: "Rent", periodDays: 30 });
     await controller.update(c);
     expect(c.json).toHaveBeenCalledWith(updated);
   });
 });
 
 describe("remove controller", () => {
-  it("returns 400 when the id is not a number", async () => {
-    const c = mockContext({ id: "???" });
+  it("returns 400 when the id param is missing", async () => {
+    const c = mockContext();
     await controller.remove(c);
     expect(c.json).toHaveBeenCalledWith({ error: "Invalid id" }, 400);
     expect(deleteBudget).not.toHaveBeenCalled();

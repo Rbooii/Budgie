@@ -5,24 +5,28 @@ import {
   TRANSFER_CATEGORIES,
   ALL_CATEGORIES,
   CATEGORIES_BY_TYPE,
+  CATEGORY_LABELS,
+  categoryLabel,
   type TransactionType,
+  type Category,
 } from "@/lib/categories";
 
 describe("category lists", () => {
   it("INCOME_CATEGORIES contains expected entries", () => {
     expect(INCOME_CATEGORIES).toContain("Salary");
     expect(INCOME_CATEGORIES).toContain("Bonus");
+    expect(INCOME_CATEGORIES).toContain("OtherIncome");
     expect(INCOME_CATEGORIES.length).toBeGreaterThan(0);
   });
 
   it("EXPENSE_CATEGORIES contains expected entries", () => {
-    expect(EXPENSE_CATEGORIES).toContain("Food & Drink");
+    expect(EXPENSE_CATEGORIES).toContain("FoodAndDrink");
     expect(EXPENSE_CATEGORIES).toContain("Rent");
     expect(EXPENSE_CATEGORIES.length).toBeGreaterThan(0);
   });
 
   it("TRANSFER_CATEGORIES contains expected entries", () => {
-    expect(TRANSFER_CATEGORIES).toContain("Account Transfer");
+    expect(TRANSFER_CATEGORIES).toContain("AccountTransfer");
     expect(TRANSFER_CATEGORIES).toContain("Savings");
     expect(TRANSFER_CATEGORIES.length).toBeGreaterThan(0);
   });
@@ -92,5 +96,44 @@ describe("TransactionType", () => {
   it("compiles with the three valid values", () => {
     const types: TransactionType[] = ["income", "expense", "transfer"];
     expect(types).toHaveLength(3);
+  });
+});
+
+describe("CATEGORY_LABELS", () => {
+  it("has a label for every category", () => {
+    for (const c of ALL_CATEGORIES) {
+      expect(CATEGORY_LABELS[c]).toBeTypeOf("string");
+      expect(CATEGORY_LABELS[c].length).toBeGreaterThan(0);
+    }
+  });
+
+  it("maps spaced/special categories to their display strings", () => {
+    expect(CATEGORY_LABELS.FoodAndDrink).toBe("Food & Drink");
+    expect(CATEGORY_LABELS.OtherIncome).toBe("Other Income");
+    expect(CATEGORY_LABELS.OtherExpense).toBe("Other Expense");
+    expect(CATEGORY_LABELS.AccountTransfer).toBe("Account Transfer");
+    expect(CATEGORY_LABELS.LoanPayment).toBe("Loan Payment");
+    expect(CATEGORY_LABELS.OtherTransfer).toBe("Other Transfer");
+  });
+
+  it("leaves single-word categories unchanged", () => {
+    expect(CATEGORY_LABELS.Salary).toBe("Salary");
+    expect(CATEGORY_LABELS.Rent).toBe("Rent");
+  });
+});
+
+describe("categoryLabel", () => {
+  it("returns the human label for a known category", () => {
+    expect(categoryLabel("FoodAndDrink")).toBe("Food & Drink");
+    expect(categoryLabel("Salary")).toBe("Salary");
+  });
+
+  it("falls back to the raw value for an unknown category", () => {
+    expect(categoryLabel("Whatever")).toBe("Whatever");
+  });
+
+  it("is typed for the Category union", () => {
+    const c: Category = "Rent";
+    expect(categoryLabel(c)).toBe("Rent");
   });
 });
