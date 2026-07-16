@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Sidebar } from "@/components/sidebar";
+import { PageShell } from "@/components/page-shell";
 import { Button } from "@/components/button";
 import { AccountTab } from "@/components/account-tab";
 import { AccountCard } from "@/components/account-card";
@@ -83,57 +83,54 @@ export default async function Dashboard() {
   );
 
   return (
-    <main className="w-full min-h-screen flex flex-col md:flex-row bg-white text-black">
-      <Sidebar />
-      <div className="flex-1 min-h-screen py-6 md:py-10 px-4 sm:px-8 md:px-12 lg:px-20 pb-20 md:pb-10">
-        <AccountTab userName={session.user.name} />
+    <PageShell>
+      <AccountTab userName={session.user.name} />
 
-        <BalanceVisibilityProvider>
-          <BalanceSection value={netWorth} deltaPct={netWorthDeltaPct} deltaAbsolute={absoluteChange} />
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-1 w-fit h-fit mt-4">
-            <Button variant="success" size="md">Details</Button>
-            <AddAccountDialog />
+      <BalanceVisibilityProvider>
+        <BalanceSection value={netWorth} deltaPct={netWorthDeltaPct} deltaAbsolute={absoluteChange} />
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-1 w-full h-fit mt-4">
+          <Button variant="success" size="md">Details</Button>
+          <AddAccountDialog />
+        </div>
+
+        {/* Account section */}
+        <h1 className="font-bold text-xl mt-8">Your Accounts</h1>
+        {accounts.length === 0 ? (
+          <p className="text-sm text-black/40 mt-3">
+            No accounts yet. Click &ldquo;Add Account&rdquo; to create your first one.
+          </p>
+        ) : (
+          <div className="w-full h-fit grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+            {accounts.map((account) => (
+              <AccountCard key={account.id} account={account} />
+            ))}
           </div>
+        )}
 
-          {/* Account section */}
-          <h1 className="font-bold text-xl mt-8">Your Accounts</h1>
-          {accounts.length === 0 ? (
-            <p className="text-sm text-black/40 mt-3">
-              No accounts yet. Click &ldquo;Add Account&rdquo; to create your first one.
-            </p>
-          ) : (
-            <div className="w-full h-fit grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-              {accounts.map((account) => (
-                <AccountCard key={account.id} account={account} />
-              ))}
-            </div>
-          )}
-
-          {/* Quick insight — cashflow + asset growth */}
-          <h1 className="font-bold text-xl mt-8">Quick Insight</h1>
-          {yearTxns.length > 0 ? (
-            <div className="w-full h-fit grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-              <CashflowCard
-                title="This Month's Cashflow"
-                date={monthLabel}
-                income={monthIncome}
-                expense={monthExpense}
-              />
-              <AssetGrowthCard
-                year={new Date().getFullYear()}
-                data={growthData}
-                startingValue={startingAssets}
-                currentTotal={netWorth}
-                currentMonth={currentMonth}
-                hasTransactions={yearTxns.length > 0}
-                activeMonths={activeMonths}
-              />
-            </div>
-          ) : (
-            <QuickInsightEmptyState />
-          )}
-        </BalanceVisibilityProvider>
-      </div>
-    </main>
+        {/* Quick insight — cashflow + asset growth */}
+        <h1 className="font-bold text-xl mt-8">Quick Insight</h1>
+        {yearTxns.length > 0 ? (
+          <div className="w-full h-fit grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <CashflowCard
+              title="This Month's Cashflow"
+              date={monthLabel}
+              income={monthIncome}
+              expense={monthExpense}
+            />
+            <AssetGrowthCard
+              year={new Date().getFullYear()}
+              data={growthData}
+              startingValue={startingAssets}
+              currentTotal={netWorth}
+              currentMonth={currentMonth}
+              hasTransactions={yearTxns.length > 0}
+              activeMonths={activeMonths}
+            />
+          </div>
+        ) : (
+          <QuickInsightEmptyState />
+        )}
+      </BalanceVisibilityProvider>
+    </PageShell>
   );
 }

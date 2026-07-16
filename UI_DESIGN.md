@@ -398,16 +398,30 @@ with the system or screens will feel off.
 ## 7. Layout Patterns
 
 ### 7.1 Authenticated page shell
-Every signed-in screen renders:
+
+The shared shell is a `PageShell` component (`src/components/page-shell.tsx`,
+`"use client"`). Every signed-in screen (except the add-transaction wizard and
+auth screens) renders:
+
 ```
-<main className="w-full min-h-screen flex flex-col md:flex-row bg-white text-black">
+<PageShell>
+  <AccountTab userName={...} />
+  {/* page content — no <main>/<Sidebar> boilerplate */}
+</PageShell>
+```
+
+Under the hood it renders:
+```
+<main className="w-full max-w-screen-2xl mx-auto min-h-screen flex flex-col md:flex-row bg-white text-black">
   <Sidebar />
   <div className="flex-1 min-h-screen py-6 md:py-10 px-4 sm:px-8 md:px-12 lg:px-20 pb-20 md:pb-10">
-    <AccountTab userName={...} />
-    {/* page content */}
+    {children}
   </div>
 </main>
 ```
+- `max-w-screen-2xl mx-auto` (≈1536px) caps the entire layout (sidebar + content) on
+  ultrawide screens so lines don't stretch too far. The layout is horizontally
+  centered via `mx-auto`.
 - Mobile reserves `pb-20` so the fixed bottom nav never covers content.
 - `AccountTab` sits top-right of the content column. On mobile, only the
   avatar circle renders (name hidden `hidden sm:block`) to save horizontal
@@ -613,6 +627,7 @@ When introducing a new screen, dialog, list, or component, run through this:
 | The inset card / stacked rows | `src/components/add-transaction-wizard.tsx` (`Card`/`CardRow`/`ReviewRow`), `src/components/transaction-detail-sheet.tsx` (`DetailRow`) |
 | The hero amount input | `src/components/add-account-dialog.tsx`, `src/components/add-transaction-wizard.tsx` step 2, `src/lib/font-size.ts` |
 | The privacy/balance reveal | `src/components/balance-visibility.tsx`, `src/components/balance-section.tsx`, `src/app/globals.css` (`@keyframes balanceReveal`, `eyeFlip`) |
+| The authenticated page shell | `src/components/page-shell.tsx` (Sidebar + max-w-screen-2xl content wrapper) |
 | The visual page shells | `src/app/dashboard/page.tsx`, `src/app/transactions/page.tsx`, `src/app/sign-in/sign-in-form.tsx` |
 | Donut / data visualization | `src/components/cashflow-card.tsx` |
 | Bar chart / asset growth + hover tooltip | `src/components/asset-growth-card.tsx` |

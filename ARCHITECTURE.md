@@ -74,9 +74,9 @@ budgie/
 ├─ public/                           # static assets
 └─ src/
    ├─ app/                           # Next.js App Router
-   │  ├─ layout.tsx                  # root layout
+   │  ├─ layout.tsx                  # root layout (bg-white body)
    │  ├─ page.tsx                    # home (RSC)
-   │  ├─ globals.css
+   │  ├─ globals.css                 # color-scheme: light, html bg-white, keyframes
    │  ├─ budget/                      # budget page
    │  ├─ chat/                       # chat page
    │  ├─ dashboard/                  # main dashboard (RSC, force-dynamic)
@@ -96,8 +96,9 @@ budgie/
     │  ├─ transaction-detail-sheet.tsx # bottom sheet with full info + confirm Dialog before delete
     │  ├─ cashflow-card.tsx          # donut chart (income/expense), title prop, radius 64
     │  ├─ asset-growth-card.tsx      # Apple-style bar chart (12-month asset trajectory), "use client" hover tooltip
-    │  ├─ quick-insight-empty-state.tsx # "use client" empty state when user has no transactions
-    │  └─ download-pdf-dialog.tsx   # jsPDF export (all / filtered / date range)
+     │  ├─ quick-insight-empty-state.tsx # "use client" empty state when user has no transactions
+     │  ├─ page-shell.tsx            # shared authenticated shell (Sidebar + max-w-screen-2xl content wrapper)
+     │  └─ download-pdf-dialog.tsx   # jsPDF export (all / filtered / date range)
     ├─ lib/
     │  ├─ auth.ts                     # better-auth server instance (prismaAdapter)
     │  ├─ auth-client.ts              # better-auth client
