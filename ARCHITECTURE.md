@@ -58,7 +58,7 @@ controllers/services → typed RPC client for the frontend.
 
 ```
 budgie/
-├─ .env                              # DATABASE_URL + BETTER_AUTH_* + OAuth secrets (gitignored)
+├─ .env                              # DATABASE_URL + DIRECT_URL + BETTER_AUTH_* + OAuth secrets (gitignored)
 ├─ .gitignore
 ├─ AGENTS.md                         # AI agent rules + build commands
 ├─ CLAUDE.md                         # re-exports @AGENTS.md
@@ -67,7 +67,7 @@ budgie/
 ├─ next.config.ts
 ├─ package.json                      # scripts + trustedDependencies
 ├─ postcss.config.mjs
-├─ prisma.config.ts                  # Prisma 7 config (datasource URL here)
+├─ prisma.config.ts                  # Prisma 7 config (datasource URL = DIRECT_URL ?? DATABASE_URL)
 ├─ tsconfig.json                     # path alias @/* → ./src/*
 ├─ prisma/
 │  └─ schema.prisma                  # datasource + 2 generators (client, zod)
@@ -756,9 +756,17 @@ import { defineConfig } from "prisma/config";
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: { path: "prisma/migrations" },
-  datasource: { url: process.env["DATABASE_URL"] },
+  datasource: { url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"] },
 });
 ```
+- **`DIRECT_URL`** is a **direct (non-pooled)** connection used by `prisma migrate
+  deploy` at build time. Migrations need a session that supports DDL, which
+  PgBouncer-pooled connections reject. On Neon: use the direct hostname.
+- **`DATABASE_URL`** is a **pooled** connection used at runtime by
+  `src/lib/prisma.ts` (serverless functions benefit from pooling). On Neon: use
+  the `-pooler` hostname.
+- The `?? process.env["DATABASE_URL"]` fallback lets local dev set only
+  `DATABASE_URL` (both may point to the same local Postgres).
 
 ### Client singleton (`src/lib/prisma.ts`)
 ```ts
@@ -916,7 +924,7 @@ export type CreateTransaction = z.infer<typeof CreateTransactionSchema>;
 {
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma migrate deploy && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -928,7 +936,11 @@ export type CreateTransaction = z.infer<typeof CreateTransactionSchema>;
   }
 }
 ```
-- `build` runs `prisma generate` first so CI/deploys always have fresh clients.
+- `build` runs `prisma migrate deploy` first (non-interactive — applies pending
+  migrations from `prisma/migrations/` to the prod DB via `DIRECT_URL`), then
+  `prisma generate` so CI/deploys always have fresh clients, then `next build`.
+  On Vercel, this runs in the build sandbox, so `DIRECT_URL` must be reachable
+  from there (set it in Project Settings → Environment Variables).
 - `db:dev` is the quick local loop: push schema changes to the DB and regenerate
   the client + Zod in one go (no migration history, ideal for rapid dev).
 
@@ -972,7 +984,12 @@ export type CreateTransaction = z.infer<typeof CreateTransactionSchema>;
 `.env` (gitignored):
 ```
 # Prisma
+# DATABASE_URL = pooled connection, used at runtime by src/lib/prisma.ts (serverless).
+# DIRECT_URL   = direct connection, used by `prisma migrate deploy` at build time.
+# On Neon: use the "-pooler" hostname for DATABASE_URL, the direct hostname for DIRECT_URL.
+# Local dev: both can point to the same local Postgres.
 DATABASE_URL="postgresql://user:password@localhost:5432/budgie?schema=public"
+DIRECT_URL="postgresql://user:password@localhost:5432/budgie?schema=public"
 
 # better-auth
 BETTER_AUTH_URL="http://localhost:3000"
@@ -987,7 +1004,9 @@ GITHUB_CLIENT_SECRET=""
 # RPC client SSR base URL (optional — defaults to http://localhost:3000)
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
-- `DATABASE_URL` is loaded by `prisma.config.ts` via `import "dotenv/config"`.
+- `DATABASE_URL` (pooled) is read at runtime by `src/lib/prisma.ts`.
+  `DIRECT_URL` (direct) is read by `prisma.config.ts` for `prisma migrate deploy`
+  at build time. `prisma.config.ts` loads them via `import "dotenv/config"`.
   At runtime, Next.js loads `.env` automatically (App Router reads env vars).
 - `BETTER_AUTH_URL` must match the public URL the app is served on (used by
   better-auth for cookie domain + callbacks).
@@ -1003,7 +1022,7 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```bash
 bun install                 # install (trusted scripts auto-run)
 bun run dev                 # next dev  (http://localhost:3000)
-bun run build               # prisma generate && next build
+bun run build               # prisma migrate deploy && prisma generate && next build
 bun run lint                # eslint
 bun run typecheck           # tsc --noEmit
 bun run db:generate         # regenerate Prisma client + Zod schemas
@@ -1021,6 +1040,62 @@ curl localhost:3000/api/health
 # or attach the session cookie manually:
 curl localhost:3000/api/budgets -b 'better-auth.session_token=<token>'
 ```
+
+---
+
+## 12.5 Deployment (Vercel + Neon)
+
+The `build` script is `prisma migrate deploy && prisma generate && next build`,
+so **every deploy automatically applies pending migrations** to the production
+database before building the app. No manual migration step is needed.
+
+### Environment variables to set in Vercel
+
+| Variable | Where | Value |
+| -------- | ----- | ----- |
+| `DATABASE_URL` | Production ( + Preview if needed) | Neon **pooled** connection string (`-pooler` hostname, port `6543`). Used at runtime by `src/lib/prisma.ts` in serverless functions. |
+| `DIRECT_URL` | Production ( + Preview if needed) | Neon **direct** connection string (non-`-pooler` hostname, port `5432`). Used by `prisma migrate deploy` during the Vercel build. **PgBouncer-pooled connections reject DDL**, so `DIRECT_URL` must bypass the pooler. |
+| `BETTER_AUTH_URL` | Production | The Vercel app URL (`https://<your-app>.vercel.app`). |
+| `BETTER_AUTH_SECRET` | Production | `openssl rand -base64 32` — same value across envs. |
+| `NEXT_PUBLIC_APP_URL` | Production | Same as `BETTER_AUTH_URL` (used by `api-client.ts` for SSR `api` calls). |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Production | OAuth credentials (redirect URI must include the Vercel URL). |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Production | OAuth credentials. |
+
+### How a deploy runs
+
+```
+git push → Vercel build sandbox
+   │
+   ▼
+prisma migrate deploy      ← reads DIRECT_URL, applies pending migrations
+   │                          (creates the DB if it doesn't exist)
+   ▼
+prisma generate            ← regenerates client + Zod into src/generated/
+   │
+   ▼
+next build                 ← compiles the app
+   │
+   ▼
+deploy → serverless functions use DATABASE_URL (pooled) at runtime
+```
+
+### Notes & gotchas
+
+- **No `vercel.json` needed.** Vercel auto-detects Next.js and runs `bun run
+  build` (or `npm run build`). The build script handles everything.
+- **Neon branched DBs:** if you use Neon's database branching for Preview
+  deployments, set `DIRECT_URL` and `DATABASE_URL` per-environment in Vercel
+  (Preview gets the branch's connection strings).
+- **`migrate deploy` is idempotent** — if there are no pending migrations, it
+  prints "No pending migrations to apply." and the build continues. It will not
+  reset or drop data.
+- **Never run `prisma migrate dev` in production.** It's interactive and can
+  reset the database. Use `migrate deploy` (already in `build`) or run
+  `db:migrate` locally, commit the new migration file, then push — the next
+  deploy applies it automatically.
+- **Migration files are committed to git** (`prisma/migrations/`). The build
+  applies whatever is in that directory. Create new migrations locally with
+  `bun run db:migrate --name <name>`, commit, and push.
 
 ---
 
@@ -1073,8 +1148,15 @@ the transactions page; the guard is now baked in).
   `@prisma/adapter-pg` for Postgres; swap to `@prisma/adapter-better-sqlite3`,
   `@prisma/adapter-libsql`, etc. for other DBs.
 - **`datasource` block has no `url`.** The URL lives in `prisma.config.ts`
-  (`datasource.url = process.env.DATABASE_URL`). Don't add `url = env("...")` to
-  the schema.
+  (`datasource.url = DIRECT_URL ?? DATABASE_URL`). Don't add `url = env("...")` to
+  the schema. `DIRECT_URL` (direct, non-pooled) is used by `prisma migrate deploy`
+  at build time; `DATABASE_URL` (pooled) is used at runtime by `src/lib/prisma.ts`.
+  On Neon: `-pooler` hostname for `DATABASE_URL`, direct hostname for `DIRECT_URL`.
+- **`build` runs `prisma migrate deploy`.** This is non-interactive and applies
+  pending migrations from `prisma/migrations/` to the prod DB. On Vercel, the
+  build sandbox must reach the DB via `DIRECT_URL` — set it in Project Settings →
+  Environment Variables. Do NOT use `prisma migrate dev` in CI/build (it's
+  interactive and will error with `MigrateDevEnvNonInteractiveError`).
 - **Next.js 16 Route Handlers**: `context.params` is a **Promise** (`await params`).
   The catch-all `[[...route]]` handler ignores params and lets Hono route, so
   this rarely matters — but if you add a typed dynamic Route Handler elsewhere,

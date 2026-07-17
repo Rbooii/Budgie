@@ -16,7 +16,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Runtime: Bun (`bunx`/`bun run`)
 - Frontend: Next.js 16 (App Router, `src/`)
 - Backend: Hono mounted as a catch-all Route Handler at `src/app/api/[[...route]]/route.ts` (REST, NOT server actions). All backend logic lives in `src/server/`.
-- ORM: Prisma 7 (schema at `prisma/schema.prisma`, generated client at `src/generated/prisma` — gitignored). Config in `prisma.config.ts`.
+- ORM: Prisma 7 (schema at `prisma/schema.prisma`, generated client at `src/generated/prisma` — gitignored). Config in `prisma.config.ts`. `build` runs `prisma migrate deploy` first (non-interactive, applies pending migrations from `prisma/migrations/` to the prod DB via `DIRECT_URL`), then `prisma generate`, then `next build`. `DIRECT_URL` = direct (non-pooled) connection for migrations; `DATABASE_URL` = pooled connection used at runtime by `src/lib/prisma.ts`. On Neon: use the `-pooler` hostname for `DATABASE_URL`, the direct hostname for `DIRECT_URL`. Local dev: both may point to the same local Postgres.
 - Validation/typesafety: Zod via `@hono/zod-validator`. End-to-end typed client via `hono/client` (`src/lib/api-client.ts`), typed against `App` exported from `src/server/index.ts`.
 - PDF generation: `jspdf` + `jspdf-autotable` (client-side, used by Download PDF dialog).
 

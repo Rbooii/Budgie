@@ -95,7 +95,8 @@ bun install
 
 # 2. Set up environment variables
 cp .env.example .env
-# Fill in: DATABASE_URL, BETTER_AUTH_SECRET, OAuth keys (optional)
+# Fill in: DATABASE_URL, DIRECT_URL (prod), BETTER_AUTH_SECRET, OAuth keys (optional)
+# Local dev: DATABASE_URL and DIRECT_URL can be the same local Postgres.
 
 # 3. Push schema to DB + generate Prisma client & Zod schemas
 bun run db:dev
@@ -109,7 +110,7 @@ bun run dev
 
 ```bash
 bun run dev          # start dev server
-bun run build        # prisma generate && next build
+bun run build        # prisma migrate deploy && prisma generate && next build
 bun run lint         # eslint
 bun run typecheck    # tsc --noEmit
 bun run test         # vitest run (one-shot)
@@ -232,7 +233,8 @@ cookies. All Prisma calls and API clients are mocked at the module level.
 
 | Variable | Required | Description |
 | --- | :---: | --- |
-| `DATABASE_URL` | yes | PostgreSQL connection string |
+| `DATABASE_URL` | yes | PostgreSQL connection string (pooled on Neon, used at runtime) |
+| `DIRECT_URL` | yes (prod) | Direct PostgreSQL connection string (non-pooled, used by `prisma migrate deploy` at build time). Local dev may equal `DATABASE_URL`. |
 | `BETTER_AUTH_URL` | yes | Public app URL (default `http://localhost:3000`) |
 | `BETTER_AUTH_SECRET` | yes | Session signing key — generate with `openssl rand -base64 32` |
 | `GOOGLE_CLIENT_ID` | no | Google OAuth |
@@ -240,6 +242,44 @@ cookies. All Prisma calls and API clients are mocked at the module level.
 | `GITHUB_CLIENT_ID` | no | GitHub OAuth |
 | `GITHUB_CLIENT_SECRET` | no | GitHub OAuth |
 | `NEXT_PUBLIC_APP_URL` | no | SSR base URL for RPC client (defaults to `http://localhost:3000`) |
+
+## Deployment
+
+The `build` script (`prisma migrate deploy && prisma generate && next build`)
+automatically applies pending migrations to the production database on every
+deploy — no manual migration step needed.
+
+### Vercel + Neon setup
+
+1. **Create a Neon project** → copy both connection strings:
+   - **Pooled** (`-pooler` hostname) → `DATABASE_URL` (runtime, serverless)
+   - **Direct** (non-`-pooler` hostname) → `DIRECT_URL` (build-time migrations)
+2. **Set environment variables** in Vercel → Project Settings → Environment
+   Variables (Production):
+
+   | Variable | Value |
+   | -------- | ----- |
+   | `DATABASE_URL` | Neon pooled connection string |
+   | `DIRECT_URL` | Neon direct connection string (non-pooled) |
+   | `BETTER_AUTH_URL` | `https://<your-app>.vercel.app` |
+   | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
+   | `NEXT_PUBLIC_APP_URL` | Same as `BETTER_AUTH_URL` |
+   | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth credentials (optional) |
+   | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | OAuth credentials (optional) |
+
+3. **Push to `main`** → Vercel runs `bun run build`:
+   - `prisma migrate deploy` applies pending migrations via `DIRECT_URL`
+   - `prisma generate` regenerates the client
+   - `next build` compiles the app
+4. **Serverless functions** use `DATABASE_URL` (pooled) at runtime.
+
+> **Why two URLs?** `prisma migrate deploy` needs a direct connection (PgBouncer
+> pooled connections reject DDL). Serverless functions benefit from pooling
+> (fewer connections under load). On Neon, the `-pooler` hostname is PgBouncer;
+> the direct hostname bypasses it.
+
+New migrations are created locally with `bun run db:migrate --name <name>`,
+committed to `prisma/migrations/`, and applied automatically on the next deploy.
 
 ## Contributing
 
