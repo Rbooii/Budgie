@@ -8,6 +8,8 @@ Track balance accounts, budgets, and transactions across bank, wallet, cash,
 credit, and investment accounts — with automatic balance reconciliation,
 interactive charts, and PDF exports.
 
+[Figma Link](https://www.figma.com/design/SG1k9PApOBrkP6fTuesuGG/Budgie?node-id=1-3&t=TdDVP7rD0L28zh6h-1)
+
 Built as a testbed for **structured AI-agentic development**:
 `ARCHITECTURE.md` / `AGENTS.md`-driven workflows, multi-agent collaboration,
 CI/CD, and fast feature shipping with rigorous type-safety and testing.
