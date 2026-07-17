@@ -36,5 +36,10 @@ export async function deleteBalanceAccount(userId: string, id: string) {
     where: { id, userId },
   });
   if (!owned) throw new Error("Not found");
+  await prisma.transaction.deleteMany({
+    where : {
+      balanceAccountId : id
+    }
+  })
   return prisma.balanceAccount.delete({ where: { id } });
 }

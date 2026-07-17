@@ -9,6 +9,14 @@ const { mockPrisma } = vi.hoisted(() => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    transaction: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn()
+    }
   },
 }));
 
@@ -23,6 +31,7 @@ import {
   updateBalanceAccount,
   deleteBalanceAccount,
 } from "@/server/services/balance-accounts";
+import { balanceAccounts } from "../routes/balance-accounts";
 
 const USER_ID = "user-1";
 const OTHER_USER_ID = "user-2";
@@ -134,6 +143,9 @@ describe("deleteBalanceAccount", () => {
     expect(mockPrisma.balanceAccount.findFirst).toHaveBeenCalledWith({
       where: { id: ACCOUNT_ID, userId: USER_ID },
     });
+    expect(mockPrisma.transaction.deleteMany).toHaveBeenCalledWith({
+      where : { balanceAccountId : ACCOUNT_ID }
+    })
     expect(mockPrisma.balanceAccount.delete).toHaveBeenCalledWith({
       where: { id: ACCOUNT_ID },
     });

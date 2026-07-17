@@ -90,7 +90,7 @@ export function AddAccountDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 text-left">
           <div>
             <h2 className="text-2xl font-medium">Add Account</h2>
             <p className="text-sm text-gray-500">Adding an account card is optional, but it can help provide a more complete and accurate overview of your finances.</p>
