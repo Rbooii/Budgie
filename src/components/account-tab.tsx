@@ -1,6 +1,8 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/button";
 import Link from "next/link";
+import { api } from "@/lib/api-client";
+import { headers } from "next/headers";
 
 interface AccountTabProps {
   userName: string;
@@ -15,12 +17,17 @@ export function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function AccountTab({ userName }: AccountTabProps) {
+export async function AccountTab({ userName }: AccountTabProps) {
+  const res = await api.plus.$get(
+    {},
+    { headers: Object.fromEntries(await headers()) },
+  );
+  const plusData = await res.json();
   return (
     <div className="w-full h-fit flex flex-wrap gap-2 sm:gap-3 justify-end items-center">
-      <Link href="/profile">
+      {plusData === false && <Link href="/profile">
         <Button variant="success" size="md">Get Budgie Plus</Button>
-      </Link>
+      </Link>}
       <Link href="/profile">
         <div className="flex items-center gap-[13px] w-fit h-fit cursor-pointer hover:bg-[#F2F2F2] transition transform duration-150 active:scale-[0.98] rounded-full pr-4 pl-1 py-1">
           <div className="w-[40px] h-[40px] font-bold bg-[#F2F2F2] rounded-full flex items-center justify-center text-sm">

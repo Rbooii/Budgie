@@ -7,6 +7,8 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
+import { api } from "@/lib/api-client";
+import UpgradePlusButton from "@/components/upgradePlusButton";
 
 export default async function Profile() {
     const session = await auth.api.getSession({
@@ -16,6 +18,14 @@ export default async function Profile() {
     if (!session) {
         redirect("/sign-in");
     }
+
+    const res = await api.plus.$get(
+        {},
+        { headers: Object.fromEntries(await headers()) },
+    );
+
+   const plusData = await res.json();
+   console.log("Plus Data:", plusData);
 
     return (
         <PageShell>
@@ -42,12 +52,12 @@ export default async function Profile() {
                 <h2 className="text-white text-xl sm:text-2xl font-semibold mt-5">
                     {session.user.name}
                 </h2>
-                <p className="text-white/50 text-sm mt-1">{session.user.email}</p>
+                <p className="text-white/50 text-sm mt-1">{session.user.email}-{}</p>
 
                 <div className="mt-6 w-full max-w-xs h-px bg-white/10" />
 
                 <div className="mt-6 flex flex-col items-center gap-1">
-                    <p className="text-white/40 text-xs">Membership Number</p>
+                    <p className="text-white/40 text-xs">Membership id</p>
                     <p className="text-white text-sm font-medium tabular-nums tracking-tight">
                         {session.user.id}
                     </p>
@@ -74,13 +84,7 @@ export default async function Profile() {
                         Rp XX.XXX
                     </p>
                     <p className="text-white text-xs mt-1">per month</p>
-                    <Button
-                        variant="soft"
-                        size="md"
-                        className="mt-4 w-full sm:w-auto"
-                    >
-                        Upgrade Now
-                    </Button>
+                    <UpgradePlusButton plus={plusData} />
                 </div>
             </div>
         </PageShell>

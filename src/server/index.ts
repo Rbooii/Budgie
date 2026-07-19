@@ -5,12 +5,14 @@ import { balanceAccounts } from "@/server/routes/balance-accounts";
 import { transactions } from "@/server/routes/transactions";
 import { subscriptions } from "@/server/routes/subscriptions";
 import type { AppEnv } from "@/server/middleware/auth";
+import { user_manage } from "./routes/user-manage";
 
 export const app = new Hono<AppEnv>()
   .use(logger())
   .get("/health", (c) =>
     c.json({ status: "ok", timestamp: new Date().toISOString() }),
   )
+  .route("/plus", user_manage)
   .route("/budgets", budgets)
   .route("/balance-accounts", balanceAccounts)
   .route("/transactions", transactions)
