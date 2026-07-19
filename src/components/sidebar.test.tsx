@@ -49,10 +49,6 @@ describe("Sidebar", () => {
     ).toBe(true);
   });
 
-  it("renders the SignOutButton", () => {
-    render(<Sidebar />);
-    expect(screen.getByTestId("sign-out")).toBeInTheDocument();
-  });
 
   it("renders both desktop sidebar and mobile tab bar", () => {
     const { container } = render(<Sidebar />);

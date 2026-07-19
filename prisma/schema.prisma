@@ -18,6 +18,7 @@ model User {
   email           String
   emailVerified   Boolean          @default(false)
   image           String?
+  plus            Boolean          @default(false)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   sessions        Session[]

@@ -61,9 +61,6 @@ export function Sidebar() {
             );
           })}
         </nav>
-        <div className="mt-8 border-t border-[#F2F2F2] pt-6">
-          <SignOutButton />
-        </div>
       </aside>
 
       {/* Mobile bottom tab bar */}
