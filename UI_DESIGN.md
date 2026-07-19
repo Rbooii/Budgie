@@ -623,23 +623,134 @@ When introducing a new screen, dialog, list, or component, run through this:
 | The button system | `src/components/button.tsx` |
 | The input system + focus micro-interaction | `src/components/auth-input.tsx` |
 | The modal pattern | `src/components/dialog.tsx` |
-| The rounded list row pattern (canonical) | `src/components/transactions-view.tsx`, `src/components/transaction-item.tsx` |
-| The inset card / stacked rows | `src/components/add-transaction-wizard.tsx` (`Card`/`CardRow`/`ReviewRow`), `src/components/transaction-detail-sheet.tsx` (`DetailRow`) |
-| The hero amount input | `src/components/add-account-dialog.tsx`, `src/components/add-transaction-wizard.tsx` step 2, `src/lib/font-size.ts` |
+| The rounded list row pattern (canonical) | `src/components/transactions-view.tsx`, `src/components/transaction-item.tsx`, `src/components/budgets-list.tsx`, `src/components/subscription-list.tsx` |
+| The inset card / stacked rows | `src/components/add-transaction-wizard.tsx` (`Card`/`CardRow`/`ReviewRow`), `src/components/transaction-detail-sheet.tsx` (`DetailRow`), `src/components/budget-detail-sheet.tsx`, `src/components/subscription-detail-sheet.tsx` |
+| The hero amount input | `src/components/add-account-dialog.tsx`, `src/components/add-transaction-wizard.tsx` step 2, `src/components/add-budget-dialog.tsx` step 2, `src/components/add-subscription-dialog.tsx`, `src/lib/font-size.ts` |
 | The privacy/balance reveal | `src/components/balance-visibility.tsx`, `src/components/balance-section.tsx`, `src/app/globals.css` (`@keyframes balanceReveal`, `eyeFlip`) |
 | The authenticated page shell | `src/components/page-shell.tsx` (Sidebar + max-w-screen-2xl content wrapper) |
-| The visual page shells | `src/app/dashboard/page.tsx`, `src/app/transactions/page.tsx`, `src/app/sign-in/sign-in-form.tsx` |
+| The visual page shells | `src/app/dashboard/page.tsx`, `src/app/transactions/page.tsx`, `src/app/budget/page.tsx`, `src/app/sign-in/sign-in-form.tsx` |
 | Donut / data visualization | `src/components/cashflow-card.tsx` |
 | Bar chart / asset growth + hover tooltip | `src/components/asset-growth-card.tsx` |
-| Empty state with CTA (dashboard + wizard) | `src/components/quick-insight-empty-state.tsx`, `src/app/transactions/add/page.tsx` |
-| Delete confirm dialog (modal-on-sheet) | `src/components/transaction-detail-sheet.tsx` |
+| Horizontal bar chart / spending streams | `src/components/spending-streams-chart.tsx` |
+| Summary cards with progress bars | `src/components/budget-summary-cards.tsx` |
+| 3-step wizard in a Dialog (budgets) | `src/components/add-budget-dialog.tsx` |
+| Single-dialog form (subscriptions) | `src/components/add-subscription-dialog.tsx` |
+| Bottom sheet + confirm dialog (budget/subscription) | `src/components/budget-detail-sheet.tsx`, `src/components/subscription-detail-sheet.tsx` |
+| Empty state with CTA (dashboard + wizard + budgets + subscriptions) | `src/components/quick-insight-empty-state.tsx`, `src/app/transactions/add/page.tsx`, `src/components/budgets-list.tsx`, `src/components/subscription-list.tsx` |
+| Delete confirm dialog (modal-on-sheet) | `src/components/transaction-detail-sheet.tsx`, `src/components/budget-detail-sheet.tsx`, `src/components/subscription-detail-sheet.tsx` |
 | Premade categories | `src/lib/categories.ts` |
-| Semantic type tints | `TYPE_META` in `transaction-item.tsx` and `transaction-detail-sheet.tsx`, `TYPES`/`AMOUNT_TYPE_TEXT` in `add-transaction-wizard.tsx` |
+| Category → icon element helper | `src/lib/category-icon.tsx` (`categoryIcon(category, className)` → `ReactElement`, NOT a component type) |
+| Budget/subscription period helpers | `src/lib/budget.ts` (`periodLabel`, `periodStartDate`, `nextBillingDate`, `startOfToday`, `startOfMonth`) |
+| Semantic type tints | `TYPE_META` in `transaction-item.tsx` and `transaction-detail-sheet.tsx`, `TYPES`/`AMOUNT_TYPE_TEXT` in `add-transaction-wizard.tsx`; budget/subscription tints in `budgets-list.tsx` / `subscription-list.tsx` (expense red / transfer orange) |
 | Formatting helpers | `src/lib/format.ts`, `src/lib/font-size.ts` |
 
 ---
 
-## 14. Tone Summary (5 sentences for the next agent)
+## 14. Budgets UI — Special Patterns
+
+The budgets page (`src/app/budget/page.tsx`, RSC) introduces a few patterns not
+seen elsewhere in the app. Read this before extending the budget/subscription
+surfaces.
+
+### 14.1 Summary cards with progress bars (`BudgetSummaryCards`)
+Two `rounded-[35px]` cards in a `grid grid-cols-1 sm:grid-cols-2 gap-3`. Each
+card: label (`text-sm font-semibold text-black/50`) + caption (month/date,
+`text-xs text-black/30`) + hero `formatRupiah(total)` (`text-2xl font-bold
+tracking-tight tabular-nums`) + "remaining"/"over budget" caption (`text-xs
+text-black/40 tabular-nums`) + progress track (`h-2 w-full bg-black/[0.06]
+rounded-full overflow-hidden`) with fill (`h-full rounded-full transition-all
+duration-300`, green `bg-[#00C610]` under budget / red `bg-[#D8000C]` over) +
+"spent" footnote (`text-[11px] text-black/35 tabular-nums`). Empty state when
+`total === 0`: "No monthly/daily budget yet" + helper text — **no CTA here**
+(the CTA lives in the list section below).
+
+### 14.2 Horizontal bar chart (`SpendingStreamsChart`)
+**`"use client"`** (hover state). Pure HTML/CSS — no SVG, no chart library. One
+row per expense category with spend this month, sorted desc. Each row is a
+`flex items-center gap-3`:
+- 24-char category label (`w-24 shrink-0 text-xs truncate`, darkens on hover).
+- `flex-1 h-3 bg-black/[0.04] rounded-full` track with a fill div whose width
+  is `(spent / chartMax) * 100%` (min 1.5% so tiny bars are visible). Fill color:
+  `bg-[#FFBABA]` under budget, `bg-[#D8000C]` over.
+- **Budget limit marker**: a `w-0.5 h-4 bg-black/40 rounded-full` absolute div
+  positioned at `(budget / chartMax) * 100%` (capped at 99.5%). Only rendered
+  if a budget exists for that category. This is the canonical "budget tick"
+  pattern — reuse it for any "actual vs limit" bar.
+- Right-aligned `formatRupiah(spent)` (`w-24 shrink-0 text-right text-xs
+  font-semibold tabular-nums`).
+
+Hover/tap tooltip: absolute `bg-white rounded-[20px] shadow border border-black/5
+px-3 py-2` above the row, showing category + spent + budget + remaining/over.
+`pointer-events-none`. Tap toggles on mobile (same `setHovered(prev === cat ?
+null : cat)` pattern as `AssetGrowthCard`). Legend at the bottom: Spent
+(`#FFBABA` dot) / Over budget (`#D8000C` dot) / Budget limit (black tick). Empty
+state: `TrendingUp` icon + "No spending this month yet".
+
+> **Why horizontal bars (not vertical like `AssetGrowthCard`)?** Category labels
+> are long ("Food & Drink", "Entertainment") — horizontal rows give them room
+> without rotation. Vertical bars work for `AssetGrowthCard` because month
+> labels are 3 chars ("Jan", "Feb"). Pick the chart orientation by label width.
+
+### 14.3 3-step wizard inside a `Dialog` (`AddBudgetDialog`)
+The add-transaction wizard is an immersive full-page flow (no sidebar). The
+add-budget wizard is the **same step pattern compressed into a `Dialog`**:
+- Slim 2px progress track (`h-0.5 w-full bg-black/[0.06]` with `bg-[#00C610]`
+  fill, `transition-all duration-300 ease-out`, width = `(step/3)*100%`) —
+  identical to `AddTransactionWizard`'s `ProgressBar`.
+- Step 1: period cards (`rounded-[20px] border` with `border-[#A0FFA8]
+  bg-[#A0FFA8]/15` active ring + trailing `<Check>`, neutral `border-black/10`
+  otherwise). Custom period reveals a days input.
+- Step 2: category `<select>` (filtered to exclude `usedCategories`) + hero
+  amount (`dynamicFontSize` + `formatBalanceInput` + gray `IDR` prefix, same
+  as `add-account-dialog`).
+- Step 3: review rows (`bg-[#FAFAFA] divide-y divide-black/[0.04]` inset card)
+  + "Confirm and Add" CTA with trailing `<Check>`.
+- CTA row: `success` Continue + `outline` Back/Cancel. `loading` swaps the
+  leading icon for a spinner.
+
+> **When to use a Dialog-wizard vs. a page-wizard**: Dialog-wizards are for
+> quick multi-step forms that don't need the full viewport (budgets,
+> subscriptions, future settings). Page-wizards are for flows where focus
+> matters and the user shouldn't see the rest of the app (add transaction —
+> money is sensitive, and step 2's hero amount wants the whole width).
+
+### 14.4 Single-dialog form (`AddSubscriptionDialog`)
+Subscriptions are simpler than budgets (no period-card step — just a `<select>`
+with 3 billing cycles). This is a **single `Dialog` form**, not a wizard:
+fields stack vertically with `gap-3`, then a `flex gap-2` button row (`success`
+Add + `outline` Cancel). Use this pattern when a resource has ≤5 fields and no
+branching logic. If a future resource needs >5 fields or conditional steps,
+upgrade to the Dialog-wizard (§14.3) or page-wizard.
+
+### 14.5 Subscriptions reuse the transfer-orange tint
+Subscriptions are recurring outflows — semantically "money moving out on a
+schedule." They reuse the **transfer orange** tint (`bg-[#FFD9A0]/40
+text-[#B25B00]`) for their icon tiles and detail pill, rather than the expense
+red. This keeps the 3-tint system (income green / expense red / transfer
+orange) intact without introducing a 4th hue (§3 anti-pattern). Budgets, by
+contrast, use the **expense red** tint (`bg-[#FFBABA]/40 text-[#D8000C]`)
+because they're category-level spending limits — directly expense-oriented.
+
+### 14.6 Category icon helper (`categoryIcon`)
+`src/lib/category-icon.tsx` exports `categoryIcon(category, className)` which
+returns a **`ReactElement`** (a lucide icon per `Category` enum value). **It
+must return an element, not a component type/class** — returning a component
+type and rendering `<Icon className=... />` at the call site triggers
+`react-hooks/static-components` lint errors (the linter sees a component
+created during another component's render). The correct usage:
+```tsx
+{categoryIcon(b.category, "w-5 h-5")}
+```
+NOT:
+```tsx
+const Icon = categoryIcon(b.category);  // ❌ returns a type, lint error
+<Icon className="w-5 h-5" />
+```
+This applies to any helper that maps data → icon.
+
+---
+
+## 15. Tone Summary (5 sentences for the next agent)
 
 Budgie is a calm, minimal fintech UI built on white surfaces, one brand green,
 and three semantic pastel tints (income green / expense red / transfer

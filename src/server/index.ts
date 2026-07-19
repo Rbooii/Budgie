@@ -3,6 +3,7 @@ import { logger } from "hono/logger";
 import { budgets } from "@/server/routes/budgets";
 import { balanceAccounts } from "@/server/routes/balance-accounts";
 import { transactions } from "@/server/routes/transactions";
+import { subscriptions } from "@/server/routes/subscriptions";
 import type { AppEnv } from "@/server/middleware/auth";
 
 export const app = new Hono<AppEnv>()
@@ -13,6 +14,7 @@ export const app = new Hono<AppEnv>()
   .route("/budgets", budgets)
   .route("/balance-accounts", balanceAccounts)
   .route("/transactions", transactions)
+  .route("/subscriptions", subscriptions)
   .notFound((c) => c.json({ error: "Not found" }, 404))
   .onError((err, c) => {
     console.error(err);

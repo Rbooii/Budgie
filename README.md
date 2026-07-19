@@ -4,9 +4,9 @@
 
 ### A full-stack budgeting app & AI-agentic development testbed
 
-Track balance accounts, budgets, and transactions across bank, wallet, cash,
-credit, and investment accounts — with automatic balance reconciliation,
-interactive charts, and PDF exports.
+Track balance accounts, budgets, subscriptions, and transactions across bank,
+wallet, cash, credit, and investment accounts — with automatic balance
+reconciliation, interactive charts, and PDF exports.
 
 [Figma Link](https://www.figma.com/design/SG1k9PApOBrkP6fTuesuGG/Budgie?node-id=1-3&t=TdDVP7rD0L28zh6h-1)
 
@@ -24,9 +24,9 @@ CI/CD, and fast feature shipping with rigorous type-safety and testing.
 
 ---
 
-**Project completion: 75%**
+**Project completion: 85%**
 
-`████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░` 75%
+`████████████████████████████████████████████████████░░░░░░░░░░░░░░░░` 85%
 
 </div>
 
@@ -56,6 +56,8 @@ contribution — human or AI — follows the same structured workflow.
 - **Balance Accounts** — Full CRUD (bank, digital wallet, cash, credit, investment) with edit dialog and **delete confirm dialog**
 - **Transactions** — 3-step add wizard (type -> details -> review), searchable grouped list by date, bottom-sheet detail view, create & delete with automatic balance reconciliation inside a Prisma `$transaction`
 - **Automatic balance reconciliation** — Income/expense/transfer auto-updates account balances; delete reverses the effect; insufficient-balance guard prevents negative balances
+- **Budgets** — Full CRUD (`/api/budgets`); budget page with monthly + daily summary cards (progress bars, remaining/over captions), spending-streams horizontal bar chart (per-category expense this month with budget-limit markers + hover tooltips), §7.2 rounded budgets list with mini progress bars, 3-step add-budget wizard (period → category + amount → review) inside a Dialog, bottom-sheet detail + confirm-dialog delete. One budget per `(userId, category)`; `periodDays` supports daily/weekly/monthly/custom.
+- **Subscriptions** — Full CRUD (`/api/subscriptions`); subscription list with next-billing-date computation (`startDate + ceil((now-start)/periodDays)*periodDays`), single-dialog add form (name, category, billing cycle, start date, amount), bottom-sheet detail + confirm-dialog delete. One subscription per `(userId, name)`; recurring charges tracked independently of transactions (no auto-deduct).
 - **PDF Export** — Client-side PDF generation (all / filtered / date range) via jsPDF + autoTable
 - **Premade categories** — Per-type category lists (income/expense/transfer) — users pick from curated lists, no free-text chaos
 - **Responsive design** — Mobile-first with fixed bottom nav; desktop reveals a persistent sidebar. Calm minimal fintech aesthetic.
@@ -63,7 +65,6 @@ contribution — human or AI — follows the same structured workflow.
 
 ### In Progress
 
-- **Budgets UI** — Backend CRUD is live (`/api/budgets`); frontend page is a placeholder
 - **Chat** — AI-powered financial assistant (placeholder page)
 
 ### Planned
@@ -193,24 +194,24 @@ budgie/
 │  ├─ app/                        # Next.js App Router
 │  │  ├─ dashboard/               # main dashboard (RSC, charts, accounts)
 │  │  ├─ transactions/            # list + 3-step add wizard
-│  │  ├─ budget/                  # placeholder (backend ready)
+│  │  ├─ budget/                  # budgets + subscriptions (RSC, charts, lists, wizards)
 │  │  ├─ chat/                    # placeholder
 │  │  ├─ sign-in/                 # auth screen
 │  │  └─ api/
 │  │     ├─ [[...route]]/         # catch-all -> Hono
 │  │     └─ auth/[...all]/        # better-auth handler
-│  ├─ components/                 # React UI (17 components)
-│  ├─ lib/                        # auth, prisma, api-client, format, categories
+│  ├─ components/                 # React UI (24+ components)
+│  ├─ lib/                        # auth, prisma, api-client, format, categories, category-icon, budget
 │  └─ server/                     # ALL backend logic
-│     ├─ routes/                  # Layer 1: HTTP wiring
+│     ├─ routes/                  # Layer 1: HTTP wiring (budgets, subscriptions, balance-accounts, transactions)
 │     ├─ controllers/             # Layer 2: I/O + type mapping
 │     ├─ services/                # Layer 3: pure logic + Prisma
 │     ├─ schemas/                 # Zod (.pick + .extend on generated)
 │     └─ middleware/auth.ts       # requireAuth + AppEnv
 ├─ prisma/schema.prisma           # datasource + 2 generators (client, zod)
-├─ ARCHITECTURE.md                # architecture reference
+├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets)
 ├─ AGENTS.md                      # AI agent rules
-├─ UI_DESIGN.md                   # UI/UX design reference
+├─ UI_DESIGN.md                   # UI/UX design reference (§14 budgets UI patterns)
 └─ vitest.config.ts               # test config (jsdom + Testing Library)
 ```
 

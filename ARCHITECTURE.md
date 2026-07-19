@@ -77,7 +77,7 @@ budgie/
    │  ├─ layout.tsx                  # root layout (bg-white body)
    │  ├─ page.tsx                    # home (RSC)
    │  ├─ globals.css                 # color-scheme: light, html bg-white, keyframes
-   │  ├─ budget/                      # budget page
+   │  ├─ budget/                      # budget page (RSC, force-dynamic) — see §19
    │  ├─ chat/                       # chat page
    │  ├─ dashboard/                  # main dashboard (RSC, force-dynamic)
    │  ├─ transactions/               # transactions page + add sub-route
@@ -88,7 +88,7 @@ budgie/
    │  └─ api/
    │     └─ [[...route]]/
    │        └─ route.ts              # catch-all Route Handler → Hono (strips /api prefix)
-    ├─ components/                     # React UI (see §16 for transactions UI, §18 for dashboard)
+    ├─ components/                     # React UI (see §16 transactions, §18 dashboard, §19 budgets)
     │  ├─ account-card.tsx           # add-account-dialog, sidebar, …
     │  ├─ add-transaction-wizard.tsx # 3-step flow (type → details → review), CategorySelect
     │  ├─ transaction-item.tsx       # minimalist list row (tap → detail sheet)
@@ -96,9 +96,17 @@ budgie/
     │  ├─ transaction-detail-sheet.tsx # bottom sheet with full info + confirm Dialog before delete
     │  ├─ cashflow-card.tsx          # donut chart (income/expense), title prop, radius 64
     │  ├─ asset-growth-card.tsx      # Apple-style bar chart (12-month asset trajectory), "use client" hover tooltip
-     │  ├─ quick-insight-empty-state.tsx # "use client" empty state when user has no transactions
-     │  ├─ page-shell.tsx            # shared authenticated shell (Sidebar + max-w-screen-2xl content wrapper)
-     │  └─ download-pdf-dialog.tsx   # jsPDF export (all / filtered / date range)
+    │  ├─ budget-summary-cards.tsx   # Monthly + Daily budget summary cards (progress + remaining/over caption)
+    │  ├─ spending-streams-chart.tsx # "use client" horizontal bar chart — per-category expense this month + budget marker ticks
+    │  ├─ budgets-list.tsx           # §7.2 rounded list rows + empty state; exports BudgetRow type; owns BudgetDetailSheet state
+    │  ├─ add-budget-dialog.tsx      # 3-step wizard in Dialog (period → category+amount → review)
+    │  ├─ budget-detail-sheet.tsx    # bottom sheet (mobile) / centered (desktop) + confirm Dialog before delete
+    │  ├─ subscription-list.tsx      # §7.2 rounded list rows + empty state; exports SubscriptionRow type; owns SubscriptionDetailSheet state
+    │  ├─ add-subscription-dialog.tsx # single Dialog form (name, category, cycle, start, amount)
+    │  ├─ subscription-detail-sheet.tsx # bottom sheet + confirm Dialog before delete
+    │  ├─ quick-insight-empty-state.tsx # "use client" empty state when user has no transactions
+    │  ├─ page-shell.tsx            # shared authenticated shell (Sidebar + max-w-screen-2xl content wrapper)
+    │  └─ download-pdf-dialog.tsx   # jsPDF export (all / filtered / date range)
     ├─ lib/
     │  ├─ auth.ts                     # better-auth server instance (prismaAdapter)
     │  ├─ auth-client.ts              # better-auth client
@@ -106,19 +114,24 @@ budgie/
     │  ├─ api-client.ts               # hono/client RPC, typed against App (SSR-aware baseURL)
     │  ├─ font-size.ts                # helper
     │  ├─ categories.ts               # premade per-type category lists (income/expense/transfer)
+    │  ├─ category-icon.tsx           # categoryIcon(category, className) → ReactElement (lucide icon per category)
+    │  ├─ budget.ts                   # periodLabel / periodStartDate / nextBillingDate / startOfToday / startOfMonth
     │  └─ format.ts                   # formatRupiah / formatBalanceInput / formatDate / formatTime / formatDateTimeLocalValue
    ├─ server/                        # ALL backend logic lives here
    │  ├─ index.ts                    # Hono app (NO basePath), mounts routers; exports type App
    │  ├─ routes/                     # Layer 1: routers
    │  │  ├─ budgets.ts
+   │  │  ├─ subscriptions.ts
    │  │  ├─ balance-accounts.ts
    │  │  └─ transactions.ts
    │  ├─ controllers/                # Layer 2: controllers
    │  │  ├─ budgets.ts
+   │  │  ├─ subscriptions.ts
    │  │  ├─ balance-accounts.ts
    │  │  └─ transactions.ts
    │  ├─ services/                   # Layer 3: services
    │  │  ├─ budgets.ts
+   │  │  ├─ subscriptions.ts
    │  │  ├─ balance-accounts.ts
    │  │  ├─ transactions.ts          # $transaction balance auto-update (see §17)
    │  │  └─ accounts.ts              # (reserved / empty)
@@ -126,10 +139,11 @@ budgie/
    │  │  └─ auth.ts                  # requireAuth + AppEnv (Variables: user, session)
    │  └─ schemas/
     │  ├─ budget.ts                # app-level Zod (.pick + .extend on generated), z.enum(EXPENSE_CATEGORIES)
+    │  ├─ subscription.ts          # .pick { name, amount, currency, category, periodDays, startDate, active } + .extend overrides
     │  ├─ balance-account.ts
     │  ├─ transaction.ts           # z.enum type + z.enum(ALL_CATEGORIES) + .refine() transfer + per-type category validation
-   │     ├─ account.ts
-   │     └─ generated/               # ⚠ generated by prisma-zod-generator (gitignored)
+    │  ├─ account.ts
+    │  └─ generated/               # ⚠ generated by prisma-zod-generator (gitignored)
    └─ generated/
       └─ prisma/                     # ⚠ generated Prisma client (gitignored)
 ```
@@ -558,6 +572,7 @@ export const OPTIONS = honoHandler;
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { budgets } from "@/server/routes/budgets";
+import { subscriptions } from "@/server/routes/subscriptions";
 import { balanceAccounts } from "@/server/routes/balance-accounts";
 import { transactions } from "@/server/routes/transactions";
 import type { AppEnv } from "@/server/middleware/auth";
@@ -566,6 +581,7 @@ export const app = new Hono<AppEnv>()           // NO basePath — handler strip
   .use(logger())
   .get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }))
   .route("/budgets", budgets)
+  .route("/subscriptions", subscriptions)
   .route("/balance-accounts", balanceAccounts)
   .route("/transactions", transactions)
   .notFound((c) => c.json({ error: "Not found" }, 404))
@@ -579,8 +595,8 @@ export type App = typeof app;
 
 - No `basePath` — the route handler strips `/api` instead (see above).
 - Chained (`.use().get().route()...`) so `typeof app` exposes per-route types
-  to `hono/client`. The mounted sub-apps (`budgets`, `balanceAccounts`) are
-  themselves chained and typed against `AppEnv`.
+  to `hono/client`. The mounted sub-apps (`budgets`, `subscriptions`,
+  `balanceAccounts`) are themselves chained and typed against `AppEnv`.
 - Global `logger`, `notFound`, `onError` live here (cross-cutting concerns).
 - `export type App = typeof app` is the single source of truth consumed by
   `src/lib/api-client.ts` and (implicitly) by `hono/vercel`'s `handle`.
@@ -592,7 +608,7 @@ export type App = typeof app;
 ### Schema (`prisma/schema.prisma`)
 The schema contains **two groups of models**: better-auth's auth models
 (`User`, `Session`, `Account`, `Verification`) and the domain models
-(`Budget`, `BalanceAccount`, `Transaction`). Every user-owned domain model has
+(`Budget`, `Subscription`, `BalanceAccount`, `Transaction`). Every user-owned domain model has
 a `userId` field + `User` relation so ownership can be enforced in the service
 layer.
 
@@ -620,11 +636,12 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  sessions       Session[]
-  accounts       Account[]
-  budgets        Budget[]
+  sessions        Session[]
+  accounts        Account[]
   balanceAccounts BalanceAccount[]
-  transactions   Transaction[]
+  transactions    Transaction[]
+  budgets         Budget[]
+  subscriptions   Subscription[]
 
   @@unique([email])
   @@map("user")
@@ -680,17 +697,38 @@ model Verification {
 
 // ── Domain models ──
 model Budget {
-  id        Int      @id @default(autoincrement())
-  title     String
-  amount    Float
-  category  String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  category   Category
+  amount     Float
+  currency   String   @default("IDR")
+  userId     String
+  periodDays Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  @@index([category])
+  @@unique([userId, category])   // one budget per (user, category)
   @@index([userId])
+  @@map("budget")
+}
+
+model Subscription {
+  id         String   @id @default(cuid())
+  name       String
+  amount     Float
+  currency   String   @default("IDR")
+  category   Category
+  periodDays Int
+  startDate  DateTime @default(now())
+  active     Boolean  @default(true)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, name])   // one subscription per (user, name)
+  @@index([userId])
+  @@map("subscription")
 }
 
 model BalanceAccount {
@@ -715,7 +753,7 @@ model Transaction {
   name              String
   amount            Float
   type              String   // "income" | "expense" | "transfer"
-  category          String
+  category          Category
   date              DateTime
   adminFee          Float    @default(0)
   balanceAccountId   String?
@@ -810,7 +848,7 @@ The app **does not import these directly at call sites**. Instead,
 schemas. It narrows the huge Prisma-generated shape down to the **API contract**
 by `.pick()`-ing just the fields the client is allowed to send, and `.extend()`-ing
 to override constraints (e.g. force all update fields to be required). The same
-pattern is used for `Budget` and `BalanceAccount`:
+pattern is used for `Budget`, `Subscription`, and `BalanceAccount`:
 
 ```ts
 // src/server/schemas/budget.ts
@@ -819,37 +857,84 @@ import {
   BudgetUncheckedCreateInputObjectZodSchema,
   BudgetUncheckedUpdateInputObjectZodSchema,
 } from "@/server/schemas/generated/schemas/objects";
+import { EXPENSE_CATEGORIES } from "@/lib/categories";
 
 export const CreateBudgetSchema = BudgetUncheckedCreateInputObjectZodSchema.pick({
-  title: true,
-  amount: true,
   category: true,
+  amount: true,
+  periodDays: true,
+}).extend({
+  category: z.enum(EXPENSE_CATEGORIES),   // tighter than generated (Category enum)
+  amount: z.number().positive(),
+  periodDays: z.number().int().positive(),  // 1=daily, 7=weekly, 30=monthly, or any N
 });
 
 export const UpdateBudgetSchema = BudgetUncheckedUpdateInputObjectZodSchema.pick({
-  title: true,
-  amount: true,
   category: true,
+  amount: true,
+  periodDays: true,
 }).extend({
-  title: z.string(),
-  amount: z.number(),
-  category: z.string(),
+  category: z.enum(EXPENSE_CATEGORIES),
+  amount: z.number().positive(),
+  periodDays: z.number().int().positive(),
 });
 
 export type CreateBudget = z.infer<typeof CreateBudgetSchema>;
 export type UpdateBudget = z.infer<typeof UpdateBudgetSchema>;
 ```
 
+```ts
+// src/server/schemas/subscription.ts — same shape, adds name + startDate + active
+import { z } from "zod";
+import {
+  SubscriptionUncheckedCreateInputObjectZodSchema,
+  SubscriptionUncheckedUpdateInputObjectZodSchema,
+} from "@/server/schemas/generated/schemas/objects";
+import { EXPENSE_CATEGORIES } from "@/lib/categories";
+
+export const CreateSubscriptionSchema =
+  SubscriptionUncheckedCreateInputObjectZodSchema.pick({
+    name: true, amount: true, currency: true,
+    category: true, periodDays: true, startDate: true, active: true,
+  }).extend({
+    name: z.string().min(1),
+    amount: z.number().positive(),
+    currency: z.string().default("IDR"),
+    category: z.enum(EXPENSE_CATEGORIES),
+    periodDays: z.number().int().positive(),  // 7=weekly, 30=monthly, 365=yearly
+    startDate: z.coerce.date(),               // accept ISO string from JS
+    active: z.boolean().default(true),
+  });
+
+export const UpdateSubscriptionSchema =
+  SubscriptionUncheckedUpdateInputObjectZodSchema.pick({
+    name: true, amount: true, currency: true,
+    category: true, periodDays: true, startDate: true, active: true,
+  }).extend({
+    name: z.string().min(1),
+    amount: z.number().positive(),
+    currency: z.string(),
+    category: z.enum(EXPENSE_CATEGORIES),
+    periodDays: z.number().int().positive(),
+    startDate: z.coerce.date(),
+    active: z.boolean(),
+  });
+
+export type CreateSubscription = z.infer<typeof CreateSubscriptionSchema>;
+export type UpdateSubscription = z.infer<typeof UpdateSubscriptionSchema>;
+```
+
 Why `.pick`? The unchecked input schema includes `userId` (a foreign key) — the
 client must **not** be allowed to set another user's id. By picking only the
 public fields, `userId` is excluded from the API contract; the controller
 injects `userId` from the authenticated session (`c.get("user").id`) before
-calling the service (see §5). The same reason applies to `BalanceAccount`.
+calling the service (see §5). The same reason applies to `BalanceAccount` and
+`Subscription`.
 
-Why `.extend` on the update schema? `BudgetUncheckedUpdateInputObjectZodSchema`
+Why `.extend` on the update schema? `*UncheckedUpdateInputObjectZodSchema`
 marks every field optional (Prisma update semantics). The app overrides that to
-make `title`/`amount`/`category` **required** on PATCH, so a client can't
-accidentally null them out.
+make the public fields **required** on PATCH, so a client can't accidentally
+null them out.
 
 To add a new app-level rule (e.g. password min length), extend the picked
 schema the same way:
@@ -1429,3 +1514,121 @@ else:
 | `src/components/asset-growth-card.tsx` | Apple-style bar chart (pure SVG). **`"use client"`** (hover state). 12 slots (Jan–Dec), `barW=16px`, gap ≈8px. Recorded months: growth-colored bars (green up / orange flat / red down vs previous month); no-activity months (`activeMonths[m]===false`) → grey `#E5E5E5` placeholder bars (~12px min). `rx` capped at `renderedH/2` (no oval short bars). **Hover tooltip**: HTML overlay (month+year + `formatRupiah`), tap toggles on mobile. Future months: no bar, faint label. YTD pill. Legend (Growth/Stable/Decline). Empty state: no bars + "No transactions yet" caption. |
 | `src/components/quick-insight-empty-state.tsx` | `"use client"`. §7.5 "Nothing exists yet" empty state shown when the user has no transactions. `Sparkles` icon + "No insight yet" + helper desc + `success` "Add transaction" CTA → `/transactions/add`. |
 | `src/components/sidebar.tsx` | Desktop: `md:sticky md:top-0 self-start` — pins to viewport top while content scrolls (stays in flex flow, no layout break). Mobile: fixed bottom tab bar (unchanged). |
+
+---
+
+## 19. Budgets UI (frontend)
+
+The budgets feature (`src/app/budget/page.tsx`, RSC, `force-dynamic`) covers
+**monthly + daily budget summary cards**, a **spending streams bar chart**
+(per-category expense this month with budget markers), a **budgets list** with
+a 3-step **add-budget wizard**, and a **subscriptions list** with an
+**add-subscription dialog**. Each list row opens a bottom-sheet detail with a
+confirm-dialog-gated delete.
+
+### Data flow (RSC)
+
+1. **Budgets + subscriptions**: direct `prisma.budget.findMany` /
+   `prisma.subscription.findMany` (SSR reads — no cookie forwarding needed, per
+   §6.5's "prefer `prisma` for SSR reads" guidance).
+2. **Current-month expenses per category**: `prisma.transaction.findMany`
+   (`where: { userId, type: "expense", date: { gte: startOfMonth() } }`,
+   `select: { category, amount }`) → JS group-by-category sums →
+   `monthExpenseByCategory`. Fed to both `SpendingStreamsChart` (as `data`)
+   and the summary cards.
+3. **Per-budget spent-in-period**: `Promise.all` over budgets, each running
+   `prisma.transaction.aggregate` for its `category` with
+   `date: { gte: periodStartDate(b.periodDays) }` → `spentByBudgetCategory`.
+   This is what the budget list rows + summary cards use for progress.
+4. **Derived figures**:
+   - `monthlyBudgets = budgets.filter(b => b.periodDays === 30)` →
+     `monthlyTotal`/`monthlySpent` for the Monthly summary card.
+   - `dailyBudgets = budgets.filter(b => b.periodDays === 1)` →
+     `dailyTotal`/`dailySpent` for the Daily summary card.
+   - `usedCategories = budgets.map(b => b.category)` → passed to
+     `AddBudgetDialog` so the category select hides already-budgeted categories
+     (the unique `(userId, category)` constraint means duplicates would 409).
+
+### Layout
+
+```
+<PageShell>
+  <AccountTab userName={...} />
+  <h1 "Budgets" />
+
+  <BudgetSummaryCards monthly={...} daily={...} />   // grid 1 col mobile / 2 sm
+
+  <SpendingStreamsChart data={streamsData} budgets={streamsBudgets} monthLabel={...} />
+
+  <section "Your Budgets">
+    header row: h2 + <AddBudgetDialog usedCategories={...} />
+    <BudgetsList budgets spentByCategory addTrigger={<AddBudgetDialog .../>} />
+  </section>
+
+  <section "Subscriptions">
+    header row: h2 + <AddSubscriptionDialog />
+    <SubscriptionList subscriptions addTrigger={<AddSubscriptionDialog />} />
+  </section>
+</PageShell>
+```
+
+### Components
+
+| File | Role |
+| ---- | ---- |
+| `src/components/budget-summary-cards.tsx` | RSC-presentational. Two `rounded-[35px]` cards in a `grid grid-cols-1 sm:grid-cols-2 gap-3`. Each card: label + month/date caption + hero `formatRupiah(total)` (`text-2xl font-bold tracking-tight tabular-nums`) + "remaining"/"over budget" caption + progress track (`h-2 bg-black/[0.06]` with green `#00C610` fill under budget / red `#D8000C` fill over, `rounded-full`, `transition-all duration-300`). Empty state when `total === 0`: "No monthly/daily budget yet" + helper text. |
+| `src/components/spending-streams-chart.tsx` | **`"use client"`** (hover state). Pure-HTML horizontal bar chart — one row per expense category with spend this month, sorted desc. Each row: 24-char category label + `h-3 bg-black/[0.04] rounded-full` track + `#FFBABA` (under) / `#D8000C` (over) fill + right-aligned `formatRupiah(spent)`. Budget limit marked with a vertical `w-0.5 h-4 bg-black/40` tick at the category's budget `amount` position (if a budget exists). Hover/tap tooltip (`bg-white rounded-[20px] shadow border px-3 py-2`): category + spent + budget + remaining/over. Legend (Spent / Over budget / Budget limit). Empty state: `TrendingUp` icon + "No spending this month yet". Container `rounded-[35px] border border-black/10 shadow p-6`. |
+| `src/components/budgets-list.tsx` | **`"use client"`**. §7.2 rounded list rows (`rounded-2xl px-3.5 py-3.5 hover:bg-[#FAFAFA] active:scale-[0.98]`). Each row: 40px round tinted icon (expense red `bg-[#FFBABA]/40 text-[#D8000C]`, icon from `categoryIcon(b.category, "w-5 h-5")`) + category label + period pill (`periodLabel(b.periodDays)`) + mini progress bar + amount (`formatRupiah(b.amount)`) + "spent" caption + chevron (`hidden sm:block`). Tap → `BudgetDetailSheet`. Exports `BudgetRow` type. Empty state (§7.5) with `Wallet` icon + `success` CTA (the `addTrigger` prop renders the `AddBudgetDialog` inline). |
+| `src/components/add-budget-dialog.tsx` | **`"use client"`**. 3-step wizard inside `Dialog` (model on `AddTransactionWizard`'s step pattern but compact). **Step 1**: period cards (Daily=1 / Weekly=7 / Monthly=30 / Custom → days input) — active card uses `border-[#A0FFA8] bg-[#A0FFA8]/15` ring + trailing `<Check>`. **Step 2**: category `<select>` (only `EXPENSE_CATEGORIES` not in `usedCategories`) + hero amount (`dynamicFontSize` + `formatBalanceInput`, currency prefix `IDR`). **Step 3**: review rows (Category / Period / Limit) + "Confirm and Add" → `api.budgets.$post({ json: { category, amount, periodDays } })`. Slim 2px progress track (`bg-[#00C610]` fill, `transition-all duration-300 ease-out`, width = `(step/3)*100%`). 409 "Budget for this category already exists" rendered as error pill. On success → close dialog + `router.refresh()`. Trigger is `success`/`md` Button. |
+| `src/components/budget-detail-sheet.tsx` | **`"use client"`**. Bottom sheet (mobile `rounded-t-[28px]` + drag handle) / centered (desktop `sm:rounded-[28px]`). Sections: category pill (`bg-[#FFBABA] text-[#D8000C]` + `categoryIcon`) + `✕` close → hero "Budget limit" + `formatRupiah(amount)` + spent caption + progress bar (green/red by over) → inset detail card (`rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]`) with DetailRows (Period / Limit / Spent / Remaining) → full-width delete trigger (`h-11 rounded-[35px] bg-[#FFBABA] text-[#D8000C]`) → confirm `Dialog` (sibling fragment, `softred` Delete + `outline` Cancel, `loading`-gated `onOpenChange`) → `api.budgets[":id"].$delete` → `router.refresh()`. `sheetIn` animation (12px slide-up + fade, 200ms). |
+| `src/components/subscription-list.tsx` | **`"use client"`**. Same §7.2 row pattern as `budgets-list`. Each row: 40px round icon (transfer orange `bg-[#FFD9A0]/40 text-[#B25B00]`, since subscriptions are recurring outflows) + name + `categoryLabel(category) · periodLabel(periodDays)` subtitle + "Next {date}" caption (via `nextBillingDate`) + amount + "Inactive" tag when `!active` + chevron. Tap → `SubscriptionDetailSheet`. Exports `SubscriptionRow` type. Empty state with `Repeat` icon + `success` CTA. |
+| `src/components/add-subscription-dialog.tsx` | **`"use client"`**. Single `Dialog` form (not a wizard — subscriptions are simpler than budgets). Fields: name (`AuthInput`), category `<select>` (`EXPENSE_CATEGORIES`), billing cycle `<select>` (Weekly=7 / Monthly=30 / Yearly=365), start date (`<input type="date">`), hero amount (`dynamicFontSize` + `formatBalanceInput`). Submit → `api.subscriptions.$post({ json: { name, amount, category, periodDays, startDate, active: true } })`. 409 "Subscription with this name already exists" → error pill. On success → `router.refresh()`. Trigger is `success`/`md` Button. |
+| `src/components/subscription-detail-sheet.tsx` | **`"use client"`**. Same sheet shape as `budget-detail-sheet`. "Subscription" pill (`bg-[#FFD9A0] text-[#B25B00]` + `Repeat` icon). DetailRows: Name / Category / Amount / Period / Started / Next billing (computed via `nextBillingDate`) / Status (Active/Inactive). Delete → confirm `Dialog` → `api.subscriptions[":id"].$delete`. |
+| `src/lib/budget.ts` | Pure helpers: `periodLabel(days)` (1→"Daily", 7→"Weekly", 30→"Monthly", 365→"Yearly", else "Every N days"), `periodStartDate(days)` (subtracts days from now, midnight), `nextBillingDate(startDate, days)` = `start + ceil((now-start)/days)*days`, `startOfToday`, `startOfMonth`. Shared by the budget page, both detail sheets, both lists, and the add dialogs. |
+| `src/lib/category-icon.tsx` | `categoryIcon(category, className)` returns a **`ReactElement`** (a lucide icon per `Category` — e.g. `FoodAndDrink→UtensilsCrossed`, `Rent→Home`, `Entertainment→Film`, `Healthcare→HeartPulse`). **Must return an element, not a component type/class** — returning a component type triggers `react-hooks/static-components` lint errors. Call sites: `budget-detail-sheet`, `budgets-list`, `subscription-list`. |
+
+### Color tokens (budgets)
+
+| Element | Token | Used in |
+| ------- | ----- | ------- |
+| Budget icon tile | `bg-[#FFBABA]/40 text-[#D8000C]` | Budget list rows, budget detail pill |
+| Subscription icon tile | `bg-[#FFD9A0]/40 text-[#B25B00]` | Subscription list rows, subscription detail pill |
+| Under-budget progress | `bg-[#00C610]` (brand green) | Summary cards, list mini-bars, detail sheet bar |
+| Over-budget progress | `bg-[#D8000C]` (expense red) | Summary cards, list mini-bars, detail sheet bar |
+| Spending-streams bar fill | `bg-[#FFBABA]` (under) / `bg-[#D8000C]` (over) | `spending-streams-chart` |
+| Budget limit tick | `bg-black/40` | `spending-streams-chart` |
+
+> Subscriptions reuse the **transfer orange** tint (`#FFD9A0`/`#B25B00`) because
+> they're recurring outflows — semantically closer to "money moving out on a
+> schedule" than one-off expenses. This keeps the 3-tint system (income green /
+> expense red / transfer orange) intact without introducing a 4th hue (per
+> `UI_DESIGN.md` §3).
+
+### Gotchas
+
+- **`prisma.subscription` undefined at runtime after adding the model**: the
+  `PrismaClient` singleton in `src/lib/prisma.ts` is cached on `globalThis`
+  during dev to survive hot-reload. When the schema changes + the client is
+  regenerated, the **cached instance is stale** and lacks the new `subscription`
+  delegate → `Cannot read properties of undefined (reading 'findMany')`. Fix:
+  **restart `bun run dev`** to clear `globalThis.prisma`. The build is unaffected
+  (it creates a fresh client). This applies to any new Prisma model added mid-dev.
+- **Budget `category` is a Prisma enum (`Category`), not `String`**: the budget
+  page casts `b.category as Category` when passing to
+  `prisma.transaction.aggregate`'s `where.category` (typed as `Category`).
+  `spentByBudgetCategory` is keyed by `string` for ergonomic lookups.
+- **No edit in v1**: budgets and subscriptions support create + delete only.
+  The PATCH routes exist (`api.budgets[":id"].$patch` /
+  `api.subscriptions[":id"].$patch`) but the UI doesn't wire them — adding edit
+  is a small follow-up (the detail sheet would gain an "Edit" button → a dialog
+  prefilled with the current row).
+- **`AddBudgetDialog` hides already-used categories**: the `(userId, category)`
+  unique constraint means a second budget for the same category would 409. The
+  dialog's category `<select>` filters out `usedCategories` (passed from the
+  page). When all 10 expense categories are taken, the select shows "All expense
+  categories already have budgets" and the form can't be submitted.
+- **Subscriptions are independent of transactions**: creating a subscription
+  does **not** create a recurring transaction or auto-deduct from any account.
+  They're a planning/tracking surface — the UI computes the next billing date
+  client-side via `nextBillingDate(startDate, periodDays)`. Auto-deduct is a
+  future feature.
