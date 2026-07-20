@@ -80,6 +80,7 @@ budgie/
    │  ├─ budget/                      # budget page (RSC, force-dynamic) — see §19
    │  ├─ chat/                       # chat page
    │  ├─ dashboard/                  # main dashboard (RSC, force-dynamic)
+   │  ├─ profile/                    # profile & Plus membership page (RSC) — see §20
    │  ├─ transactions/               # transactions page + add sub-route
    │  │  ├─ page.tsx                 # list (RSC, fetch via api.transactions.$get)
    │  │  └─ add/
@@ -93,10 +94,13 @@ budgie/
     │  ├─ add-transaction-wizard.tsx # 3-step flow (type → details → review), CategorySelect
     │  ├─ transaction-item.tsx       # minimalist list row (tap → detail sheet)
     │  ├─ transactions-view.tsx      # search + list + date grouping + delete
-    │  ├─ transaction-detail-sheet.tsx # bottom sheet with full info + confirm Dialog before delete
-    │  ├─ cashflow-card.tsx          # donut chart (income/expense), title prop, radius 64
-    │  ├─ asset-growth-card.tsx      # Apple-style bar chart (12-month asset trajectory), "use client" hover tooltip
-    │  ├─ budget-summary-cards.tsx   # Monthly + Daily budget summary cards (progress + remaining/over caption)
+     │  ├─ transaction-detail-sheet.tsx # bottom sheet with full info + confirm Dialog before delete
+     │  ├─ cashflow-card.tsx          # donut chart (income/expense), title prop, radius 64
+     │  ├─ asset-growth-card.tsx      # Apple-style bar chart (12-month asset trajectory), "use client" hover tooltip
+     │  ├─ account-tab.tsx           # async RSC: fetches api.user.$get (plus status) → renders <AccountTabView> (sync presentational, testable)
+     │  ├─ upgradePlusButton.tsx      # "use client" — !plus → opens <PlusPaymentWizard>; plus=true → PATCH api.user downgrade
+     │  ├─ plus-payment-wizard.tsx   # "use client" — 3-step QRIS checkout Dialog (package → QR → success), polls api.plus.status
+     │  ├─ budget-summary-cards.tsx   # Monthly + Daily budget summary cards (progress + remaining/over caption)
     │  ├─ spending-streams-chart.tsx # "use client" horizontal bar chart — per-category expense this month + budget marker ticks
     │  ├─ budgets-list.tsx           # §7.2 rounded list rows + empty state; exports BudgetRow type; owns BudgetDetailSheet state
     │  ├─ add-budget-dialog.tsx      # 3-step wizard in Dialog (period → category+amount → review)
@@ -119,30 +123,38 @@ budgie/
     │  └─ format.ts                   # formatRupiah / formatBalanceInput / formatDate / formatTime / formatDateTimeLocalValue
    ├─ server/                        # ALL backend logic lives here
    │  ├─ index.ts                    # Hono app (NO basePath), mounts routers; exports type App
-   │  ├─ routes/                     # Layer 1: routers
-   │  │  ├─ budgets.ts
-   │  │  ├─ subscriptions.ts
-   │  │  ├─ balance-accounts.ts
-   │  │  └─ transactions.ts
-   │  ├─ controllers/                # Layer 2: controllers
-   │  │  ├─ budgets.ts
-   │  │  ├─ subscriptions.ts
-   │  │  ├─ balance-accounts.ts
-   │  │  └─ transactions.ts
-   │  ├─ services/                   # Layer 3: services
-   │  │  ├─ budgets.ts
-   │  │  ├─ subscriptions.ts
-   │  │  ├─ balance-accounts.ts
-   │  │  ├─ transactions.ts          # $transaction balance auto-update (see §17)
-   │  │  └─ accounts.ts              # (reserved / empty)
-   │  ├─ middleware/
-   │  │  └─ auth.ts                  # requireAuth + AppEnv (Variables: user, session)
-   │  └─ schemas/
-    │  ├─ budget.ts                # app-level Zod (.pick + .extend on generated), z.enum(EXPENSE_CATEGORIES)
-    │  ├─ subscription.ts          # .pick { name, amount, currency, category, periodDays, startDate, active } + .extend overrides
-    │  ├─ balance-account.ts
-    │  ├─ transaction.ts           # z.enum type + z.enum(ALL_CATEGORIES) + .refine() transfer + per-type category validation
-    │  ├─ account.ts
+    │  ├─ routes/                     # Layer 1: routers
+    │  │  ├─ budgets.ts
+    │  │  ├─ subscriptions.ts
+    │  │  ├─ balance-accounts.ts
+    │  │  ├─ transactions.ts
+    │  │  ├─ user.ts                  # /api/user — get/patch the authenticated user's plus flag
+    │  │  └─ plus.ts                  # /api/plus — checkout, status, simulate-payment (authed) + webhook (public)
+    │  ├─ controllers/                # Layer 2: controllers
+    │  │  ├─ budgets.ts
+    │  │  ├─ subscriptions.ts
+    │  │  ├─ balance-accounts.ts
+    │  │  ├─ transactions.ts
+    │  │  ├─ user.ts
+    │  │  └─ plus.ts
+    │  ├─ services/                   # Layer 3: services
+    │  │  ├─ budgets.ts
+    │  │  ├─ subscriptions.ts
+    │  │  ├─ balance-accounts.ts
+    │  │  ├─ transactions.ts          # $transaction balance auto-update (see §17)
+    │  │  ├─ user.ts                  # getPlusStatus / updatePlusStatus — findUnique (User IS the user, no findFirst ownership)
+    │  │  ├─ plus.ts                  # createCheckout / getStatus / simulatePaymentForOrder / handleWebhook (orchestrates midtrans.ts + PlusOrder + User)
+    │  │  └─ accounts.ts              # (reserved / empty)
+    │  ├─ middleware/
+    │  │  └─ auth.ts                  # requireAuth + AppEnv (Variables: user, session)
+    │  └─ schemas/
+     │  ├─ budget.ts                # app-level Zod (.pick + .extend on generated), z.enum(EXPENSE_CATEGORIES)
+     │  ├─ subscription.ts          # .pick { name, amount, currency, category, periodDays, startDate, active } + .extend overrides
+     │  ├─ balance-account.ts
+     │  ├─ transaction.ts           # z.enum type + z.enum(ALL_CATEGORIES) + .refine() transfer + per-type category validation
+     │  ├─ user.ts                  # UpdateUserSchema = .pick({ plus: true }).extend({ plus: z.boolean() })
+     │  ├─ plus.ts                  # WebhookNotificationSchema (Midtrans notification shape) + CheckoutResponse/StatusResponse interfaces
+     │  ├─ account.ts
     │  └─ generated/               # ⚠ generated by prisma-zod-generator (gitignored)
    └─ generated/
       └─ prisma/                     # ⚠ generated Prisma client (gitignored)
@@ -575,11 +587,16 @@ import { budgets } from "@/server/routes/budgets";
 import { subscriptions } from "@/server/routes/subscriptions";
 import { balanceAccounts } from "@/server/routes/balance-accounts";
 import { transactions } from "@/server/routes/transactions";
+import { user } from "@/server/routes/user";
+import { plus, plusWebhook } from "@/server/routes/plus";
 import type { AppEnv } from "@/server/middleware/auth";
 
 export const app = new Hono<AppEnv>()           // NO basePath — handler strips /api
   .use(logger())
   .get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }))
+  .route("/user", user)
+  .route("/plus", plus)                         // authed: checkout, status, simulate-payment
+  .route("/plus/webhook", plusWebhook)          // PUBLIC: no requireAuth (Midtrans → server)
   .route("/budgets", budgets)
   .route("/subscriptions", subscriptions)
   .route("/balance-accounts", balanceAccounts)
@@ -634,6 +651,7 @@ model User {
   email         String
   emailVerified Boolean   @default(false)
   image         String?
+  plus          Boolean   @default(false)    // Budgie Plus membership flag (migration 20260719121457)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions        Session[]
@@ -729,6 +747,21 @@ model Subscription {
   @@unique([userId, name])   // one subscription per (user, name)
   @@index([userId])
   @@map("subscription")
+}
+
+model PlusOrder {
+  id        String    @id @default(cuid())
+  orderId   String    @unique               // Midtrans order id (BUDGIE-PLUS-…)
+  userId    String
+  amount    Float                            // price paid (first-month or regular)
+  status    String    @default("pending")   // pending | settlement | expire | …
+  paidAt    DateTime?                        // set when status → settlement
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("plus_order")
 }
 
 model BalanceAccount {
@@ -1632,3 +1665,167 @@ confirm-dialog-gated delete.
   They're a planning/tracking surface — the UI computes the next billing date
   client-side via `nextBillingDate(startDate, periodDays)`. Auto-deduct is a
   future feature.
+
+---
+
+## 20. Profile & Plus UI (frontend)
+
+The profile page (`src/app/profile/page.tsx`, RSC) is the account & subscription
+surface: identity card, Plus membership management, and sign-out. The Plus
+checkout flow uses a **mock Midtrans QRIS** payment wizard — every mock piece
+is clearly marked and designed to be swapped for the real Midtrans SDK without
+touching the frontend.
+
+### Data flow (RSC)
+
+1. **Session**: `auth.api.getSession({ headers: await headers() })` → redirect
+   to `/sign-in` if absent.
+2. **Plus status**: `api.user.$get` (cookie-forwarded) → `{ plus: boolean }`.
+   Guards `res.ok` + 401 → redirect. On non-OK, `plus` defaults to `false`
+   (graceful fallback — the upgrade card shows).
+
+### Layout
+
+```
+<PageShell>
+  header: h1 "Account" + Back (outline) + SignOutButton (softred)
+
+  {/* Identity card — black, centered, staggered entrance */}
+  <div rounded-[35px] bg-black animate-[profileReveal]>
+    avatar (80px, getInitials) + name + email + tier pill (Plus=green / Free=white/10)
+    hairline divider + membership id
+  </div>
+
+  {plus ? (
+    {/* Plus member card — white, border, shadow, staggered entrance */}
+    <div rounded-[35px] border border-black/10 bg-white>
+      "Budgie Plus" + "Active" badge (success) + plan/payment inset card
+      <UpgradePlusButton plus={true} /> → outline "Downgrade to Free"
+    </div>
+  ) : (
+    {/* Upgrade card — white, border, shadow, staggered entrance */}
+    <div rounded-[35px] border border-black/10 bg-white>
+      "Budgie Plus" + "50% off your first month"
+      hero price: Rp 24.500 (green) + struck Rp 49.000 + "/month"
+      "Then Rp 49.000 per month. Cancel anytime."
+      payment/billing inset card
+      <UpgradePlusButton plus={false} /> → success "Upgrade to Plus" (opens wizard)
+    </div>
+  )}
+</PageShell>
+```
+
+The conditional rendering ensures **one `variant="success"` CTA per surface**
+(§12): the upgrade card shows the wizard trigger (success variant), the Plus
+card shows an outline Downgrade button — never two greens at once. Both cards
+use the §4.6 AccountCard shape (`rounded-[35px] border border-black/10 shadow-
+[0_4px_24px_-8px_rgba(0,0,0,0.08)]`) — no saturated green background (the
+sign-in screen is the only saturated surface per §9). Real pricing (Rp 24.500
+first month / Rp 49.000 regular) — no placeholders. Entrance animations use
+the `profileReveal` keyframe (8px slide-up + blur-in, 200ms ease-out,
+`motion-reduce` gated) with staggered delays (0ms / 60ms / 120ms).
+
+### Components
+
+| File | Role |
+| ---- | ---- |
+| `src/app/profile/page.tsx` (RSC) | Auth gate + fetch `api.user.$get` (cookie-forwarded) + conditional Plus/upgrade card. Black identity card (avatar, name, email, tier pill, membership ID) + white card (upgrade pricing or Plus member status). Real pricing (Rp 24.500 / Rp 49.000). Staggered `profileReveal` entrance animations. |
+| `src/components/upgradePlusButton.tsx` (`"use client"`) | Two-mode button. `plus=false` → renders `<PlusPaymentWizard>` with `triggerVariant="success" triggerSize="lg" triggerFullWidth triggerLabel="Upgrade to Plus"`. `plus=true` → full-width `outline` "Downgrade to Free" button: PATCHes `api.user.$patch({ json: { plus: false } })` with loading + error pill (§7.6), then `router.refresh()`. No payment flow for downgrade. |
+| `src/components/plus-payment-wizard.tsx` (`"use client"`) | 3-step Dialog-wizard (§14.3 pattern). Accepts `triggerVariant`/`triggerSize`/`triggerFullWidth`/`triggerLabel` props. **Step 1**: hero price (Rp 24.500 green + struck Rp 49.000) + "Then Rp 49.000 per month. Cancel anytime." + inset pricing card (first-month, regular, QRIS) + `success` "Continue to pay" → `POST /api/plus/checkout`. **Step 2**: QRIS display — `<QRCodeSVG>` from `qrcode.react` (renders `qrString` as a real scannable QR), "Scan with your e-wallet" title, spinning `Loader2` "Waiting for payment…", `outline` "I've paid" → `POST /api/plus/simulate-payment/:orderId`, `outline` "Cancel". Polls `GET /api/plus/status/:orderId` every 3s. On `settlement` → step 3. **Step 3**: "Welcome to Budgie Plus" + `success` "Done" → close + `router.refresh()`. Step transitions use `stepReveal` keyframe (6px slide-up + fade, 200ms, `motion-reduce` gated). No decorative icons. |
+| `src/components/account-tab.tsx` (async RSC) | Fetches `api.user.$get` → renders `<AccountTabView plus={...} userName={...} />`. Shows "Get Budgie Plus" `success` button (links to `/profile`) only when `plus === false`. |
+| `src/components/account-tab.tsx` → `AccountTabView` (sync presentational) | The exported sync component — **test this, not the async wrapper** (React Testing Library can't await async server components in jsdom). Props: `{ userName, plus }`. |
+| `src/lib/midtrans.ts` | **Mock Midtrans QRIS client**. `createQrisTransaction` (→ `{ qrString, status, expiresAt }`), `getTransactionStatus`, `simulatePayment` (**MOCK ONLY**), `verifyWebhookSignature` (mock: always true), `parseWebhookNotification`. Every function marked `// === MOCK: replace with midtrans-client ===`. In-memory `Map` store. Generates EMVCo-style QRIS strings (`00020101021226...`). |
+
+### The mock Midtrans QRIS flow
+
+```
+Frontend                          Backend (src/server/services/plus.ts)
+   │
+   │  POST /api/plus/checkout
+   │─────────────────────────────►│ createCheckout(userId)
+   │                               │  → generate orderId (BUDGIE-PLUS-…)
+   │                               │  → midtrans.createQrisTransaction (MOCK)
+   │                               │  → prisma.plusOrder.create (pending)
+   │  ◄────────────────────────────│  201 { orderId, qrString, status, expiresAt }
+   │
+   │  render QR (qrcode.react)
+   │  poll GET /api/plus/status/:orderId every 3s
+   │─────────────────────────────►│ getStatus(userId, orderId)
+   │                               │  → ownership check (findFirst orderId+userId)
+   │                               │  → midtrans.getTransactionStatus (MOCK)
+   │  ◄────────────────────────────│  { transactionStatus: "pending", plus: false }
+   │
+   │  user clicks "I've paid" (MOCK SIMULATION)
+   │  POST /api/plus/simulate-payment/:orderId
+   │─────────────────────────────►│ simulatePaymentForOrder(userId, orderId)
+   │                               │  → ownership check
+   │                               │  → midtrans.simulatePayment (MOCK: pending→settlement)
+   │                               │  → prisma.plusOrder.update (status, paidAt)
+   │                               │  → prisma.user.update (plus = true)
+   │  ◄────────────────────────────│  { transactionStatus: "settlement" }
+   │
+   │  step 3: "Welcome to Budgie Plus"
+   │  router.refresh()
+   ▼
+```
+
+**Real Midtrans integration** (swap path):
+1. `bun add midtrans-client`
+2. In `src/lib/midtrans.ts`: replace each `// === MOCK ===` function body with
+   the corresponding `midtransClient.SnapBi.qris()` SDK call. `createQrisTransaction`
+   → `.createPayment(externalId)`, `getTransactionStatus` → `.getStatus(externalId)`,
+   `verifyWebhookSignature` → `.notification().isWebhookNotificationVerified()`.
+3. Remove `simulatePayment()` from `midtrans.ts` and the
+   `POST /api/plus/simulate-payment/:orderId` route + controller + service
+   function — the webhook replaces it.
+4. Keep `plus-payment-wizard.tsx` **unchanged** — it already polls
+   `GET /api/plus/status/:orderId`, which will see `settlement` when the real
+   webhook grants Plus. The "I've paid" button can stay as a "check status"
+   action or be removed.
+5. Set `MIDTRANS_SERVER_KEY` / `MIDTRANS_CLIENT_KEY` env vars.
+6. Everything else (PlusOrder model, services, frontend) stays the same.
+
+### The `PlusOrder` model
+
+```prisma
+model PlusOrder {
+  id        String    @id @default(cuid())
+  orderId   String    @unique       // Midtrans order id (BUDGIE-PLUS-…)
+  userId    String
+  amount    Float                    // price paid (first-month or regular)
+  status    String    @default("pending")  // pending | settlement | expire | …
+  paidAt    DateTime?                // set when status → settlement
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(...)
+  @@index([userId])
+  @@map("plus_order")
+}
+```
+
+- `orderId` is `@unique` — one Midtrans order per row.
+- `status` is a `String` (not an enum) so Midtrans' free-form status values
+  (`settlement`, `capture`, `expire`, `cancel`, `deny`, `refund`) don't need a
+  migration when Midtrans adds new ones.
+- `paidAt` is nullable — only set on `settlement` / `capture+accept`.
+
+### Gotchas
+
+- **The webhook is public** (`POST /api/plus/webhook`, no `requireAuth`).
+  Midtrans calls it server-to-server. The mock `verifyWebhookSignature` always
+  returns `true` — **NEVER ship this in production**. An attacker could POST a
+  fake `{ transaction_status: "settlement" }` and grant themselves Plus. The
+  real integration must verify the `X-Signature` header via the Midtrans SDK.
+- **`qrcode.react` renders the mock QR string as a real scannable QR** — but a
+  real e-wallet would reject it (the mock merchant isn't registered). The mock
+  flow uses `simulatePayment()` to mark it paid. When real Midtrans is wired,
+  the same `QRCodeSVG` component renders the real `qr_string` unchanged.
+- **Polling is a fallback, not the primary signal.** The webhook is the source
+  of truth for payment status. The frontend polls `GET /api/plus/status` every
+  3s as a backup (in case the webhook is delayed), but the "I've paid" button
+  (mock) or the webhook (real) is what actually transitions the order.
+- **`PlusOrder.status` is a `String`, not a Prisma enum** — Midtrans may add
+  new status values. Using `String` avoids a migration. The service handles
+  the known values; unknown ones are stored as-is.
+- **`AccountTabView` is the sync presentational component** — test that, not
+  the async `AccountTab` wrapper (jsdom can't await async server components).

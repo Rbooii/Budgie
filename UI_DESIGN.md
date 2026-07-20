@@ -178,8 +178,8 @@ Body scroll locked while open. Every other modal-style surface in the app
 ### 4.5 `Sidebar` — `src/components/sidebar.tsx`
 - **Desktop** (`md:flex`, w-250px): wordmark "Budgie" centered, nav items
   `rounded-[35px] px-[22px] py-[10px] gap-[15px]`, active/inactive both use
-  `bg-[#F2F2F2]` (active is solid fill, inactive fills on hover). A
-  `border-t border-[#F2F2F2]` divides nav from `SignOutButton`.
+  `bg-[#F2F2F2]` (active is solid fill, inactive fills on hover).
+  **Navigation-only** — no `SignOutButton` (that lives on the profile page).
   **`md:sticky md:top-0 self-start`** — pins to viewport top while the content
   column scrolls (stays in flex flow, no layout break vs `absolute`/`fixed`).
   `self-start` overrides flex `align-items: stretch` so the sidebar keeps its
@@ -507,6 +507,8 @@ scrim variant (§3) so it reads against the saturated background.
 | Eye flip | `rotateY(90deg)→0` with a small overshoot (`-8deg @1.08`) at 60% | `0.25s ease-out` (`@keyframes eyeFlip`) |
 | Wizard progress | bar `width` grows | `300ms ease-out` |
 | Budget card hover | shadow deepens (`0_4px_24px_-8px_*`→`0_8px_32px_-10px_*`) — NO scale | `transform duration-200` |
+| Profile card entrance | 8px slide-up + blur(4px)→0, staggered (0/60/120ms) | `0.2s ease-out` (`@keyframes profileReveal`) |
+| Wizard step transition | 6px slide-up + fade, keyed by step | `0.2s ease-out` (`@keyframes stepReveal`) |
 
 Motion rules:
 - **No bounce, no overshoot** except the eye icon's intentional 8°/-8° flip
@@ -636,6 +638,9 @@ When introducing a new screen, dialog, list, or component, run through this:
 | 3-step wizard in a Dialog (budgets) | `src/components/add-budget-dialog.tsx` |
 | Single-dialog form (subscriptions) | `src/components/add-subscription-dialog.tsx` |
 | Bottom sheet + confirm dialog (budget/subscription) | `src/components/budget-detail-sheet.tsx`, `src/components/subscription-detail-sheet.tsx` |
+| 3-step QRIS checkout wizard (Plus) | `src/components/plus-payment-wizard.tsx` |
+| Profile page (identity + Plus membership) | `src/app/profile/page.tsx`, `src/components/upgradePlusButton.tsx` |
+| Mock Midtrans QRIS client | `src/lib/midtrans.ts` (every function marked `// === MOCK ===`, swap for `midtrans-client` SDK) |
 | Empty state with CTA (dashboard + wizard + budgets + subscriptions) | `src/components/quick-insight-empty-state.tsx`, `src/app/transactions/add/page.tsx`, `src/components/budgets-list.tsx`, `src/components/subscription-list.tsx` |
 | Delete confirm dialog (modal-on-sheet) | `src/components/transaction-detail-sheet.tsx`, `src/components/budget-detail-sheet.tsx`, `src/components/subscription-detail-sheet.tsx` |
 | Premade categories | `src/lib/categories.ts` |
@@ -747,6 +752,52 @@ const Icon = categoryIcon(b.category);  // ❌ returns a type, lint error
 <Icon className="w-5 h-5" />
 ```
 This applies to any helper that maps data → icon.
+
+### 14.7 Plus payment wizard (`PlusPaymentWizard`)
+`src/components/plus-payment-wizard.tsx` (`"use client"`) is a 3-step
+Dialog-wizard (§14.3 pattern) for Budgie Plus QRIS checkout. The QRIS payment
+flow is **mock Midtrans** — the wizard is designed so swapping to real
+Midtrans requires zero frontend changes. **No decorative icons** — typography,
+the QR code, and real pricing carry the design (§1: minimalism over ornament).
+
+The wizard accepts `triggerVariant`, `triggerSize`, `triggerFullWidth`, and
+`triggerLabel` props so the parent (`UpgradePlusButton`) can control the
+trigger button's appearance without wrapping it.
+
+- **Step 1 — Package summary**: dialog title "Get Budgie Plus" (in the shared
+  header) + hero price block (`text-3xl font-bold tabular-nums tracking-tight
+  text-[#1F9B29]` Rp 24.500 + struck Rp 49.000 + "/month") + "Then Rp 49.000
+  per month. Cancel anytime." caption + inset pricing card
+  (`rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]`, §7.3 pattern)
+  with three rows: first-month price (struck + green), regular price, payment
+  method ("QRIS" text only — no icon). `success` "Continue to pay" CTA →
+  `POST /api/plus/checkout`.
+- **Step 2 — QRIS display**: centered `QRCodeSVG` (from `qrcode.react`,
+  176×176 inside a `rounded-[20px] border border-black/10` white container)
+  rendering the `qrString` as a real scannable QR — the QR is the hero, no
+  decorative chrome around it. Below: "Scan with your e-wallet" title +
+  helper desc (GoPay, OVO, DANA, ShopeePay). Spinning `Loader2` (w-3.5 h-3.5,
+  functional indicator) + "Waiting for payment…". Two `outline` buttons:
+  "I've paid" (triggers `POST /api/plus/simulate-payment/:orderId` — **mock
+  only**) + "Cancel". Background-polls `GET /api/plus/status/:orderId` every
+  3s as a fallback.
+- **Step 3 — Success**: "Welcome to Budgie Plus" `text-2xl font-medium` +
+  "Your Plus membership is now active." `text-sm text-black/40` + `success`
+  "Done" → closes dialog + `router.refresh()`. No icon circle — typography is
+  the hero, consistent with the minimalist philosophy.
+- **Progress bar**: 2px slim track (`h-0.5 bg-black/[0.06]` with `bg-[#00C610]`
+  fill, width = `(step/3)*100%`), hidden on step 3 (success is a full-card
+  celebration, not a progress step).
+- **Step transitions**: each step's content div has `key={step}` +
+  `animate-[stepReveal_0.2s_ease-out] motion-reduce:animate-none` for a
+  subtle 6px slide-up + fade on step change.
+- **Error**: §7.6 callout pill on checkout/simulate failure.
+
+> **Mock → real Midtrans swap**: the wizard polls `GET /api/plus/status/:orderId`
+> which will see `settlement` when the real Midtrans webhook grants Plus. The
+> "I've paid" button can stay as a "check status" action or be removed. The
+> `QRCodeSVG` component renders the real Midtrans `qr_string` unchanged —
+> same component, no frontend change needed.
 
 ---
 

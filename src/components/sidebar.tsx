@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRightLeft, House, MessageCircle, PiggyBank } from "lucide-react";
-import { SignOutButton } from "@/app/dashboard/sign-out-button";
 
 type SidebarItem = {
   icon: React.ReactNode;

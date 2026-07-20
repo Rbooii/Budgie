@@ -27,6 +27,7 @@ model User {
   transactions    Transaction[]
   budgets         Budget[]
   subscriptions   Subscription[]
+  plusOrders      PlusOrder[]
 
   @@unique([email])
   @@map("user")
@@ -153,6 +154,21 @@ model Subscription {
   @@unique([userId, name])
   @@index([userId])
   @@map("subscription")
+}
+
+model PlusOrder {
+  id        String    @id @default(cuid())
+  orderId   String    @unique
+  userId    String
+  amount    Float
+  status    String    @default("pending")
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("plus_order")
 }
 
 enum Category {

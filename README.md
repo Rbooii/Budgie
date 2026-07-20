@@ -20,13 +20,13 @@ CI/CD, and fast feature shipping with rigorous type-safety and testing.
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![Bun](https://img.shields.io/badge/Bun-1.3-000000?style=flat-square&logo=bun&logoColor=white)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-17%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
+[![Tests](https://img.shields.io/badge/tests-479%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
 
 ---
 
-**Project completion: 85%**
+**Project completion: 90%**
 
-`████████████████████████████████████████████████████░░░░░░░░░░░░░░░░` 85%
+`██████████████████████████████████████████████████████████░░░░░░░░` 90%
 
 </div>
 
@@ -58,10 +58,12 @@ contribution — human or AI — follows the same structured workflow.
 - **Automatic balance reconciliation** — Income/expense/transfer auto-updates account balances; delete reverses the effect; insufficient-balance guard prevents negative balances
 - **Budgets** — Full CRUD (`/api/budgets`); budget page with monthly + daily summary cards (progress bars, remaining/over captions), spending-streams horizontal bar chart (per-category expense this month with budget-limit markers + hover tooltips), §7.2 rounded budgets list with mini progress bars, 3-step add-budget wizard (period → category + amount → review) inside a Dialog, bottom-sheet detail + confirm-dialog delete. One budget per `(userId, category)`; `periodDays` supports daily/weekly/monthly/custom.
 - **Subscriptions** — Full CRUD (`/api/subscriptions`); subscription list with next-billing-date computation (`startDate + ceil((now-start)/periodDays)*periodDays`), single-dialog add form (name, category, billing cycle, start date, amount), bottom-sheet detail + confirm-dialog delete. One subscription per `(userId, name)`; recurring charges tracked independently of transactions (no auto-deduct).
+- **Budgie Plus subscription** — Profile page with identity card + Plus membership management. 3-step QRIS checkout wizard (`PlusPaymentWizard`) via **mock Midtrans QRIS**: package summary → QR code display (real scannable QR via `qrcode.react`) → success. Backend `/api/plus` 3-layer route (checkout, status polling, simulate-payment, public webhook) + `src/lib/midtrans.ts` mock client — every function marked `// === MOCK ===` and designed to swap to `midtrans-client` SDK with zero frontend changes. `PlusOrder` Prisma model tracks order status. Downgrade is a direct `api.user` PATCH (no payment flow).
+- **Profile page** — Account & subscription surface (`/profile`): black identity card (avatar initials, email + tier, membership id), conditional Plus member card / upgrade card (one `variant="success"` CTA per surface), sign-out button (moved from sidebar).
 - **PDF Export** — Client-side PDF generation (all / filtered / date range) via jsPDF + autoTable
 - **Premade categories** — Per-type category lists (income/expense/transfer) — users pick from curated lists, no free-text chaos
 - **Responsive design** — Mobile-first with fixed bottom nav; desktop reveals a persistent sidebar. Calm minimal fintech aesthetic.
-- **Testing** — Vitest + jsdom + Testing Library (17 tests: component + service layer)
+- **Testing** — Vitest + jsdom + Testing Library (479 tests across 44 suites: component + service + controller + schema + mock midtrans layers)
 
 ### In Progress
 
@@ -88,6 +90,7 @@ contribution — human or AI — follows the same structured workflow.
 | Styling | Tailwind CSS v4 | 4.3.x |
 | Testing | Vitest + jsdom + @testing-library/react | 4.x |
 | PDF | jsPDF + jsPDF-AutoTable | 4.x / 5.x |
+| QR codes | qrcode.react (Plus QRIS checkout) | 4.x |
 | Lint | ESLint 9 + eslint-config-next | 9.x |
 
 ## Quick Start
@@ -200,32 +203,36 @@ budgie/
 │  │  └─ api/
 │  │     ├─ [[...route]]/         # catch-all -> Hono
 │  │     └─ auth/[...all]/        # better-auth handler
-│  ├─ components/                 # React UI (24+ components)
-│  ├─ lib/                        # auth, prisma, api-client, format, categories, category-icon, budget
+│  ├─ components/                 # React UI (28+ components, incl. plus-payment-wizard, upgradePlusButton)
+│  ├─ lib/                        # auth, prisma, api-client, format, categories, category-icon, budget, midtrans (mock QRIS)
 │  └─ server/                     # ALL backend logic
-│     ├─ routes/                  # Layer 1: HTTP wiring (budgets, subscriptions, balance-accounts, transactions)
+│     ├─ routes/                  # Layer 1: HTTP wiring (budgets, subscriptions, balance-accounts, transactions, user, plus)
 │     ├─ controllers/             # Layer 2: I/O + type mapping
 │     ├─ services/                # Layer 3: pure logic + Prisma
 │     ├─ schemas/                 # Zod (.pick + .extend on generated)
 │     └─ middleware/auth.ts       # requireAuth + AppEnv
-├─ prisma/schema.prisma           # datasource + 2 generators (client, zod)
-├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets)
-├─ AGENTS.md                      # AI agent rules
-├─ UI_DESIGN.md                   # UI/UX design reference (§14 budgets UI patterns)
+├─ prisma/schema.prisma           # datasource + 2 generators (client, zod) + PlusOrder model
+├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets, §20 profile & Plus)
+├── AGENTS.md                     # AI agent rules
+├── UI_DESIGN.md                   # UI/UX design reference (§14 budgets + Plus wizard UI patterns)
 └─ vitest.config.ts               # test config (jsdom + Testing Library)
 ```
 
 ## Testing
 
 ```bash
-bun run test          # 17 tests, 2 suites (one-shot)
+bun run test          # 479 tests, 44 suites (one-shot)
 bun run test:watch    # watch mode for development
 ```
 
 | Suite | Scope | Cases |
 | --- | --- | --- |
-| `src/components/account-card.test.tsx` | Component — confirm dialog flow, delete safety, error paths, Escape-during-loading guard | 9 |
-| `src/server/services/balance-accounts.test.ts` | Service — ownership scoping, cross-user delete prevention, CRUD contracts | 8 |
+| `src/components/account-card.test.tsx` | Component — confirm dialog flow, delete safety, error paths | 9 |
+| `src/server/services/balance-accounts.test.ts` | Service — ownership scoping, cross-user delete prevention | 8 |
+| `src/server/services/plus.test.ts` | Service — checkout, status polling, simulate-payment, webhook settlement | 15 |
+| `src/lib/midtrans.test.ts` | Mock Midtrans client — QRIS generation, status transitions, webhook parsing | 12 |
+| `src/components/plus-payment-wizard.test.tsx` | Component — 3-step QRIS wizard flow, simulate payment, success transition | 8 |
+| `src/components/upgradePlusButton.test.tsx` | Component — upgrade (opens wizard) vs downgrade (PATCH) flows | 8 |
 
 Tests are fully deterministic — no real database, no HTTP server, no auth
 cookies. All Prisma calls and API clients are mocked at the module level.
