@@ -1,0 +1,226 @@
+import type { TransactionRow } from "@/components/transaction-item";
+import type { BudgetRow } from "@/components/budgets-list";
+import type { SpendingStream, SpendingStreamsBudget } from "@/components/spending-streams-chart";
+
+export const MOCK_CASHFLOW = {
+  title: "This Month's Cashflow",
+  date: "December 2026",
+  income: 8_420_000,
+  expense: 3_180_500,
+};
+
+export const MOCK_GROWTH = {
+  year: 2026,
+  startingValue: 12_400_000,
+  currentTotal: 18_650_000,
+  currentMonth: 11,
+  data: [
+    { month: 0, value: 12_540_000 },
+    { month: 1, value: 13_120_000 },
+    { month: 2, value: 13_010_000 },
+    { month: 3, value: 14_200_000 },
+    { month: 4, value: 14_980_000 },
+    { month: 5, value: 15_320_000 },
+    { month: 6, value: 15_900_000 },
+    { month: 7, value: 16_410_000 },
+    { month: 8, value: 16_880_000 },
+    { month: 9, value: 17_460_000 },
+    { month: 10, value: 18_010_000 },
+    { month: 11, value: 18_650_000 },
+  ],
+  activeMonths: Array.from({ length: 12 }, () => true),
+};
+
+export const MOCK_SPENDING_STREAMS: SpendingStream[] = [
+  { category: "FoodAndDrink", spent: 1_240_000 },
+  { category: "Transportation", spent: 680_000 },
+  { category: "Shopping", spent: 540_000 },
+  { category: "Entertainment", spent: 320_000 },
+  { category: "Utilities", spent: 280_000 },
+];
+
+export const MOCK_SPENDING_BUDGETS: SpendingStreamsBudget[] = [
+  { category: "FoodAndDrink", amount: 1_500_000 },
+  { category: "Transportation", amount: 800_000 },
+  { category: "Shopping", amount: 600_000 },
+  { category: "Entertainment", amount: 400_000 },
+  { category: "Utilities", amount: 350_000 },
+];
+
+export const MOCK_TRANSACTIONS: TransactionRow[] = [
+  {
+    id: "m1",
+    name: "Monthly Salary",
+    amount: 8_000_000,
+    type: "income",
+    category: "Salary",
+    date: "2026-12-01T09:00:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a1",
+    toBalanceAccountId: null,
+    balanceAccount: { id: "a1", name: "BCA Checking", currency: "IDR" },
+    toBalanceAccount: null,
+  },
+  {
+    id: "m2",
+    name: "Groceries",
+    amount: 184_500,
+    type: "expense",
+    category: "FoodAndDrink",
+    date: "2026-12-03T13:24:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a1",
+    toBalanceAccountId: null,
+    balanceAccount: { id: "a1", name: "BCA Checking", currency: "IDR" },
+    toBalanceAccount: null,
+  },
+  {
+    id: "m3",
+    name: "Move to Savings",
+    amount: 1_500_000,
+    type: "transfer",
+    category: "Savings",
+    date: "2026-12-05T19:10:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a1",
+    toBalanceAccountId: "a2",
+    balanceAccount: { id: "a1", name: "BCA Checking", currency: "IDR" },
+    toBalanceAccount: { id: "a2", name: "GoPay", currency: "IDR" },
+  },
+  {
+    id: "m4",
+    name: "Ride to Office",
+    amount: 28_000,
+    type: "expense",
+    category: "Transportation",
+    date: "2026-12-06T08:05:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a2",
+    toBalanceAccountId: null,
+    balanceAccount: { id: "a2", name: "GoPay", currency: "IDR" },
+    toBalanceAccount: null,
+  },
+];
+
+export const MOCK_BUDGETS: BudgetRow[] = [
+  {
+    id: "b1",
+    category: "FoodAndDrink",
+    amount: 1_500_000,
+    currency: "IDR",
+    periodDays: 30,
+    createdAt: "2026-11-30T00:00:00.000Z",
+    updatedAt: "2026-11-30T00:00:00.000Z",
+  },
+  {
+    id: "b2",
+    category: "Transportation",
+    amount: 800_000,
+    currency: "IDR",
+    periodDays: 30,
+    createdAt: "2026-11-30T00:00:00.000Z",
+    updatedAt: "2026-11-30T00:00:00.000Z",
+  },
+  {
+    id: "b3",
+    category: "Entertainment",
+    amount: 400_000,
+    currency: "IDR",
+    periodDays: 30,
+    createdAt: "2026-11-30T00:00:00.000Z",
+    updatedAt: "2026-11-30T00:00:00.000Z",
+  },
+];
+
+export const MOCK_BUDGETS_SPENT: Record<string, number> = {
+  FoodAndDrink: 1_240_000,
+  Transportation: 680_000,
+  Entertainment: 320_000,
+};
+
+export const MOCK_ACCOUNTS = [
+  { id: "a1", name: "BCA Checking", balance: 12_480_000, currency: "IDR", type: "bank" },
+  { id: "a2", name: "GoPay", balance: 1_240_000, currency: "IDR", type: "ewallet" },
+  { id: "a3", name: "Cash", balance: 820_000, currency: "IDR", type: "cash" },
+];
+
+export const MOCK_LIVE_POOL: TransactionRow[] = [
+  {
+    id: "lp1",
+    name: "Freelance Payout",
+    amount: 2_400_000,
+    type: "income",
+    category: "Freelance",
+    date: "2026-12-08T11:42:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a1",
+    toBalanceAccountId: null,
+    balanceAccount: { id: "a1", name: "BCA Checking", currency: "IDR" },
+    toBalanceAccount: null,
+  },
+  {
+    id: "lp2",
+    name: "Spotify",
+    amount: 54_990,
+    type: "expense",
+    category: "Entertainment",
+    date: "2026-12-08T08:15:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a2",
+    toBalanceAccountId: null,
+    balanceAccount: { id: "a2", name: "GoPay", currency: "IDR" },
+    toBalanceAccount: null,
+  },
+  {
+    id: "lp3",
+    name: "Coffee",
+    amount: 38_000,
+    type: "expense",
+    category: "FoodAndDrink",
+    date: "2026-12-08T07:20:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a3",
+    toBalanceAccountId: null,
+    balanceAccount: { id: "a3", name: "Cash", currency: "IDR" },
+    toBalanceAccount: null,
+  },
+  {
+    id: "lp4",
+    name: "Ride Home",
+    amount: 22_500,
+    type: "expense",
+    category: "Transportation",
+    date: "2026-12-07T22:10:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a2",
+    toBalanceAccountId: null,
+    balanceAccount: { id: "a2", name: "GoPay", currency: "IDR" },
+    toBalanceAccount: null,
+  },
+  {
+    id: "lp5",
+    name: "Refund",
+    amount: 120_000,
+    type: "income",
+    category: "Refund",
+    date: "2026-12-07T16:05:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a1",
+    toBalanceAccountId: null,
+    balanceAccount: { id: "a1", name: "BCA Checking", currency: "IDR" },
+    toBalanceAccount: null,
+  },
+  {
+    id: "lp6",
+    name: "Pay Savings",
+    amount: 500_000,
+    type: "transfer",
+    category: "Savings",
+    date: "2026-12-07T10:00:00.000Z",
+    adminFee: 0,
+    balanceAccountId: "a1",
+    toBalanceAccountId: "a2",
+    balanceAccount: { id: "a1", name: "BCA Checking", currency: "IDR" },
+    toBalanceAccount: { id: "a2", name: "GoPay", currency: "IDR" },
+  },
+];

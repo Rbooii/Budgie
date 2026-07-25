@@ -46,7 +46,7 @@ const TYPE_META: Record<
 
 interface TransactionItemProps {
   transaction: TransactionRow;
-  onClick: (t: TransactionRow) => void;
+  onClick?: (t: TransactionRow) => void;
 }
 
 export function TransactionItem({ transaction, onClick }: TransactionItemProps) {
@@ -69,7 +69,7 @@ export function TransactionItem({ transaction, onClick }: TransactionItemProps) 
   return (
     <button
       type="button"
-      onClick={() => onClick(transaction)}
+      onClick={() => onClick?.(transaction)}
       className="group w-full flex items-center gap-3.5 px-3.5 py-3.5 text-left rounded-2xl hover:bg-[#FAFAFA] transition"
     >
       <span
