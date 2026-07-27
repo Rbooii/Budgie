@@ -4,9 +4,11 @@ const FOOTER_LINKS = [
   {
     title: "Product",
     items: [
+      { label: "See it in motion", href: "#motion" },
       { label: "Features", href: "#features" },
-      { label: "Insights", href: "#insights" },
+      { label: "Stories", href: "#stories" },
       { label: "Pricing", href: "#pricing" },
+      { label: "FAQ", href: "#faq" },
     ],
   },
   {

@@ -4,10 +4,14 @@ import { AnimatedCounter } from "./animated-counter";
 import { ScrollProgress } from "./scroll-progress";
 import { LandingNav } from "./landing-nav";
 import { HeroPreview } from "./hero-preview";
+import { Marquee } from "./marquee";
+import { VideoShowcase } from "./video-showcase";
 import { FeatureGrid } from "./feature-grid";
 import { Showcase } from "./showcase";
+import { Vignettes } from "./vignettes";
 import { PrivacySpotlight } from "./privacy-spotlight";
 import { Pricing } from "./pricing";
+import { Faq } from "./faq";
 import { Footer } from "./footer";
 
 const STATS = [
@@ -54,10 +58,10 @@ export function LandingPage() {
                   Get started free
                 </Link>
                 <a
-                  href="#features"
+                  href="#motion"
                   className="inline-flex items-center justify-center text-sm font-semibold py-[10px] px-[20px] rounded-[35px] bg-white text-black border border-black/10 hover:bg-[#F2F2F2] active:scale-[0.98] transition transform duration-150"
                 >
-                  See how it works
+                  See it in motion
                 </a>
               </div>
             </Reveal>
@@ -86,10 +90,14 @@ export function LandingPage() {
         </Reveal>
       </section>
 
+      <Marquee />
+      <VideoShowcase />
       <FeatureGrid />
       <Showcase />
+      <Vignettes />
       <PrivacySpotlight />
       <Pricing />
+      <Faq />
 
       {/* Final CTA */}
       <section className="mx-auto max-w-screen-xl px-5 sm:px-8 py-12 sm:py-20">
