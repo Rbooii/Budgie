@@ -82,7 +82,7 @@ export function Vignettes() {
                 posterClassName={TINT_TILE[v.tint]}
                 frameClassName="aspect-[9/16] rounded-[28px] border border-black/[0.06] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] transition-shadow duration-200 group-hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.16)]"
                 posterContent={
-                  <span className="mt-3 rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-black/60">
+                  <span key={v.desc} className="mt-3 rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-black/60">
                     {v.kicker}
                   </span>
                 }

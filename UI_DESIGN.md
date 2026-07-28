@@ -648,6 +648,11 @@ When introducing a new screen, dialog, list, or component, run through this:
 | Budget/subscription period helpers | `src/lib/budget.ts` (`periodLabel`, `periodStartDate`, `nextBillingDate`, `startOfToday`, `startOfMonth`) |
 | Semantic type tints | `TYPE_META` in `transaction-item.tsx` and `transaction-detail-sheet.tsx`, `TYPES`/`AMOUNT_TYPE_TEXT` in `add-transaction-wizard.tsx`; budget/subscription tints in `budgets-list.tsx` / `subscription-list.tsx` (expense red / transfer orange) |
 | Formatting helpers | `src/lib/format.ts`, `src/lib/font-size.ts` |
+| Public landing page shell (marketing) | `src/app/page.tsx`, `src/components/landing/index.tsx` (`<LandingPage/>`), `landing-nav.tsx`, `scroll-progress.tsx`, `footer.tsx` |
+| The only `<video>` in the repo | `src/components/landing/auto-video.tsx` (`muted` + `loop` + `playsInline`, poster fade, `prefers-reduced-motion`), `video-showcase.tsx`, `vignettes.tsx` |
+| Reveal-on-scroll motion + animated counters | `src/components/landing/reveal.tsx`, `src/components/landing/animated-counter.tsx`, `src/components/landing/marquee.tsx` |
+| Plus pricing tiers + FAQ | `src/components/landing/pricing.tsx`, `src/components/landing/faq.tsx` |
+| Landing SEO/JSON-LD + video metadata | `src/app/page.tsx` (`openGraph.videos`, WebApplication/BreadcrumbList/FAQPage/VideoObject JSON-LD), `src/app/sitemap.ts`, `src/app/robots.ts`, `src/app/opengraph-image.tsx` |
 
 ---
 
@@ -813,3 +818,76 @@ for cards/buttons, `rounded-full` for icon tiles) and never stray into
 honors `motion-reduce`, and the only signature flourish is the per-character
 balance reveal. When in doubt: fewer borders, more whitespace, one primary
 CTA per surface, and reuse the existing tints before inventing new colors.
+
+---
+
+## 16. Landing Page — Marketing Surface (public `/`)
+
+`src/app/page.tsx` → `<LandingPage/>` (`src/components/landing/`) is Budgie's
+**public marketing surface**: a calm, airy, Apple/Wise-style product page
+that sits **outside** the auth-gated app. It is a React Server Component — no
+auth, no Prisma, no Hono — so its visual register is deliberately lighter and
+more spacious than the dense `rounded-2xl` list rows of the app. Read this
+section before touching anything under `src/components/landing/` (17 files).
+
+### Visual register vs the auth-gated app
+
+| Surface | Tone | Radii hero | Hero type |
+| --- | --- | --- | --- |
+| Auth-gated app (`/dashboard` …) | Calm minimal fintech, dense data | `rounded-2xl` rows, `rounded-[20px]` tiles | Tabular nums, `dynamicFontSize` |
+| Landing page (`/`) | Calm minimal product marketing, airy | `rounded-[28px]`/`rounded-[35px]` cards, `rounded-full` chips | Big `text-4xl → text-6xl` tracking-tight |
+
+The landing page does **not** use the income/expense/transfer semantic pastel
+tints (those belong to the app's transaction surfaces). It runs on **one brand
+green `#00C610` accent** plus white surfaces, `#FAFAFA` tints, and generous
+`py-20 sm:py-28` vertical rhythm inside `max-w-screen-xl px-5 sm:px-8`.
+
+### `AutoVideo` — the only `<video>` (canonical video spec)
+
+`src/components/landing/auto-video.tsx` is the sole `<video>` in the repo (a
+`"use client"` component): `muted` + `loop` + `playsInline`, a poster tint that
+fades out once the media can play, and a tasteful play glyph. It does **not**
+autoplay under `prefers-reduced-motion: reduce` (the poster stays — the text
+carries the message). Always render `<video>` through `AutoVideo`; never hand-roll
+a second video primitive. Canonical specs (`public/videos/` drop-in):
+
+| File | Role | Spec |
+| --- | --- | --- |
+| `brand.mp4` + `brand.webm` | "See it in motion" 16:9 walkthrough | 1920×1080, ~60s, silent, loopable, < 8MB |
+| `vignette-1..3.mp4`/`.webm` | Three 9:16 silent vignettes | 1080×1920, ~15s, silent, < 3MB |
+
+List `.webm` first, `.mp4` second — the browser picks the first it supports
+(modern Chromium/Firefox use `.webm`, Safari falls back to `.mp4`). The hosted
+`budgieDemo.mp4` Vercel-Blob URL is the same clip embedded in `README.md`'s demo
+`<video>` — keep the landing `AutoVideo` and the README demo in sync.
+
+### Motion (ties to §8)
+
+All landing motion is ≤300ms, `ease-out`, never bounces, always honors
+`motion-reduce`:
+
+- `Reveal` (`reveal.tsx`) — `IntersectionObserver` fade + small translate on enter.
+- `ScrollProgress` (`scroll-progress.tsx`) — thin top reading bar.
+- `AnimatedCounter` (`animated-counter.tsx`) — count-up on reveal.
+- `Marquee` (`marquee.tsx`) — infinite logos strip.
+
+Under `prefers-reduced-motion: reduce`, `Reveal`/`AnimatedCounter` render their
+final state immediately and `AutoVideo` keeps its poster.
+
+### Layout & type
+
+- **Eyebrow label** — `text-sm font-semibold text-[#00C610]` section openers.
+- **Hero headline** — `text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight`
+  with `leading-[1.05]`; supporting copy is `text-black/50` at `max-w-xl`.
+- **Section节奏** — consistent `py-20 sm:py-28`, `max-w-2xl` text widths.
+- **Stat tiles / pricing cards** — `rounded-[28px]` and `rounded-[35px]`,
+  `border border-black/[0.06]`, soft `shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)]`.
+- **Final CTA** — full-bleed `rounded-[35px] bg-[#00CE11]` block with one black
+  CTA button (one primary action per surface, per the app rule).
+
+### Reuse rules
+- Reuse the §2 color tokens and §6 radius system — **do not invent new colors**.
+- Motion follows §8 exactly (≤300ms, ease-out, `motion-reduce` gated).
+- Don't add auth, Prisma, or Hono here; this surface is static marketing only.
+- A missing `public/videos/` asset must never break the page — the poster stays
+  (do not "fix" the graceful no-op into an error state).

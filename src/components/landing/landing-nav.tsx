@@ -11,7 +11,11 @@ const NAV_LINKS = [
   { label: "FAQ", href: "#faq" },
 ] as const;
 
-export function LandingNav() {
+export function LandingNav({
+  session
+}:{
+  session : boolean
+}) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -45,7 +49,7 @@ export function LandingNav() {
             </a>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        {!session && <div className="flex items-center gap-2">
           <Link
             href="/sign-in"
             className="inline-flex items-center justify-center text-sm font-semibold py-[10px] px-[20px] rounded-[35px] bg-white text-black border border-black/10 hover:bg-[#F2F2F2] active:scale-[0.98] transition transform duration-150"
@@ -58,7 +62,15 @@ export function LandingNav() {
           >
             Get started
           </Link>
-        </div>
+        </div>}
+        {session && <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center text-sm font-semibold py-[10px] px-[20px] rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
+          >
+            Dashboard
+          </Link>
+        </div>}
       </nav>
     </header>
   );

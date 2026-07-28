@@ -13,6 +13,8 @@ import { PrivacySpotlight } from "./privacy-spotlight";
 import { Pricing } from "./pricing";
 import { Faq } from "./faq";
 import { Footer } from "./footer";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 const STATS = [
   { counter: <AnimatedCounter value={21} suffix="+" />, label: "premade categories" },
@@ -20,11 +22,18 @@ const STATS = [
   { counter: <AnimatedCounter value={12} />, label: "months of growth history" },
 ];
 
-export function LandingPage() {
+export async function LandingPage() {
+  const session = await auth.api.getSession({
+      headers: await headers(),
+  });
+  
+
   return (
     <main className="min-h-screen bg-white text-black">
       <ScrollProgress />
-      <LandingNav />
+      <LandingNav 
+        session = {session ? true : false}
+      />
 
       {/* Hero */}
       <section className="mx-auto max-w-screen-xl px-5 sm:px-8 pt-10 sm:pt-16 pb-16 sm:pb-24">

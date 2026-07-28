@@ -20,7 +20,14 @@ CI/CD, and fast feature shipping with rigorous type-safety and testing.
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![Bun](https://img.shields.io/badge/Bun-1.3-000000?style=flat-square&logo=bun&logoColor=white)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-479%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
+[![Tests](https://img.shields.io/badge/tests-480%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
+
+### Demo
+
+<video controls muted loop playsinline preload="metadata"
+  src="https://9a9a9kybzrewury8.public.blob.vercel-storage.com/budgieDemo.mp4">
+  <a href="https://9a9a9kybzrewury8.public.blob.vercel-storage.com/budgieDemo.mp4">Watch the Budgie demo</a>
+</video>
 
 ---
 
@@ -63,7 +70,8 @@ contribution — human or AI — follows the same structured workflow.
 - **PDF Export** — Client-side PDF generation (all / filtered / date range) via jsPDF + autoTable
 - **Premade categories** — Per-type category lists (income/expense/transfer) — users pick from curated lists, no free-text chaos
 - **Responsive design** — Mobile-first with fixed bottom nav; desktop reveals a persistent sidebar. Calm minimal fintech aesthetic.
-- **Testing** — Vitest + jsdom + Testing Library (479 tests across 44 suites: component + service + controller + schema + mock midtrans layers)
+- **Public landing page** — Root `/` (`src/app/page.tsx`) renders `<LandingPage/>` (server component, no auth gate): hero + animated stat counters, marquee, `<video>` "See it in motion" showcase (`AutoVideo` client component — mirrors the README demo, with the same Vercel-Blob mp4 source), feature grid, product vignettes, privacy spotlight, Plus pricing, FAQ, final CTA, footer. Rich SEO metadata + JSON-LD (WebApplication, BreadcrumbList, FAQPage, VideoObject). Video assets drop into `public/videos/` (see `public/videos/README.md`).
+- **Testing** — Vitest + jsdom + Testing Library (480 tests across 44 suites: component + service + controller + schema + mock midtrans layers)
 
 ### In Progress
 
@@ -87,7 +95,7 @@ contribution — human or AI — follows the same structured workflow.
 | Database | PostgreSQL | — |
 | Validation | Zod via `@hono/zod-validator` (auto-generated from Prisma) | 4.4.x |
 | Auth | better-auth (email/password + Google + GitHub) | 1.6.x |
-| Styling | Tailwind CSS v4 | 4.3.x |
+| Styling | Tailwind CSS v4 | ^4 |
 | Testing | Vitest + jsdom + @testing-library/react | 4.x |
 | PDF | jsPDF + jsPDF-AutoTable | 4.x / 5.x |
 | QR codes | qrcode.react (Plus QRIS checkout) | 4.x |
@@ -185,9 +193,9 @@ src/lib/api-client.ts              hc<App>(baseURL) -> api.resource.$post({ json
 
 | Document | What it covers |
 | --- | --- |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Full architecture reference — request lifecycle, layer contracts, type-safety chain, RPC client usage (SSR gotchas), mounting Hono in Next.js, Prisma 7 + driver adapter, Zod auto-generation, adding a new resource (8-step checklist), gotchas & breaking-change notes |
-| [`AGENTS.md`](./AGENTS.md) | AI agent rules — build commands, stack conventions, resource specs, backend/frontend patterns, formatting helpers, UI checklist pointer |
-| [`UI_DESIGN.md`](./UI_DESIGN.md) | UI/UX design reference — design philosophy, color tokens, component library, type scale, radius system, layout patterns, motion rules, accessibility, new-UI checklist |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Full architecture reference — request lifecycle, layer contracts, type-safety chain, RPC client usage (SSR gotchas), mounting Hono in Next.js, Prisma 7 + driver adapter, Zod auto-generation, adding a new resource (8-step checklist), gotchas & breaking-change notes; frontend UI sections §18 dashboard, §19 budgets, §20 profile & Plus, §21 landing page |
+| [`AGENTS.md`](./AGENTS.md) | AI agent rules — build commands, stack conventions, resource specs, backend/frontend patterns, formatting helpers, public landing page, UI checklist pointer |
+| [`UI_DESIGN.md`](./UI_DESIGN.md) | UI/UX design reference — design philosophy, color tokens, component library, type scale, radius system, layout patterns, motion rules, accessibility, new-UI checklist; marketing surface §16 landing page |
 
 ## Project Structure
 
@@ -195,33 +203,37 @@ src/lib/api-client.ts              hc<App>(baseURL) -> api.resource.$post({ json
 budgie/
 ├─ src/
 │  ├─ app/                        # Next.js App Router
-│  │  ├─ dashboard/               # main dashboard (RSC, charts, accounts)
+│  │  ├─ page.tsx                 # PUBLIC landing page (RSC) — <LandingPage/>, SEO metadata + JSON-LD
+│  │  ├─ dashboard/               # main dashboard (RSC, charts, accounts) — auth-gated
 │  │  ├─ transactions/            # list + 3-step add wizard
 │  │  ├─ budget/                  # budgets + subscriptions (RSC, charts, lists, wizards)
+│  │  ├─ profile/                 # account & Plus subscription surface
 │  │  ├─ chat/                    # placeholder
 │  │  ├─ sign-in/                 # auth screen
 │  │  └─ api/
 │  │     ├─ [[...route]]/         # catch-all -> Hono
 │  │     └─ auth/[...all]/        # better-auth handler
-│  ├─ components/                 # React UI (28+ components, incl. plus-payment-wizard, upgradePlusButton)
-│  ├─ lib/                        # auth, prisma, api-client, format, categories, category-icon, budget, midtrans (mock QRIS)
+│  ├─ components/                 # React UI (46 components: 29 root + 17 landing/, incl. plus-payment-wizard, upgradePlusButton)
+│  │  └─ landing/                 # AutoVideo (<video>), VideoShowcase, Vignettes, HeroPreview, Marquee, ScrollProgress, Pricing, Faq, Footer, …
+│  ├─ lib/                        # auth, auth-client, prisma, api-client, format, categories, category-icon, budget, midtrans (mock QRIS), dashboard, font-size
 │  └─ server/                     # ALL backend logic
 │     ├─ routes/                  # Layer 1: HTTP wiring (budgets, subscriptions, balance-accounts, transactions, user, plus)
 │     ├─ controllers/             # Layer 2: I/O + type mapping
 │     ├─ services/                # Layer 3: pure logic + Prisma
 │     ├─ schemas/                 # Zod (.pick + .extend on generated)
 │     └─ middleware/auth.ts       # requireAuth + AppEnv
-├─ prisma/schema.prisma           # datasource + 2 generators (client, zod) + PlusOrder model
-├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets, §20 profile & Plus)
+├─ public/videos/                 # landing video drop-in (brand.mp4/.webm + vignettes) — see public/videos/README.md
+├─ prisma/schema.prisma           # datasource + 2 generators (client, zod) + 9 models (User…PlusOrder)
+├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets, §20 profile & Plus, §21 landing)
 ├── AGENTS.md                     # AI agent rules
-├── UI_DESIGN.md                   # UI/UX design reference (§14 budgets + Plus wizard UI patterns)
+├── UI_DESIGN.md                   # UI/UX design reference (§14 budgets + Plus wizard UI patterns, §16 landing)
 └─ vitest.config.ts               # test config (jsdom + Testing Library)
 ```
 
 ## Testing
 
 ```bash
-bun run test          # 479 tests, 44 suites (one-shot)
+bun run test          # 480 tests, 44 suites (one-shot)
 bun run test:watch    # watch mode for development
 ```
 
