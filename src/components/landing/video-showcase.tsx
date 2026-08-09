@@ -25,7 +25,7 @@ export function VideoShowcase() {
       <Reveal delay={120}>
         <AutoVideo
           webm="/videos/brand.webm"
-          mp4="https://9a9a9kybzrewury8.public.blob.vercel-storage.com/budgieDemo.mp4"
+          mp4="https://9a9a9kybzrewury8.public.blob.vercel-storage.com/BudgieDemo"
           label="Budgie app walkthrough, sixty seconds, silent"
           glyphSize="w-16 h-16"
           posterClassName="bg-[#FAFAFA]"
