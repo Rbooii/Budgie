@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { TransactionItem } from "@/components/transaction-item";
 import type { TransactionRow } from "@/components/transaction-item";
 import { AnimatedCounter } from "./animated-counter";
+import { TiltCard } from "./tilt";
 import { MOCK_GROWTH, MOCK_LIVE_POOL } from "./mock-data";
 
 const LIVE_INTERVAL_MS = 4000;
@@ -65,9 +66,10 @@ export function HeroPreview() {
   return (
     <div
       ref={frameRef}
-      className="pointer-events-none select-none w-full motion-reduce:transform-none"
+      className="select-none w-full motion-reduce:transform-none"
     >
-      <div className="rounded-[35px] border border-black/[0.06] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.18)] p-6 sm:p-8">
+      <TiltCard className="rounded-[35px]">
+        <div className="rounded-[35px] border border-black/[0.06] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.18)] p-6 sm:p-8">
         {/* Net worth hero */}
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -105,7 +107,8 @@ export function HeroPreview() {
             {peek && <TransactionItem transaction={peek} />}
           </div>
         </div>
-      </div>
+        </div>
+      </TiltCard>
     </div>
   );
 }

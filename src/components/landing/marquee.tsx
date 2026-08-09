@@ -37,10 +37,12 @@ function Row() {
       {PILLS.map((p) => (
         <li
           key={p.label}
-          className="flex items-center gap-2 rounded-full bg-[#F2F2F2] px-5 py-2.5 whitespace-nowrap"
+          className="group flex items-center gap-2 rounded-full bg-[#F2F2F2] px-5 py-2.5 whitespace-nowrap transition-colors duration-150 motion-safe:hover:bg-[#00C610]"
         >
-          <span className={`w-1.5 h-1.5 rounded-full ${DOT_CLASS[p.tint]}`} />
-          <span className="text-sm font-medium text-black/70">{p.label}</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${DOT_CLASS[p.tint]} transition-colors duration-150 motion-safe:group-hover:bg-white`} />
+          <span className="text-sm font-medium text-black/70 transition-colors duration-150 motion-safe:group-hover:text-white">
+            {p.label}
+          </span>
         </li>
       ))}
     </ul>

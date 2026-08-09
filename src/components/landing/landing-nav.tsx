@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
-  { label: "Motion", href: "#motion" },
-  { label: "Features", href: "#features" },
-  { label: "Stories", href: "#stories" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Motion", href: "/#motion" },
+  { label: "Features", href: "/#features" },
+  { label: "Stories", href: "/#stories" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "FAQ", href: "/#faq" },
 ] as const;
 
 export function LandingNav({

@@ -77,7 +77,7 @@ export function AutoVideo({
         aria-hidden={shouldPlay && ready ? "true" : undefined}
       >
         <span
-          className={`${glyphSize} rounded-full bg-white/90 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.18)] flex items-center justify-center`}
+          className={`${glyphSize} rounded-full bg-white/90 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.18)] flex items-center justify-center transition-transform duration-200 ease-out motion-safe:group-hover:scale-110 motion-safe:group-hover:shadow-[0_12px_28px_-8px_rgba(0,0,0,0.24)]`}
           aria-hidden="true"
         >
           <svg viewBox="0 0 24 24" className="w-1/2 h-1/2 text-black/70" fill="currentColor" aria-hidden="true">

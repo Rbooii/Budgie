@@ -20,7 +20,7 @@ CI/CD, and fast feature shipping with rigorous type-safety and testing.
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![Bun](https://img.shields.io/badge/Bun-1.3-000000?style=flat-square&logo=bun&logoColor=white)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-480%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
+[![Tests](https://img.shields.io/badge/tests-899%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
 
 ### Demo
 
@@ -71,7 +71,7 @@ contribution — human or AI — follows the same structured workflow.
 - **Premade categories** — Per-type category lists (income/expense/transfer) — users pick from curated lists, no free-text chaos
 - **Responsive design** — Mobile-first with fixed bottom nav; desktop reveals a persistent sidebar. Calm minimal fintech aesthetic.
 - **Public landing page** — Root `/` (`src/app/page.tsx`) renders `<LandingPage/>` (server component, no auth gate): hero + animated stat counters, marquee, `<video>` "See it in motion" showcase (`AutoVideo` client component — mirrors the README demo, with the same Vercel-Blob mp4 source), feature grid, product vignettes, privacy spotlight, Plus pricing, FAQ, final CTA, footer. Rich SEO metadata + JSON-LD (WebApplication, BreadcrumbList, FAQPage, VideoObject). Video assets drop into `public/videos/` (see `public/videos/README.md`).
-- **Testing** — Vitest + jsdom + Testing Library (480 tests across 44 suites: component + service + controller + schema + mock midtrans layers)
+- **Testing** — Vitest + jsdom + Testing Library (899 tests across 80 suites: component + service + controller + schema + mock midtrans + landing layers)
 
 ### In Progress
 
@@ -99,6 +99,7 @@ contribution — human or AI — follows the same structured workflow.
 | Testing | Vitest + jsdom + @testing-library/react | 4.x |
 | PDF | jsPDF + jsPDF-AutoTable | 4.x / 5.x |
 | QR codes | qrcode.react (Plus QRIS checkout) | 4.x |
+| Smooth scroll | lenis (landing page only) | 1.3.x |
 | Lint | ESLint 9 + eslint-config-next | 9.x |
 
 ## Quick Start
@@ -213,8 +214,8 @@ budgie/
 │  │  └─ api/
 │  │     ├─ [[...route]]/         # catch-all -> Hono
 │  │     └─ auth/[...all]/        # better-auth handler
-│  ├─ components/                 # React UI (46 components: 29 root + 17 landing/, incl. plus-payment-wizard, upgradePlusButton)
-│  │  └─ landing/                 # AutoVideo (<video>), VideoShowcase, Vignettes, HeroPreview, Marquee, ScrollProgress, Pricing, Faq, Footer, …
+│  ├─ components/                 # React UI (51 components: 29 root + 22 landing/, incl. plus-payment-wizard, upgradePlusButton)
+│  │  └─ landing/                 # AutoVideo (<video>), HeroHeadline, Spotlight, Tilt, Magnetic, VideoShowcase, Vignettes, HeroPreview, Marquee, ScrollProgress, Pricing, Faq, Footer, …
 │  ├─ lib/                        # auth, auth-client, prisma, api-client, format, categories, category-icon, budget, midtrans (mock QRIS), dashboard, font-size
 │  └─ server/                     # ALL backend logic
 │     ├─ routes/                  # Layer 1: HTTP wiring (budgets, subscriptions, balance-accounts, transactions, user, plus)
@@ -233,21 +234,47 @@ budgie/
 ## Testing
 
 ```bash
-bun run test          # 480 tests, 44 suites (one-shot)
+bun run test          # 899 tests, 80 suites (one-shot)
 bun run test:watch    # watch mode for development
 ```
 
 | Suite | Scope | Cases |
 | --- | --- | --- |
-| `src/components/account-card.test.tsx` | Component — confirm dialog flow, delete safety, error paths | 9 |
+| `src/lib/budget.test.ts` | Lib — period labels (incl. 0/negative/fractional), next-billing-date boundaries, month/leap-year crossings | 30 |
+| `src/lib/category-icon.test.tsx` | Lib — every category → icon, fallback, className passthrough, TYPE_ICON | 12 |
+| `src/lib/midtrans.test.ts` | Mock Midtrans — QRIS generation, 15-min expiry/auto-expire, status transitions, webhook parsing | 22 |
+| `src/lib/format.test.ts` | Lib — rupiah formatting (NaN/∞/large), balance input sanitization, dates | 27 |
+| `src/server/services/subscriptions.test.ts` | Service — full CRUD, duplicate-name clash (create + rename w/ `NOT {id}`), ownership scoping | 15 |
+| `src/server/schemas/subscription.test.ts` | Schema — defaults (IDR, active), every expense category, non-positive/non-int/NaN rejection | 30 |
+| `src/server/controllers/subscriptions.test.ts` | Controller — 400/404/409/204 mapping, error rethrow | 15 |
+| `src/server/services/transactions.test.ts` | Service — balance math, insufficient-balance guards (create + delete), exact-empties allowed | 25 |
 | `src/server/services/balance-accounts.test.ts` | Service — ownership scoping, cross-user delete prevention | 8 |
 | `src/server/services/plus.test.ts` | Service — checkout, status polling, simulate-payment, webhook settlement | 15 |
-| `src/lib/midtrans.test.ts` | Mock Midtrans client — QRIS generation, status transitions, webhook parsing | 12 |
-| `src/components/plus-payment-wizard.test.tsx` | Component — 3-step QRIS wizard flow, simulate payment, success transition | 8 |
+| `src/components/account-card.test.tsx` | Component — confirm dialog flow, delete safety, error paths | 9 |
+| `src/components/budgets-list.test.tsx` | Component — empty state, progress bars (over/under), detail-sheet delete flow | 12 |
+| `src/components/add-budget-dialog.test.tsx` | Component — 3-step wizard gating, custom-period sanitization, submit payload/error paths | 21 |
+| `src/components/budget-detail-sheet.test.tsx` | Component — detail rows, over-budget Remaining, delete confirm/loading/error | 15 |
+| `src/components/budget-summary-cards.test.tsx` | Component — with/without budget, over-budget labels, bar width/color | 13 |
+| `src/components/subscription-list.test.tsx` | Component — rows, next-billing dates, inactive badge, sheet delete flow | 10 |
+| `src/components/subscription-detail-sheet.test.tsx` | Component — detail rows, Active/Inactive, delete confirm/error paths | 11 |
+| `src/components/add-subscription-dialog.test.tsx` | Component — validation gating, payload shape, ISO start date, success/error | 19 |
+| `src/components/spending-streams-chart.test.tsx` | Component — sorting, zero-spend filtering, budget markers, hover/click tooltips | 20 |
+| `src/components/plus-payment-wizard.test.tsx` | Component — 3-step QRIS wizard flow, simulate payment, status polling (settlement/expire/cancel) | 14 |
 | `src/components/upgradePlusButton.test.tsx` | Component — upgrade (opens wizard) vs downgrade (PATCH) flows | 8 |
+| `src/components/landing/*.test.tsx` + `mock-data.test.ts` | Landing — full-page composition via `LandingPageView` (session-conditional nav, section order, CTA copy), IO/reduced-motion behavior (auto-video, animated-counter, scroll-progress, reveal, hero-preview), CSS-var interaction primitives (spotlight, tilt, magnetic, hero-headline), content suites, mock-data integrity | 151 |
+| `src/server/controllers/*.test.ts` + `schemas/*.test.ts` | Server — budgets/balance-accounts/plus/user 3-layer + route handler, auth middleware | ~120 |
 
 Tests are fully deterministic — no real database, no HTTP server, no auth
 cookies. All Prisma calls and API clients are mocked at the module level.
+Browser-only APIs (`IntersectionObserver`, `matchMedia`, `requestAnimationFrame`,
+`window.scrollY`, viewport sizes) are stubbed via `src/test-utils/browser-mocks.ts`.
+
+**Not covered by design:** async RSC pages (`app/*/page.tsx`) — they are thin
+wrappers over already-tested sync components and cannot be awaited in jsdom
+(see the `AccountTab` / `AccountTabView` convention in `AGENTS.md`); the
+`LandingPage` async wrapper in `src/components/landing/index.tsx` is likewise
+excluded — its sync `LandingPageView` half and every section inside it have
+their own suites.
 
 ## Environment Variables
 

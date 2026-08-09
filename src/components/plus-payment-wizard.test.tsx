@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { act } from "react";
 
 const checkoutMock = vi.fn();
 const statusGetMock = vi.fn();
@@ -159,5 +160,100 @@ describe("PlusPaymentWizard", () => {
     await waitFor(() =>
       expect(screen.queryByText("Scan with your e-wallet")).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe("PlusPaymentWizard — status polling", () => {
+  function reachStep2() {
+    render(<PlusPaymentWizard />);
+    fireEvent.click(screen.getByText("Upgrade Now"));
+    fireEvent.click(screen.getByText("Continue to pay"));
+    return act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // clear any unconsumed mockResolvedValueOnce queues from prior tests
+    statusGetMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("auto-advances to success when polling reports settlement", async () => {
+    statusGetMock
+      .mockResolvedValueOnce(okStatus("pending", false))
+      .mockResolvedValueOnce(okStatus("settlement", true));
+    await reachStep2();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000); // first poll → still pending
+    });
+    expect(statusGetMock).toHaveBeenCalledWith({ param: { orderId: "ORDER-1" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000); // second poll → settlement
+    });
+    expect(screen.getByText("Welcome to Budgie Plus")).toBeInTheDocument();
+  });
+
+  it("shows the expiry error when polling reports expire", async () => {
+    statusGetMock.mockResolvedValue(okStatus("expire", false));
+    await reachStep2();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(
+      screen.getByText("Payment expired or cancelled. Please try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Welcome to Budgie Plus")).not.toBeInTheDocument();
+  });
+
+  it("shows the expiry error when polling reports cancel", async () => {
+    statusGetMock.mockResolvedValue(okStatus("cancel", false));
+    await reachStep2();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(
+      screen.getByText("Payment expired or cancelled. Please try again."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps polling while the status stays pending", async () => {
+    statusGetMock.mockResolvedValue(okStatus("pending", false));
+    await reachStep2();
+    const callsAfterSetup = statusGetMock.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(statusGetMock.mock.calls.length).toBe(callsAfterSetup + 1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(statusGetMock.mock.calls.length).toBe(callsAfterSetup + 2);
+  });
+
+  it("stops polling once the status is terminal", async () => {
+    statusGetMock
+      .mockResolvedValueOnce(okStatus("pending", false))
+      .mockResolvedValueOnce(okStatus("settlement", true));
+    await reachStep2();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000); // poll #1 → pending
+    });
+    const callsAfterPendingPoll = statusGetMock.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000); // poll #2 → settlement → stop
+    });
+    expect(statusGetMock.mock.calls.length).toBe(callsAfterPendingPoll + 1);
+    expect(screen.getByText("Welcome to Budgie Plus")).toBeInTheDocument();
+    const callsAfterSettlement = statusGetMock.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000 * 3);
+    });
+    expect(statusGetMock.mock.calls.length).toBe(callsAfterSettlement);
   });
 });

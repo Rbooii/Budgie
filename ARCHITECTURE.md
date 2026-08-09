@@ -46,6 +46,7 @@ controllers/services → typed RPC client for the frontend.
 | Auth                | better-auth (email/password + Google + GitHub) | 1.6.x |
 | Styling            | Tailwind CSS v4                         | 4.3.x      |
 | PDF generation     | `jspdf` + `jspdf-autotable`             | 4.x / 5.x |
+| Smooth scroll      | `lenis` (landing page only)         | 1.3.x     |
 | Lint               | ESLint 9 + `eslint-config-next`         | 9.x       |
 
 > **Note on Prisma 7:** Prisma 7 removed the built-in query engine. A **Driver
@@ -1141,6 +1142,8 @@ bun run dev                 # next dev  (http://localhost:3000)
 bun run build               # prisma migrate deploy && prisma generate && next build
 bun run lint                # eslint
 bun run typecheck           # tsc --noEmit
+bun run test                # vitest run — 899 tests / 80 suites (one-shot)
+bun run test:watch          # vitest watch mode
 bun run db:generate         # regenerate Prisma client + Zod schemas
 bun run db:migrate          # prisma migrate dev (create + apply)
 bun run db:push             # push schema without migration history
@@ -1156,6 +1159,46 @@ curl localhost:3000/api/health
 # or attach the session cookie manually:
 curl localhost:3000/api/budgets -b 'better-auth.session_token=<token>'
 ```
+
+---
+
+## 12.4 Testing
+
+**899 tests / 80 suites** (`bun run test`, Vitest + jsdom + @testing-library).
+Fully deterministic — no database, no HTTP server: Prisma is mocked via
+`vi.hoisted` module mocks, the typed RPC client (`@/lib/api-client`) is mocked
+per component suite, and `next/navigation` (`useRouter`/`usePathname`) is
+stubbed. See `README.md` → Testing for the full suite table.
+
+Coverage layers:
+- **Services** (`src/server/services/*.test.ts`) — every resource's full CRUD
+  (budgets, balance-accounts, subscriptions, plus, user, transactions incl.
+  balance math + insufficient-balance guards for create **and** delete, and
+  exact-empties-allowed boundary).
+- **Controllers** (`src/server/controllers/*.test.ts`) — status mapping
+  (400/404/409/204), ownership via `c.get("user").id`, error rethrow.
+- **Schemas** (`src/server/schemas/*.test.ts`) — defaults, every premade
+  category, non-positive/non-integer/NaN rejection, no-defaults-on-update.
+- **Lib** (`src/lib/*.test.ts`) — pure TS: formatting, categories, dashboard
+  math, budget helpers (`nextBillingDate` boundaries, month/leap crossings),
+  midtrans mock (auto-expire at 15 min, webhook parsing), category icons.
+- **Components** (`src/components/*.test.tsx`) — dialogs/wizards/lists/sheets
+  incl. budget & subscription feature sets and the Plus QRIS wizard's status
+  polling (settlement/expire/cancel via fake timers).
+- **Landing** (`src/components/landing/*.test.tsx`) — `IntersectionObserver` /
+  reduced-motion / rAF / scroll behavior for `auto-video`, `animated-counter`,
+  `scroll-progress`, `reveal`, `hero-preview`; the CSS-var interaction
+  primitives (`spotlight`, `tilt`, `magnetic`, `hero-headline` — vars/classes,
+  not computed styles); content suites for the static sections;
+  `mock-data.ts` integrity checks.
+
+Browser-API stubs live in `src/test-utils/browser-mocks.ts`
+(`stubIntersectionObserver`, `stubMatchMedia`, `stubRequestAnimationFrame`,
+`setWindowScrollY`, `setViewport`) — see `AGENTS.md` → Testing conventions.
+
+**Not tested by design:** async RSC pages (`app/*/page.tsx`) and the async
+`LandingPage` wrapper — jsdom can't await async server components; they only
+compose already-tested sync components (same rule as `AccountTab`/`AccountTabView`).
 
 ---
 
@@ -1844,34 +1887,44 @@ before auth, while `/dashboard`, `/budget`, `/transactions`, `/profile`, and
 ### Composition
 
 `page.tsx` renders `<LandingPage/>` (re-exported from `src/components/landing/`,
-17 components) wrapped with four `<script type="application/ld+json">` blobs:
+21 components) wrapped with four `<script type="application/ld+json">` blobs:
 
 ```
 src/app/page.tsx                       # public RSC — metadata + JSON-LD + <LandingPage/>
 src/components/landing/
-  ├─ index.tsx                         # <LandingPage/> — composes the sections below
+  ├─ index.tsx                         # <LandingPage/> (async RSC) → <LandingPageView session> (sync, testable)
   ├─ reveal.tsx                        # "use client" — IntersectionObserver fade/translate (≤300ms)
   ├─ scroll-progress.tsx               # "use client" — top reading-progress bar
   ├─ landing-nav.tsx                   # sticky translucent nav (Get started / Sign in)
-  ├─ hero-preview.tsx                  # hero device mockup
+  ├─ smooth-scroll.tsx                 # "use client" — Lenis smooth scroll + hash-click gliding
+  ├─ hero-headline.tsx                 # "use client" — staggered line-mask reveal H1 (green accent)
+  ├─ hero-preview.tsx                  # hero net-worth mockup, wrapped in <TiltCard>
   ├─ animated-counter.tsx              # "use client" — count-up on reveal
-  ├─ marquee.tsx                       # infinite logos strip
+  ├─ marquee.tsx                       # infinite logos strip (green-fill pill hover)
   ├─ video-showcase.tsx                # "See it in motion" — wraps <AutoVideo>
   ├─ auto-video.tsx                    # "use client" — the ONLY <video> in the repo
-  ├─ feature-grid.tsx                  # 3-up feature cards
+  ├─ spotlight.tsx                     # "use client" — mouse-follow green radial glow (CSS vars)
+  ├─ tilt.tsx                          # "use client" — 3D perspective tilt (±6°, perspective:1200px)
+  ├─ magnetic.tsx                      # "use client" — cursor-follow CTA nudge (≤4px, 150ms)
+  ├─ feature-grid.tsx                  # 3-up feature cards (SpotlightCard + hover lift)
   ├─ showcase.tsx                      # alternating image/text feature rows
   ├─ vignettes.tsx                     # 3× 9:16 silent vignettes (AutoVideo per slot)
   ├─ privacy-spotlight.tsx             # balance-masking marketing copy
-  ├─ pricing.tsx                       # Plus pricing tiers (#pricing anchor)
-  ├─ faq.tsx                           # FAQ accordion + FAQ_ITEMS constant
+  ├─ pricing.tsx                       # Plus pricing tiers (SpotlightCard, green-glow hover)
+  ├─ faq.tsx                           # animated FAQ accordion + FAQ_ITEMS constant
   ├─ footer.tsx                        # links + copyright
   └─ mock-data.ts                      # stat/feature copy
 ```
 
-`<LandingPage/>` order: `ScrollProgress` → `LandingNav` → hero (`HeroPreview`
-+ animated stat counters) → `Marquee` → `VideoShowcase` → `FeatureGrid` →
+`<LandingPage/>` order: `ScrollProgress` → `LandingNav` → hero (`HeroPreview`)
+→ `Marquee` → `VideoShowcase` → `FeatureGrid` →
 `Showcase` → `Vignettes` → `PrivacySpotlight` → `Pricing` → `Faq` → final CTA
-→ `Footer`.
+→ `Footer`. (The animated stat strip is currently commented out in `index.tsx`.)
+Anchor navigation uses `/#section` hrefs (nav, footer, hero) glided by
+`SmoothScroll` — a Lenis-powered "use client" layer in `LandingPageView`
+(eased rAF loop, −88px offset for the sticky nav, deep-link hash settling +
+`replaceState` cleanup). It never mounts under `prefers-reduced-motion`, and
+`globals.css` carries Lenis's recommended `.lenis` styles.
 
 ### `AutoVideo` — the only `<video>` in the repo
 

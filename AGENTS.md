@@ -9,8 +9,15 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Typecheck: `bun run typecheck`
 - Build: `bun run build`
 - Dev: `bun run dev`
-- Test: `bun run test` (Vitest + jsdom + @testing-library; one-shot)
+- Test: `bun run test` (Vitest + jsdom + @testing-library; one-shot) — **899 tests / 80 suites**
 - Test (watch): `bun run test:watch`
+
+## Testing conventions
+- **Browser-API stubs**: `src/test-utils/browser-mocks.ts` provides `stubIntersectionObserver` (controllable instances + `trigger(target, isIntersecting)`), `stubMatchMedia(matches)` (with a `change()` helper for reduced-motion toggles), `stubRequestAnimationFrame` (sync `tickAll`), `setWindowScrollY`, `setViewport`. Use these for components that read `IntersectionObserver`, `matchMedia`, rAF, or `window.scrollY`; call `vi.unstubAllGlobals()` in `afterEach`.
+- **State updates from IO/matchMedia callbacks must be wrapped in `act(...)`** — outside React event handlers they are async-batched and won't flush before the assertion.
+- **Don't mix `userEvent` with `vi.useFakeTimers()`** — it hangs. Use `fireEvent` + `act(async () => { await Promise.resolve(); ... })` to flush microtasks (see `plus-payment-wizard.test.tsx` status-polling suite).
+- **`mockResolvedValueOnce` queues leak across tests** — an unconsumed once-value persists after `vi.clearAllMocks()`. Reset (`mockReset`) in `beforeEach` when a suite chains once-values.
+- Landing components (marquee, faq, pricing, nav, footer, feature-grid, vignettes, privacy-spotlight, video-showcase, showcase, hero-preview, mock-data, the motion primitives `spotlight`/`tilt`/`magnetic`/`hero-headline`, and the Lenis layer `smooth-scroll` — mocked in jsdom) are fully covered. The full page is tested via `LandingPageView` (`landing/index.tsx` — sync presentational half, props `{ session }`); the async `LandingPage` wrapper is NOT rendered in tests (jsdom can't await async RSC — same rule as `AccountTab` below). The motion primitives are CSS-var driven with no state — tests assert the vars/classes, not computed styles.
 
 ## Stack
 - Runtime: Bun (`bunx`/`bun run`)

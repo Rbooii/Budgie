@@ -7,7 +7,7 @@ const canonical = new URL(siteUrl).origin.toString();
 const brandVideoUrl = `${canonical}/videos/brand.mp4`;
 const brandVideoWebm = `${canonical}/videos/brand.webm`;
 
-const title = "Budgie — Track your money in calm focus";
+const title = "Budgie, Track your money in calm focus";
 const description =
   "A calm, minimal personal-finance app for tracking accounts, transactions, budgets, and subscriptions. Built around the rupiah.";
 

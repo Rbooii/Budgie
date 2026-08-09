@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   createQrisTransaction,
   getTransactionStatus,
@@ -10,6 +10,10 @@ import {
 
 beforeEach(() => {
   __resetMockTransactions();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("createQrisTransaction", () => {
@@ -39,6 +43,33 @@ describe("createQrisTransaction", () => {
     const txn = await createQrisTransaction({ orderId: "X", amount: 24500 });
     expect(txn.qrString).toContain("24500.00");
   });
+
+  it("prefixes the amount field with its length (EMVCo tag 54)", async () => {
+    const txn = await createQrisTransaction({ orderId: "X", amount: 24500 });
+    expect(txn.qrString).toContain("5408 24500.00".replace(" ", ""));
+    expect(txn.qrString).toMatch(/54\d\d24500\.00/);
+  });
+
+  it("encodes the currency as IDR (360)", async () => {
+    const txn = await createQrisTransaction({ orderId: "X", amount: 1000 });
+    expect(txn.qrString).toContain("5303360");
+  });
+
+  it("expires 15 minutes after creation", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T12:00:00Z"));
+    const txn = await createQrisTransaction({ orderId: "X", amount: 1000 });
+    expect(txn.expiresAt.getTime()).toBe(
+      new Date("2026-07-15T12:15:00Z").getTime(),
+    );
+  });
+
+  it("returns a copy so callers cannot mutate the store", async () => {
+    const txn = await createQrisTransaction({ orderId: "X", amount: 1000 });
+    txn.status = "settlement";
+    const stored = await getTransactionStatus("X");
+    expect(stored?.status).toBe("pending");
+  });
 });
 
 describe("getTransactionStatus", () => {
@@ -59,6 +90,34 @@ describe("getTransactionStatus", () => {
     const result = await getTransactionStatus("ORDER-3");
     expect(result?.status).toBe("settlement");
     expect(result?.fraudStatus).toBe("accept");
+  });
+
+  it("auto-expires a pending transaction past its validity window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T12:00:00Z"));
+    await createQrisTransaction({ orderId: "ORDER-EXPIRE", amount: 1000 });
+    vi.setSystemTime(new Date("2026-07-15T12:15:01Z"));
+    const result = await getTransactionStatus("ORDER-EXPIRE");
+    expect(result?.status).toBe("expire");
+  });
+
+  it("keeps a pending transaction pending inside its validity window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T12:00:00Z"));
+    await createQrisTransaction({ orderId: "ORDER-LIVE", amount: 1000 });
+    vi.setSystemTime(new Date("2026-07-15T12:14:59Z"));
+    const result = await getTransactionStatus("ORDER-LIVE");
+    expect(result?.status).toBe("pending");
+  });
+
+  it("does not expire settled transactions", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-15T12:00:00Z"));
+    await createQrisTransaction({ orderId: "ORDER-SETTLED", amount: 1000 });
+    await simulatePayment("ORDER-SETTLED");
+    vi.setSystemTime(new Date("2026-07-15T13:00:00Z"));
+    const result = await getTransactionStatus("ORDER-SETTLED");
+    expect(result?.status).toBe("settlement");
   });
 });
 
@@ -112,6 +171,23 @@ describe("parseWebhookNotification", () => {
       order_id: "X",
       transaction_status: "pending",
     });
+    expect(result.fraudStatus).toBeNull();
+  });
+
+  it("stringifies numeric and boolean values", () => {
+    const result = parseWebhookNotification({
+      order_id: 12345,
+      transaction_status: "settlement",
+      fraud_status: "accept",
+    });
+    expect(result.orderId).toBe("12345");
+    expect(result.transactionStatus).toBe("settlement");
+  });
+
+  it("returns empty order id for a non-object body", () => {
+    const result = parseWebhookNotification("not-an-object");
+    expect(result.orderId).toBe("");
+    expect(result.transactionStatus).toBe("pending");
     expect(result.fraudStatus).toBeNull();
   });
 });

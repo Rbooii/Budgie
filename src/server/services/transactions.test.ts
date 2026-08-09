@@ -120,6 +120,27 @@ describe("createTransaction", () => {
     await expect(createTransaction(USER_ID, incomeInput)).rejects.toThrow("Account not found");
   });
 
+  it("scopes the source account lookup by id and userId", async () => {
+    mockPrisma.balanceAccount.findFirst.mockResolvedValue(mockSource);
+    mockPrisma.transaction.create.mockResolvedValue(mockTxn);
+    mockPrisma.balanceAccount.update.mockResolvedValue(mockSource);
+
+    await createTransaction(USER_ID, incomeInput);
+
+    expect(mockPrisma.balanceAccount.findFirst).toHaveBeenCalledWith({
+      where: { id: SOURCE_ID, userId: USER_ID },
+    });
+  });
+
+  it("throws 'Account not found' for an account owned by another user", async () => {
+    mockPrisma.balanceAccount.findFirst.mockResolvedValue(null);
+
+    await expect(createTransaction(USER_ID, incomeInput)).rejects.toThrow(
+      "Account not found",
+    );
+    expect(mockPrisma.transaction.create).not.toHaveBeenCalled();
+  });
+
   it("creates an income transaction and increments the source balance", async () => {
     mockPrisma.balanceAccount.findFirst.mockResolvedValue(mockSource);
     mockPrisma.transaction.create.mockResolvedValue(mockTxn);
@@ -268,6 +289,44 @@ describe("createTransaction", () => {
       data: { balance: { increment: 300000 } },
     });
   });
+
+  it("allows a transfer that exactly empties the source (amount + adminFee == balance)", async () => {
+    mockPrisma.balanceAccount.findFirst
+      .mockResolvedValueOnce({ ...mockSource, balance: 305000 })
+      .mockResolvedValueOnce(mockDest);
+    mockPrisma.transaction.create.mockResolvedValue({ ...mockTxn, type: "transfer" });
+    mockPrisma.balanceAccount.update.mockResolvedValue(mockSource);
+
+    await createTransaction(USER_ID, {
+      ...incomeInput,
+      type: "transfer",
+      category: "AccountTransfer",
+      amount: 300000,
+      adminFee: 5000,
+      toBalanceAccountId: DEST_ID,
+    });
+
+    expect(mockPrisma.transaction.create).toHaveBeenCalled();
+  });
+
+  it("scopes the destination lookup by id and userId", async () => {
+    mockPrisma.balanceAccount.findFirst
+      .mockResolvedValueOnce(mockSource)
+      .mockResolvedValueOnce(mockDest);
+    mockPrisma.transaction.create.mockResolvedValue({ ...mockTxn, type: "transfer" });
+    mockPrisma.balanceAccount.update.mockResolvedValue(mockSource);
+
+    await createTransaction(USER_ID, {
+      ...incomeInput,
+      type: "transfer",
+      category: "AccountTransfer",
+      toBalanceAccountId: DEST_ID,
+    });
+
+    expect(mockPrisma.balanceAccount.findFirst).toHaveBeenNthCalledWith(2, {
+      where: { id: DEST_ID, userId: USER_ID },
+    });
+  });
 });
 
 describe("deleteTransaction", () => {
@@ -298,6 +357,22 @@ describe("deleteTransaction", () => {
 
     await expect(deleteTransaction(USER_ID, TXN_ID)).rejects.toThrow("Insufficient balance");
     expect(mockPrisma.transaction.delete).not.toHaveBeenCalled();
+  });
+
+  it("allows deleting income that exactly empties the source", async () => {
+    mockPrisma.transaction.findFirst.mockResolvedValue(mockTxn);
+    mockPrisma.balanceAccount.findFirst.mockResolvedValue({
+      ...mockSource,
+      balance: 500000,
+    });
+    mockPrisma.balanceAccount.update.mockResolvedValue(mockSource);
+    mockPrisma.transaction.delete.mockResolvedValue(mockTxn);
+
+    await deleteTransaction(USER_ID, TXN_ID);
+
+    expect(mockPrisma.transaction.delete).toHaveBeenCalledWith({
+      where: { id: TXN_ID },
+    });
   });
 
   it("deletes an expense transaction and increments the source balance (reverses)", async () => {
@@ -348,6 +423,30 @@ describe("deleteTransaction", () => {
     mockPrisma.balanceAccount.update.mockResolvedValue(mockSource);
 
     await expect(deleteTransaction(USER_ID, TXN_ID)).rejects.toThrow("Insufficient balance");
+  });
+
+  it("still deletes a transfer whose destination account is gone (no dest balance check)", async () => {
+    mockPrisma.transaction.findFirst.mockResolvedValue({
+      ...mockTxn,
+      type: "transfer",
+      amount: 300000,
+      adminFee: 5000,
+      toBalanceAccountId: DEST_ID,
+    });
+    // first findFirst = txn, second = dest lookup → null
+    mockPrisma.balanceAccount.findFirst.mockResolvedValueOnce(mockSource).mockResolvedValueOnce(null);
+    mockPrisma.balanceAccount.update.mockResolvedValue(mockSource);
+    mockPrisma.transaction.delete.mockResolvedValue(mockTxn);
+
+    await deleteTransaction(USER_ID, TXN_ID);
+
+    expect(mockPrisma.balanceAccount.update).toHaveBeenNthCalledWith(1, {
+      where: { id: SOURCE_ID },
+      data: { balance: { increment: 305000 } },
+    });
+    expect(mockPrisma.transaction.delete).toHaveBeenCalledWith({
+      where: { id: TXN_ID },
+    });
   });
 
   it("skips balance update but still deletes when balanceAccountId is null (account deleted)", async () => {

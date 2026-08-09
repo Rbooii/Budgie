@@ -77,9 +77,13 @@ export function Faq() {
                   </svg>
                 </span>
               </summary>
-              <p className="text-sm text-black/60 leading-relaxed pb-5 -mt-1">
-                {item.a}
-              </p>
+              <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-open:grid-rows-[1fr] motion-reduce:transition-none">
+                <div className="overflow-hidden">
+                  <p className="text-sm text-black/60 leading-relaxed pb-5 -mt-1">
+                    {item.a}
+                  </p>
+                </div>
+              </div>
             </details>
           ))}
         </div>

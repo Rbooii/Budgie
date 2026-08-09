@@ -651,6 +651,7 @@ When introducing a new screen, dialog, list, or component, run through this:
 | Public landing page shell (marketing) | `src/app/page.tsx`, `src/components/landing/index.tsx` (`<LandingPage/>`), `landing-nav.tsx`, `scroll-progress.tsx`, `footer.tsx` |
 | The only `<video>` in the repo | `src/components/landing/auto-video.tsx` (`muted` + `loop` + `playsInline`, poster fade, `prefers-reduced-motion`), `video-showcase.tsx`, `vignettes.tsx` |
 | Reveal-on-scroll motion + animated counters | `src/components/landing/reveal.tsx`, `src/components/landing/animated-counter.tsx`, `src/components/landing/marquee.tsx` |
+| Landing interaction primitives (mouse-follow) | `src/components/landing/spotlight.tsx`, `src/components/landing/tilt.tsx`, `src/components/landing/magnetic.tsx`, `src/components/landing/hero-headline.tsx` |
 | Plus pricing tiers + FAQ | `src/components/landing/pricing.tsx`, `src/components/landing/faq.tsx` |
 | Landing SEO/JSON-LD + video metadata | `src/app/page.tsx` (`openGraph.videos`, WebApplication/BreadcrumbList/FAQPage/VideoObject JSON-LD), `src/app/sitemap.ts`, `src/app/robots.ts`, `src/app/opengraph-image.tsx` |
 
@@ -828,7 +829,7 @@ CTA per surface, and reuse the existing tints before inventing new colors.
 that sits **outside** the auth-gated app. It is a React Server Component — no
 auth, no Prisma, no Hono — so its visual register is deliberately lighter and
 more spacious than the dense `rounded-2xl` list rows of the app. Read this
-section before touching anything under `src/components/landing/` (17 files).
+section before touching anything under `src/components/landing/` (21 files).
 
 ### Visual register vs the auth-gated app
 
@@ -869,10 +870,40 @@ All landing motion is ≤300ms, `ease-out`, never bounces, always honors
 - `Reveal` (`reveal.tsx`) — `IntersectionObserver` fade + small translate on enter.
 - `ScrollProgress` (`scroll-progress.tsx`) — thin top reading bar.
 - `AnimatedCounter` (`animated-counter.tsx`) — count-up on reveal.
-- `Marquee` (`marquee.tsx`) — infinite logos strip.
+- `Marquee` (`marquee.tsx`) — infinite logos strip (pills swap to green fill +
+  white text on hover, gated by `motion-safe`).
+- `SmoothScroll` (`smooth-scroll.tsx`) — **Lenis-powered** buttery scroll. Eased
+  rAF loop, intercepts `#section`/`/#section` clicks → glide (offset −88px so
+  sections clear the sticky nav), settles deep-link hashes from other pages and
+  strips them from the URL. Never mounts under `prefers-reduced-motion`.
 
 Under `prefers-reduced-motion: reduce`, `Reveal`/`AnimatedCounter` render their
 final state immediately and `AutoVideo` keeps its poster.
+
+### Interaction primitives (landing only)
+
+Four `"use client"` motion islands power the modern feel. All four are
+SSR-safe (no state, CSS vars only), pointer-device-only (touch is ignored),
+and fully disabled under `prefers-reduced-motion` (the CSS-var effects are
+gated by `motion-reduce` utility classes at the call site):
+
+| Primitive | File | Behavior |
+| --- | --- | --- |
+| `HeroHeadline` | `hero-headline.tsx` | H1 with staggered line-mask reveal (blur + 0.45em rise, 300ms `ease-out`, 80ms stagger). Accent word "Control" in brand green. `motion-reduce:animate-none` → static final state. |
+| `SpotlightCard` | `spotlight.tsx` | Card that tracks the cursor via CSS vars (`--spot-x/--spot-y`) and paints a soft green radial highlight (340px, `rgba(0,198,16,0.07)`) on hover. Under reduce it shows a static faint sheen. |
+| `TiltCard` | `tilt.tsx` | Subtle 3D perspective tilt (±6°, `perspective: 1200px`, scale 1.015) following the cursor — wraps the hero net-worth preview. `motion-reduce` → flat. |
+| `Magnetic` | `magnetic.tsx` | CTA nudges toward the cursor (≤4px, 150ms `cubic-bezier(0.22,1,0.36,1)`). Used on the hero + final-CTA "Get started free" buttons. |
+| `SmoothScroll` | `smooth-scroll.tsx` | Lenis smooth-scroll engine + hash-click interception (see Motion list above). |
+
+Usage rules:
+- The spotlight overlay is `pointer-events-none` and `aria-hidden` — content
+  always sits above it (`relative z-10`).
+- Hover lifts on cards are `hover:-translate-y-1` + shadow deepen with
+  `duration-200 ease-out` and **explicit `motion-reduce:hover:translate-y-0`**
+  overrides so reduced-motion users see no movement.
+- Keyframe names must stay namespaced (`livePulse`, `scrollCue`, `perkPulse`,
+  `headlineReveal`) and defined in a `<style>` tag inside the component that
+  uses them (the `dialogIn`/`sheetIn` pattern).
 
 ### Layout & type
 
@@ -880,10 +911,29 @@ final state immediately and `AutoVideo` keeps its poster.
 - **Hero headline** — `text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight`
   with `leading-[1.05]`; supporting copy is `text-black/50` at `max-w-xl`.
 - **Section节奏** — consistent `py-20 sm:py-28`, `max-w-2xl` text widths.
-- **Stat tiles / pricing cards** — `rounded-[28px]` and `rounded-[35px]`,
+- **Cards** — `rounded-[28px]` and `rounded-[35px]`,
   `border border-black/[0.06]`, soft `shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)]`.
 - **Final CTA** — full-bleed `rounded-[35px] bg-[#00CE11]` block with one black
   CTA button (one primary action per surface, per the app rule).
+- **Smooth scroll** — Lenis (`smooth-scroll.tsx`, mounted in
+  `LandingPageView`). Nav/footer/hero anchors use `/#section` hrefs so they
+  glide from any page; `globals.css` carries the recommended `.lenis` styles.
+  Fully disabled under `prefers-reduced-motion` (native jumps).
+- **Stat strip** — currently commented out in `index.tsx` (the animated
+  counters are parked until the stat data is finalized; `AnimatedCounter`
+  stays available for when it returns).
+
+### Testability split (as of the landing test pass)
+
+`landing/index.tsx` exports **two** components:
+- `LandingPage` — the **async RSC** (fetches the session via
+  `auth.api.getSession` + `headers()`), delegating to the view below. It is
+  NOT rendered in tests (jsdom can't await async RSC — same rule as
+  `AccountTab`).
+- `LandingPageView` — the **sync presentational** half, props
+  `{ session: boolean }`. This is what `index.test.tsx` exercises: full page
+  composition, CTA copy, section headings, session-conditional nav. When
+  editing landing copy, update `index.test.tsx` in the same change.
 
 ### Reuse rules
 - Reuse the §2 color tokens and §6 radius system — **do not invent new colors**.

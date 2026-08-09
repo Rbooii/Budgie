@@ -27,6 +27,28 @@ describe("formatRupiah", () => {
   it("always prefixes with 'Rp '", () => {
     expect(formatRupiah(10).startsWith("Rp ")).toBe(true);
   });
+
+  it("handles NaN by rendering the literal string", () => {
+    expect(formatRupiah(NaN)).toBe("Rp NaN");
+  });
+
+  it("handles positive and negative infinity", () => {
+    expect(formatRupiah(Infinity)).toBe("Rp ∞");
+    expect(formatRupiah(-Infinity)).toBe("Rp -∞");
+  });
+
+  it("formats very large numbers with full grouping", () => {
+    expect(formatRupiah(1234567890123456)).toBe("Rp 1.234.567.890.123.456.00");
+  });
+
+  it("rounds fractional amounts to two decimals", () => {
+    expect(formatRupiah(0.1 + 0.2)).toBe("Rp 0.30");
+    expect(formatRupiah(0.0001)).toBe("Rp 0.00");
+  });
+
+  it("formats a single rupiah value", () => {
+    expect(formatRupiah(1)).toBe("Rp 1.00");
+  });
 });
 
 describe("formatBalanceInput", () => {
@@ -57,6 +79,18 @@ describe("formatBalanceInput", () => {
   it("groups multiple digits correctly", () => {
     expect(formatBalanceInput("1000")).toBe("1.000");
   });
+
+  it("keeps only the leading minus when the input has several", () => {
+    expect(formatBalanceInput("-5-00")).toBe("-500");
+  });
+
+  it("strips letters around a signed number", () => {
+    expect(formatBalanceInput("-1.000.000x")).toBe("-1.000.000");
+  });
+
+  it("formats very large inputs", () => {
+    expect(formatBalanceInput("1000000000000")).toBe("1.000.000.000.000");
+  });
 });
 
 describe("formatDate", () => {
@@ -70,6 +104,10 @@ describe("formatDate", () => {
 
   it("pads day to 2 digits", () => {
     expect(formatDate(new Date("2026-03-03T00:00:00"))).toMatch(/^03/);
+  });
+
+  it("renders 'Invalid Date' for an unparseable value", () => {
+    expect(formatDate("not-a-date")).toMatch(/Invalid Date/);
   });
 });
 
@@ -87,6 +125,18 @@ describe("formatTime", () => {
   it("accepts an ISO string", () => {
     const result = formatTime("2026-07-15T14:30:00");
     expect(result).toMatch(/pm/);
+  });
+
+  it("renders noon as 12:00 pm", () => {
+    expect(formatTime(new Date(2026, 6, 15, 12, 0))).toBe("12:00 pm");
+  });
+
+  it("renders midnight as 12:00 am", () => {
+    expect(formatTime(new Date(2026, 6, 15, 0, 0))).toBe("12:00 am");
+  });
+
+  it("renders 'Invalid Date' for an unparseable value", () => {
+    expect(formatTime("not-a-time")).toMatch(/invalid date/);
   });
 });
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { Reveal } from "./reveal";
+import { SpotlightCard } from "./spotlight";
 import { formatRupiah } from "@/lib/format";
 
 const FIRST_MONTH = 24_500;
@@ -29,7 +30,8 @@ export function Pricing() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-12">
         {/* Free tier */}
-        <Reveal className="rounded-[35px] border border-black/[0.06] bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6 sm:p-8 h-full flex flex-col">
+        <Reveal className="h-full">
+          <SpotlightCard className="h-full flex flex-col rounded-[35px] border border-black/[0.06] bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6 sm:p-8 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)]">
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold tabular-nums tracking-tight text-black">
               {formatRupiah(0)}
@@ -56,16 +58,18 @@ export function Pricing() {
           >
             Start free
           </Link>
+          </SpotlightCard>
         </Reveal>
 
         {/* Plus tier */}
         <Reveal
           delay={90}
-          className="rounded-[35px] border border-[#A0FFA8] bg-white shadow-[0_8px_30px_-12px_rgba(0,198,16,0.18)] p-6 sm:p-8 h-full flex flex-col"
+          className="h-full"
         >
+          <SpotlightCard className="h-full flex flex-col rounded-[35px] border border-[#A0FFA8] bg-white shadow-[0_8px_30px_-12px_rgba(0,198,16,0.18)] p-6 sm:p-8 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_16px_40px_-14px_rgba(0,198,16,0.28)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-[0_8px_30px_-12px_rgba(0,198,16,0.18)]">
           <div className="flex items-center justify-between">
             <p className="text-base font-semibold text-black">Budgie Plus</p>
-            <span className="rounded-full bg-[#A0FFA8]/30 text-[#1F9B29] text-xs font-semibold px-2.5 py-1">
+            <span className="rounded-full bg-[#A0FFA8]/30 text-[#1F9B29] text-xs font-semibold px-2.5 py-1 animate-[perkPulse_2.2s_ease-in-out_infinite] motion-reduce:animate-none">
               50% off first month
             </span>
           </div>
@@ -96,8 +100,15 @@ export function Pricing() {
           >
             Get Budgie Plus
           </Link>
+          </SpotlightCard>
         </Reveal>
       </div>
+      <style>{`
+        @keyframes perkPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(0,198,16,0); }
+          50% { box-shadow: 0 0 0 6px rgba(0,198,16,0.08); }
+        }
+      `}</style>
     </section>
   );
 }

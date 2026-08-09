@@ -7,6 +7,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Reveal } from "./reveal";
+import { SpotlightCard } from "./spotlight";
 
 type Tint = "income" | "expense" | "transfer";
 
@@ -81,15 +82,17 @@ export function FeatureGrid() {
           <Reveal
             key={f.title}
             delay={(i % 3) * 70}
-            className="rounded-[35px] border border-black/[0.06] bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6 h-full"
+            className="h-full"
           >
-            <span
-              className={`w-12 h-12 rounded-full flex items-center justify-center ${TINT_CLASS[f.tint]}`}
-            >
-              {f.icon}
-            </span>
-            <h3 className="text-lg font-semibold text-black mt-5">{f.title}</h3>
-            <p className="text-sm text-black/45 mt-1.5 leading-relaxed">{f.desc}</p>
+            <SpotlightCard className="h-full rounded-[35px] border border-black/[0.06] bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)]">
+              <span
+                className={`w-12 h-12 rounded-full flex items-center justify-center ${TINT_CLASS[f.tint]} transition-transform duration-200 ease-out group-hover/spot:scale-110 motion-reduce:transition-none motion-reduce:group-hover/spot:scale-100`}
+              >
+                {f.icon}
+              </span>
+              <h3 className="text-lg font-semibold text-black mt-5">{f.title}</h3>
+              <p className="text-sm text-black/45 mt-1.5 leading-relaxed">{f.desc}</p>
+            </SpotlightCard>
           </Reveal>
         ))}
       </div>
