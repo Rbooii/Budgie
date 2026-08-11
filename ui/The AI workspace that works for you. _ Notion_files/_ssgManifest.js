@@ -1,0 +1,1 @@
+self.__SSG_MANIFEST=new Set(["\u002Fbrexton","\u002Fdownload\u002F[product]\u002Fdesktop\u002F[platform]","\u002Fdownload\u002F[product]\u002Fmobile","\u002Fnicholas-project-os","\u002Fnotion-for-event-planning","\u002Fnotion-for-shopify","\u002Fpeter","\u002Fproduct\u002Fspeed","\u002Fstartup-os"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()

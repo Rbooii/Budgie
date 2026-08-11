@@ -3,55 +3,55 @@ import { render, screen } from "@testing-library/react";
 import { Footer } from "@/components/landing/footer";
 
 describe("Footer", () => {
-  it("renders the brand and tagline", () => {
+  it("renders the brand wordmark linking home", () => {
     render(<Footer />);
     expect(screen.getByRole("link", { name: "Budgie" })).toHaveAttribute("href", "/");
-    expect(
-      screen.getByText(/A calm, minimal personal-finance app/),
-    ).toBeInTheDocument();
   });
 
-  it("renders the link column headings", () => {
+  it("links every product section that actually exists", () => {
     render(<Footer />);
-    expect(screen.getByText("Product")).toBeInTheDocument();
-    expect(screen.getByText("Account")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Features" })).toHaveAttribute(
+      "href",
+      "/#features",
+    );
+    expect(screen.getByRole("link", { name: "Use cases" })).toHaveAttribute(
+      "href",
+      "/#use-cases",
+    );
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
+      "href",
+      "/#pricing",
+    );
+    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute(
+      "href",
+      "/#faq",
+    );
   });
 
-  it("renders the Product links with anchor hrefs", () => {
-    render(<Footer />);
-    for (const [label, href] of [
-      ["See it in motion", "/#motion"],
-      ["Features", "/#features"],
-      ["Stories", "/#stories"],
-      ["Pricing", "/#pricing"],
-      ["FAQ", "/#faq"],
-    ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
-    }
-  });
-
-  it("renders the Account links pointing at /sign-in", () => {
+  it("links the auth entry points", () => {
     render(<Footer />);
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/sign-in",
     );
-    expect(screen.getByRole("link", { name: "Get started" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Create an account" })).toHaveAttribute(
       "href",
       "/sign-in",
     );
   });
 
-  it("shows the current copyright year", () => {
+  it("omits invented chrome (language selector, cookie settings)", () => {
     render(<Footer />);
-    const year = new Date().getFullYear();
-    expect(
-      screen.getByText(`© ${year} Budgie. All rights reserved.`),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Language" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Cookie settings" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "About us" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Web Clipper" })).not.toBeInTheDocument();
   });
 
-  it("credits the stack", () => {
+  it("shows the current copyright year", () => {
     render(<Footer />);
-    expect(screen.getByText("Built with Next.js · Hono · Prisma")).toBeInTheDocument();
+    expect(
+      screen.getByText(`© ${new Date().getFullYear()} Budgie.`),
+    ).toBeInTheDocument();
   });
 });

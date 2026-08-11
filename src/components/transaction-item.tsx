@@ -47,9 +47,15 @@ const TYPE_META: Record<
 interface TransactionItemProps {
   transaction: TransactionRow;
   onClick?: (t: TransactionRow) => void;
+  /** Non-interactive contexts (marketing previews) drop the trailing chevron. */
+  hideChevron?: boolean;
 }
 
-export function TransactionItem({ transaction, onClick }: TransactionItemProps) {
+export function TransactionItem({
+  transaction,
+  onClick,
+  hideChevron = false,
+}: TransactionItemProps) {
   const meta = TYPE_META[transaction.type] ?? TYPE_META.expense;
   const sign =
     transaction.type === "income"
@@ -61,7 +67,7 @@ export function TransactionItem({ transaction, onClick }: TransactionItemProps) 
   const subtitle = `${
     transaction.type === "transfer"
       ? transaction.balanceAccount && transaction.toBalanceAccount
-        ? `${transaction.balanceAccount.name} → ${transaction.toBalanceAccount.name}`
+        ? `${transaction.balanceAccount.name} · ${transaction.toBalanceAccount.name}`
         : "—"
       : (transaction.balanceAccount?.name ?? "Deleted account")
   } • ${categoryLabel(transaction.category)}`;
@@ -93,7 +99,9 @@ export function TransactionItem({ transaction, onClick }: TransactionItemProps) 
         <p className="text-xs text-black/35">{formatTime(transaction.date)}</p>
       </div>
 
-      <ChevronRight className="w-5 h-5 text-black/15 group-hover:text-black/30 transition shrink-0 hidden sm:block" />
+      {!hideChevron && (
+        <ChevronRight className="w-5 h-5 text-black/15 group-hover:text-black/30 transition shrink-0 hidden sm:block" />
+      )}
     </button>
   );
 }

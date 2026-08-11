@@ -32,7 +32,7 @@ export function Faq() {
     <section
       id="faq"
       aria-labelledby="faq-title"
-      className="mx-auto max-w-screen-xl px-5 sm:px-8 py-20 sm:py-28"
+      className="mx-auto max-w-screen-xl px-5 sm:px-8 py-20 sm:py-28 scroll-mt-24"
     >
       <Reveal className="max-w-2xl">
         <p className="text-sm font-semibold text-[#00C610]">Questions</p>

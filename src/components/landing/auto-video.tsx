@@ -15,6 +15,8 @@ interface AutoVideoProps {
   glyphSize?: string;
   /** Accessible label describing the silent video (since it carries no audio). */
   label: string;
+  /** Optional ref to the underlying <video> — lets a parent play/pause controller drive it. */
+  videoRef?: React.Ref<HTMLVideoElement>;
 }
 
 /**
@@ -33,9 +35,9 @@ export function AutoVideo({
   posterContent,
   glyphSize = "w-16 h-16",
   label,
+  videoRef: forwardedVideoRef,
 }: AutoVideoProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [inView, setInView] = useState(false);
   const [ready, setReady] = useState(false);
   const [reduced, setReduced] = useState(false);
@@ -89,7 +91,7 @@ export function AutoVideo({
 
       {shouldPlay && (
         <video
-          ref={videoRef}
+          ref={forwardedVideoRef}
           aria-hidden="true"
           aria-label={label}
           muted
@@ -97,9 +99,9 @@ export function AutoVideo({
           playsInline
           autoPlay
           preload="auto"
-          onCanPlay={() => {
+          onCanPlay={(e) => {
             setReady(true);
-            videoRef.current?.play().catch(() => {});
+            e.currentTarget.play().catch(() => {});
           }}
           className={`absolute inset-0 w-full h-full object-cover motion-reduce:opacity-0 transition-opacity duration-700 ease-out ${
             ready ? "opacity-100" : "opacity-0"

@@ -4,9 +4,8 @@ import { setWindowScrollY } from "@/test-utils/browser-mocks";
 import { LandingNav } from "@/components/landing/landing-nav";
 
 const NAV_LINKS = [
-  ["Motion", "/#motion"],
+  ["Use cases", "/#use-cases"],
   ["Features", "/#features"],
-  ["Stories", "/#stories"],
   ["Pricing", "/#pricing"],
   ["FAQ", "/#faq"],
 ] as const;
@@ -28,6 +27,13 @@ describe("LandingNav — anonymous", () => {
       const links = screen.getAllByRole("link", { name: label });
       expect(links.some((l) => l.getAttribute("href") === href)).toBe(true);
     }
+  });
+
+  it("types nav links in 14px medium (Notion style)", () => {
+    render(<LandingNav session={false} />);
+    const link = screen.getByRole("link", { name: "Features" });
+    expect(link.className).toContain("text-sm");
+    expect(link.className).toContain("font-medium");
   });
 
   it("shows Sign in and Get started for anonymous visitors", () => {
@@ -67,9 +73,9 @@ describe("LandingNav — signed in", () => {
 
   it("still renders the anchor nav links when signed in", () => {
     render(<LandingNav session={true} />);
-    expect(screen.getByRole("link", { name: "Motion" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Use cases" })).toHaveAttribute(
       "href",
-      "/#motion",
+      "/#use-cases",
     );
   });
 });

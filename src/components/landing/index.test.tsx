@@ -1,17 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { stubMatchMedia } from "@/test-utils/browser-mocks";
-
-// the module imports the async wrapper's auth chain at load time — mock it so
-// prisma is never instantiated in tests (the wrapper itself is not testable
-// in jsdom, see AGENTS.md; LandingPageView is what we exercise)
-vi.mock("lenis", () => ({
-  default: class {
-    scrollTo = vi.fn();
-    raf = vi.fn();
-    destroy = vi.fn();
-  },
-}));
 
 vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -28,7 +17,6 @@ function renderLanding(session: boolean = false) {
 }
 
 beforeEach(() => {
-  // AutoVideo (video showcase + vignettes) reads matchMedia on mount
   stubMatchMedia(false);
 });
 
@@ -36,50 +24,56 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("LandingPageView — hero", () => {
-  it("renders the staggered headline and hero copy", () => {
+describe("LandingPageView — hero (Notion anatomy)", () => {
+  it("renders the feature-icon pile, headline, and mono deck", () => {
     renderLanding();
-    expect(screen.getByText("Your money,")).toBeInTheDocument();
-    expect(screen.getByText("Control")).toBeInTheDocument();
+    expect(screen.getByTitle("Accounts")).toBeInTheDocument();
+    expect(screen.getByTitle("Insights")).toBeInTheDocument();
+    expect(screen.getByText("Where your money")).toBeInTheDocument();
+    expect(screen.getAllByText("works").length).toBeGreaterThan(0);
     expect(
-      screen.getByText(/minimal, distraction free dashboard/i),
+      screen.getByText(/Capture context, find answers, and automate busywork/),
     ).toBeInTheDocument();
   });
 
-  it("renders the magnetic CTAs with the new copy", () => {
+  it("renders the green primary CTA and the secondary CTA", () => {
     renderLanding();
     expect(
-      screen.getAllByRole("link", { name: "Get started for free" }),
-    ).not.toHaveLength(0);
-    expect(screen.getByRole("link", { name: "See Budgie in motion" })).toHaveAttribute(
-      "href",
-      "/#motion",
-    );
+      screen.getAllByRole("link", { name: "Get started for free" }).length,
+    ).toBeGreaterThan(0);
+    const secondaries = screen.getAllByRole("link", {
+      name: "See what Budgie can do",
+    });
+    expect(secondaries.length).toBeGreaterThan(0);
+    for (const link of secondaries) {
+      expect(link).toHaveAttribute("href", "/#features");
+    }
   });
 
-  it("does not render the stats strip (commented out)", () => {
+  it("renders the demo video with a Notion-style play/pause controller", () => {
     renderLanding();
-    expect(screen.queryByText("premade categories")).not.toBeInTheDocument();
-    expect(screen.queryByText("months of growth history")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Pause demo video" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render AI-slop chrome (no hero net-worth card, no progress bar)", () => {
+    renderLanding();
+    expect(screen.queryByText("Your Net Worth")).not.toBeInTheDocument();
+    expect(screen.queryByText("December 2026")).toBeInTheDocument(); // the live chart is the only feed
   });
 });
 
-describe("LandingPageView — section composition", () => {
-  it("renders the nav and footer brand", () => {
-    renderLanding();
-    expect(screen.getAllByRole("link", { name: "Budgie" })).not.toHaveLength(0);
-  });
-
+describe("LandingPageView — section composition (Notion order)", () => {
   it("renders every marketing section heading in order", () => {
     renderLanding();
-    expect(screen.getAllByText("Accounts")).not.toHaveLength(0); // marquee pills
-    expect(screen.getByText("Watch your money settle into focus")).toBeInTheDocument();
-    expect(screen.getByText("A calm home for your money")).toBeInTheDocument();
-    expect(screen.getByText("Every rupiah, in its place")).toBeInTheDocument();
-    expect(screen.getByText("Short films of the calm")).toBeInTheDocument();
-    expect(screen.getByText("Your balance stays private")).toBeInTheDocument();
-    expect(screen.getByText("Free forever. Plus when you grow.")).toBeInTheDocument();
-    expect(screen.getByText("Things people ask")).toBeInTheDocument();
+    expect(screen.getByText("Where your money lives.")).toBeInTheDocument(); // bento
+    expect(
+      screen.getByRole("heading", { name: "See what Budgie can do" }),
+    ).toBeInTheDocument(); // use cases
+    expect(screen.getByText("Free forever. Plus when you grow.")).toBeInTheDocument(); // pricing
+    expect(screen.getByText("Things people ask")).toBeInTheDocument(); // faq
+    expect(screen.getAllByText("21 premade categories").length).toBeGreaterThan(0); // facts marquee
   });
 
   it("renders the pricing tiers", () => {
@@ -89,33 +83,51 @@ describe("LandingPageView — section composition", () => {
     expect(screen.getByRole("link", { name: "Get Budgie Plus" })).toBeInTheDocument();
   });
 
-  it("renders the final CTA block", () => {
+  it("renders the neutral Notion-style endcap", () => {
     renderLanding();
-    expect(screen.getByText("Start tracking your money today")).toBeInTheDocument();
+    expect(screen.getByText("Get started today.")).toBeInTheDocument();
     expect(screen.getByText(/Free to start. No card required/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Get Budgie free" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
   });
 
-  it("renders the footer credits", () => {
+  it("renders the trimmed real-links footer", () => {
     renderLanding();
-    expect(screen.getByText("Built with Next.js · Hono · Prisma")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Budgie" })).not.toHaveLength(0);
+    expect(screen.getByRole("link", { name: "Create an account" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+    expect(screen.queryByRole("combobox", { name: "Language" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Cookie settings" })).not.toBeInTheDocument();
   });
 });
 
 describe("LandingPageView — session handling", () => {
   it("shows the anonymous nav (Sign in / Get started) without a session", () => {
-    renderLanding(false);
-    // nav "Sign in" + footer "Sign in" = 2; Dashboard is auth-gated
-    expect(screen.getAllByRole("link", { name: "Sign in" })).toHaveLength(2);
-    expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
+    const { container } = renderLanding(false);
+    const header = container.querySelector("header") as HTMLElement;
+    expect(within(header).getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+    expect(within(header).getByRole("link", { name: "Get started" })).toHaveAttribute(
+      "href",
+      "/sign-in",
+    );
+    expect(within(header).queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
   });
 
   it("shows the Dashboard nav link instead of auth links when signed in", () => {
-    renderLanding(true);
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
+    const { container } = renderLanding(true);
+    const header = container.querySelector("header") as HTMLElement;
+    expect(within(header).getByRole("link", { name: "Dashboard" })).toHaveAttribute(
       "href",
       "/dashboard",
     );
-    // nav "Sign in" is gone; only the footer's remains
-    expect(screen.getAllByRole("link", { name: "Sign in" })).toHaveLength(1);
+    expect(within(header).queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
+    expect(within(header).queryByRole("link", { name: "Get started" })).not.toBeInTheDocument();
   });
 });

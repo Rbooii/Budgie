@@ -1,26 +1,26 @@
-"use client";
+import { HeroPill } from "./hero-pill";
 
 /**
- * The hero H1 with a staggered line-mask reveal. Each line sits in an
- * `overflow-hidden` track and its inner span animates from blurred + lowered
- * to settled (300ms, `ease-out`, 80ms stagger). Pure CSS — no state, no
- * hydration risk. Under `prefers-reduced-motion` the animation is disabled and
- * the final state renders immediately.
+ * The hero H1, typed exactly like Notion's homepage title:
+ * `font: sans-700-semibold` (600) at `clamp(2.625rem, 11.25vw - 25.5px, 6rem)`,
+ * line-height `clamp(3rem, 10.83vw - 17px, 6.25rem)`, letter-spacing
+ * `clamp(-0.2875rem, -0.6458vw + 2.375px, -0.09375rem)`.
+ *
+ * "Where your money {works}." — the verb sits in Notion's rotating
+ * `productPillAnimation` (see `hero-pill.tsx`). Each line keeps the staggered
+ * mask reveal (300ms ease-out, 80ms stagger, `motion-reduce` → final state).
  */
 export function HeroHeadline() {
   return (
-    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-black leading-[1.05]">
+    <h1 className="text-[clamp(2.625rem,11.25vw-25.5px,6rem)] font-semibold leading-[clamp(3rem,10.83vw-17px,6.25rem)] tracking-[clamp(-0.2875rem,-0.6458vw+2.375px,-0.09375rem)] text-black">
       <span className="block overflow-hidden">
         <span className="block animate-[headlineReveal_0.3s_ease-out_backwards] motion-reduce:animate-none">
-          Your money,
+          Where your money
         </span>
       </span>
       <span className="block overflow-hidden">
-        <span
-          className="block animate-[headlineReveal_0.3s_ease-out_0.08s_backwards] motion-reduce:animate-none"
-        >
-          Your{" "}
-          <span className="text-[#00C610]">Control</span>
+        <span className="block animate-[headlineReveal_0.3s_ease-out_0.08s_backwards] motion-reduce:animate-none">
+          <HeroPill />.
         </span>
       </span>
       <style>{`

@@ -19,12 +19,39 @@ interface SpendingStreamsChartProps {
   data: SpendingStream[];
   budgets: SpendingStreamsBudget[];
   monthLabel: string;
+  /** `card` (default) renders the full app card chrome; `bare` drops the
+   *  background/border/shadow so the chart can sit on a marketing surface. */
+  variant?: "card" | "bare";
+  /** Marketing previews mark genuinely live data with a quiet dot + caption. */
+  live?: boolean;
+}
+
+const CARD_CLASS =
+  "w-full bg-white rounded-[35px] border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6";
+
+function ChartHeader({ monthLabel, live }: { monthLabel: string; live: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="text-sm font-semibold text-black/50">Spending Streams</h2>
+      <span className="flex items-center gap-2.5">
+        {live && (
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#1F9B29] uppercase tracking-wide">
+            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-[#00C610]" />
+            Live
+          </span>
+        )}
+        <span className="text-xs text-black/30">{monthLabel}</span>
+      </span>
+    </div>
+  );
 }
 
 export function SpendingStreamsChart({
   data,
   budgets,
   monthLabel,
+  variant = "card",
+  live = false,
 }: SpendingStreamsChartProps) {
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -44,11 +71,8 @@ export function SpendingStreamsChart({
 
   if (!hasData) {
     return (
-      <div className="w-full bg-white rounded-[35px] border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-black/50">Spending Streams</h2>
-          <span className="text-xs text-black/30">{monthLabel}</span>
-        </div>
+      <div className={variant === "bare" ? "w-full" : CARD_CLASS}>
+        <ChartHeader monthLabel={monthLabel} live={live} />
         <p className="text-2xl font-bold tracking-tight tabular-nums text-black mt-2">
           {formatRupiah(0)}
         </p>
@@ -65,11 +89,8 @@ export function SpendingStreamsChart({
   }
 
   return (
-    <div className="w-full bg-white rounded-[35px] border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-black/50">Spending Streams</h2>
-        <span className="text-xs text-black/30">{monthLabel}</span>
-      </div>
+    <div className={variant === "bare" ? "w-full" : CARD_CLASS}>
+      <ChartHeader monthLabel={monthLabel} live={live} />
       <p className="text-2xl font-bold tracking-tight tabular-nums text-black mt-2">
         {formatRupiah(totalSpent)}
       </p>

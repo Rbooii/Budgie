@@ -48,6 +48,14 @@ describe("SpendingStreamsChart — empty state", () => {
     );
     expect(screen.getByText(/No spending this month yet/)).toBeInTheDocument();
   });
+
+  it("marks live data with the caption (and omits it by default)", () => {
+    const { container } = render(
+      <SpendingStreamsChart data={data} budgets={budgets} monthLabel="Aug 2026" live />,
+    );
+    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(container.querySelector(".uppercase")).not.toBeNull();
+  });
 });
 
 describe("SpendingStreamsChart — rows", () => {

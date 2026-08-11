@@ -74,7 +74,7 @@ describe("TransactionItem", () => {
     expect(amountText?.textContent).not.toMatch(/^-/);
   });
 
-  it("shows 'A → B' subtitle for transfers with both accounts", () => {
+  it("shows the 'A · B' subtitle for transfers with both accounts", () => {
     render(
       <TransactionItem
         transaction={{

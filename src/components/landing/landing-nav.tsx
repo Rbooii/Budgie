@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
-  { label: "Motion", href: "/#motion" },
+  { label: "Use cases", href: "/#use-cases" },
   { label: "Features", href: "/#features" },
-  { label: "Stories", href: "/#stories" },
   { label: "Pricing", href: "/#pricing" },
   { label: "FAQ", href: "/#faq" },
 ] as const;
@@ -43,7 +42,7 @@ export function LandingNav({
             <a
               key={item.href}
               href={item.href}
-              className="text-sm text-black/60 hover:text-black transition"
+              className="text-sm font-medium text-black/60 hover:text-black transition"
             >
               {item.label}
             </a>
@@ -52,13 +51,13 @@ export function LandingNav({
         {!session && <div className="flex items-center gap-2">
           <Link
             href="/sign-in"
-            className="inline-flex items-center justify-center text-sm font-semibold py-[10px] px-[20px] rounded-[35px] bg-white text-black border border-black/10 hover:bg-[#F2F2F2] active:scale-[0.98] transition transform duration-150"
+            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-white text-black border border-black/10 hover:bg-[#F2F2F2] active:scale-[0.98] transition transform duration-150"
           >
             Sign in
           </Link>
           <Link
             href="/sign-in"
-            className="inline-flex items-center justify-center text-sm font-semibold py-[10px] px-[20px] rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
+            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
           >
             Get started
           </Link>
@@ -66,7 +65,7 @@ export function LandingNav({
         {session && <div className="flex items-center gap-2">
           <Link
             href="/dashboard"
-            className="inline-flex items-center justify-center text-sm font-semibold py-[10px] px-[20px] rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
+            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
           >
             Dashboard
           </Link>

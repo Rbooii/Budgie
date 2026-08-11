@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Generated code:
     "src/generated/**",
     "src/server/schemas/generated/**",
+    // Downloaded reference material (Notion saved page) — not our code:
+    "ui/**",
   ]),
 ]);
 
