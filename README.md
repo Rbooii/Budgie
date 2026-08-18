@@ -20,7 +20,7 @@ CI/CD, and fast feature shipping with rigorous type-safety and testing.
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![Bun](https://img.shields.io/badge/Bun-1.3-000000?style=flat-square&logo=bun&logoColor=white)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-899%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
+[![Tests](https://img.shields.io/badge/tests-954%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
 
 ### Demo
 
@@ -71,15 +71,15 @@ contribution — human or AI — follows the same structured workflow.
 - **Premade categories** — Per-type category lists (income/expense/transfer) — users pick from curated lists, no free-text chaos
 - **Responsive design** — Mobile-first with fixed bottom nav; desktop reveals a persistent sidebar. Calm minimal fintech aesthetic.
 - **Public landing page** — Root `/` (`src/app/page.tsx`) renders `<LandingPage/>` (server component, no auth gate): hero + animated stat counters, marquee, `<video>` "See it in motion" showcase (`AutoVideo` client component — mirrors the README demo, with the same Vercel-Blob mp4 source), feature grid, product vignettes, privacy spotlight, Plus pricing, FAQ, final CTA, footer. Rich SEO metadata + JSON-LD (WebApplication, BreadcrumbList, FAQPage, VideoObject). Video assets drop into `public/videos/` (see `public/videos/README.md`).
-- **Testing** — Vitest + jsdom + Testing Library (899 tests across 80 suites: component + service + controller + schema + mock midtrans + landing layers)
+- **Chat (AI financial assistant)** — `/chat` powered by Vercel AI SDK v7 + Google Gemini 2.5 Flash. Natural streaming responses with a collapsible Thinking state, real-time tool-calling feedback cards (accounts, transactions, budgets, subscriptions, insights), and the ability to record transactions from chat. **Free-tier friendly**: auto-downgrades to `gemini-2.5-flash-lite` when the primary model's daily quota runs out (per-model quota buckets) and persists the choice for 12h; token-lean by design (10-message window with old tool/reasoning parts pruned, 640 output tokens, capped thinking, compact tool results). Conversation + input draft survive tab switches via localStorage. Backend: dedicated Route Handler `src/app/api/chat/route.ts` + `src/server/chat/` tools that call the existing services directly (userId-scoped). See `ARCHITECTURE.md` §22.
+- **Testing** — Vitest + jsdom + Testing Library (954 tests across 86 suites: component + service + controller + schema + mock midtrans + chat + landing layers)
 
 ### In Progress
 
-- **Chat** — AI-powered financial assistant (placeholder page)
+- **CI/CD pipeline** — Automated lint, typecheck, test, build on push
 
 ### Planned
 
-- **CI/CD pipeline** — Automated lint, typecheck, test, build on push
 - **Multi-agent orchestration** — Scripts/workflows for parallel agent collaboration
 - **Transaction editing** — Intentionally deferred (requires bidirectional re-balancing)
 
@@ -100,6 +100,7 @@ contribution — human or AI — follows the same structured workflow.
 | PDF | jsPDF + jsPDF-AutoTable | 4.x / 5.x |
 | QR codes | qrcode.react (Plus QRIS checkout) | 4.x |
 | Smooth scroll | lenis (landing page only) | 1.3.x |
+| AI chat | Vercel AI SDK v7 (`ai` + `@ai-sdk/react`) + `@ai-sdk/google` (Gemini 2.5 Flash) | 7.x |
 | Lint | ESLint 9 + eslint-config-next | 9.x |
 
 ## Quick Start
@@ -209,32 +210,35 @@ budgie/
 │  │  ├─ transactions/            # list + 3-step add wizard
 │  │  ├─ budget/                  # budgets + subscriptions (RSC, charts, lists, wizards)
 │  │  ├─ profile/                 # account & Plus subscription surface
-│  │  ├─ chat/                    # placeholder
+│  │  ├─ chat/                    # AI financial assistant (ChatView + tool result cards)
 │  │  ├─ sign-in/                 # auth screen
 │  │  └─ api/
+│  │     ├─ chat/route.ts         # AI SDK streamText handler (Gemini 2.5 Flash)
 │  │     ├─ [[...route]]/         # catch-all -> Hono
 │  │     └─ auth/[...all]/        # better-auth handler
-│  ├─ components/                 # React UI (51 components: 29 root + 22 landing/, incl. plus-payment-wizard, upgradePlusButton)
+│  ├─ components/                 # React UI (incl. chat/ subfolder, plus-payment-wizard, upgradePlusButton)
+│  │  ├─ chat/                    # ChatView, ChatMessage, ChatThinking, ChatToolCard/Status/Result, ChatInput, ChatEmptyState
 │  │  └─ landing/                 # AutoVideo (<video>), HeroHeadline, Spotlight, Tilt, Magnetic, VideoShowcase, Vignettes, HeroPreview, Marquee, ScrollProgress, Pricing, Faq, Footer, …
-│  ├─ lib/                        # auth, auth-client, prisma, api-client, format, categories, category-icon, budget, midtrans (mock QRIS), dashboard, font-size
+│  ├─ lib/                        # auth, auth-client, prisma, api-client, format, categories, category-icon, budget, midtrans (mock QRIS), dashboard, font-size, chat-models, chat-storage
 │  └─ server/                     # ALL backend logic
+│     ├─ chat/                    # buildSystemPrompt, tool schemas, createChatTools(userId)
 │     ├─ routes/                  # Layer 1: HTTP wiring (budgets, subscriptions, balance-accounts, transactions, user, plus)
 │     ├─ controllers/             # Layer 2: I/O + type mapping
-│     ├─ services/                # Layer 3: pure logic + Prisma
+│     ├─ services/                # Layer 3: pure logic + Prisma (+ insights, listBudgetsWithSpent)
 │     ├─ schemas/                 # Zod (.pick + .extend on generated)
 │     └─ middleware/auth.ts       # requireAuth + AppEnv
 ├─ public/videos/                 # landing video drop-in (brand.mp4/.webm + vignettes) — see public/videos/README.md
 ├─ prisma/schema.prisma           # datasource + 2 generators (client, zod) + 9 models (User…PlusOrder)
-├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets, §20 profile & Plus, §21 landing)
+├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets, §20 profile & Plus, §21 landing, §22 chat)
 ├── AGENTS.md                     # AI agent rules
-├── UI_DESIGN.md                   # UI/UX design reference (§14 budgets + Plus wizard UI patterns, §16 landing)
+├── UI_DESIGN.md                   # UI/UX design reference (§16 landing, §17 chat UI)
 └─ vitest.config.ts               # test config (jsdom + Testing Library)
 ```
 
 ## Testing
 
 ```bash
-bun run test          # 899 tests, 80 suites (one-shot)
+bun run test          # 954 tests, 86 suites (one-shot)
 bun run test:watch    # watch mode for development
 ```
 
@@ -263,6 +267,16 @@ bun run test:watch    # watch mode for development
 | `src/components/upgradePlusButton.test.tsx` | Component — upgrade (opens wizard) vs downgrade (PATCH) flows | 8 |
 | `src/components/landing/*.test.tsx` + `mock-data.test.ts` | Landing — full-page composition via `LandingPageView` (session-conditional nav, section order, CTA copy), IO/reduced-motion behavior (auto-video, animated-counter, scroll-progress, reveal, hero-preview), CSS-var interaction primitives (spotlight, tilt, magnetic, hero-headline), content suites, mock-data integrity | 151 |
 | `src/server/controllers/*.test.ts` + `schemas/*.test.ts` | Server — budgets/balance-accounts/plus/user 3-layer + route handler, auth middleware | ~120 |
+| `src/server/chat/tools.test.ts` | Chat tools — each tool calls the right service with `userId`, transaction filtering + limit cap, create_transaction ok/error paths (insufficient balance, category/type mismatch, transfer refine) | 17 |
+| `src/server/chat/schemas.test.ts` | Chat tool schemas — filter validation, transfer refines, category/type matching, unknown-key rejection | 14 |
+| `src/server/chat/system.test.ts` | Chat system prompt — user name, date, language rule, no-inventing rule, confirm-before-create | 8 |
+| `src/server/services/insights.test.ts` | Service — net worth + month aggregates + top-category ranking, empty user, five-cap | 3 |
+| `src/server/chat/prepare.test.ts` | Chat prep — 10-message window, tool-part strip beyond last 2, reasoning strip beyond last 1 | 6 |
+| `src/lib/chat-models.test.ts` | Chat models — resolveModel allowlist, isRateLimitError variants, thinking config per model | 7 |
+| `src/lib/chat-storage.test.ts` | Chat storage — messages/draft/model round-trip, corrupt fallback, per-user isolation, 12h model expiry, clear | 11 |
+| `src/components/chat/chat-view.test.tsx` | Chat UI — bubbles, thinking toggle, tool status + result cards, typing indicator, stop/retry/send flows, persistence + clear, auto model-downgrade on quota errors (useChat mocked) | 22 |
+| `src/components/chat/chat-tool-result.test.tsx` | Chat tool cards — accounts/transactions/budgets/subscriptions/insights/create_transaction (success + failure), 8-row cap, empty states | 9 |
+| `src/components/chat/chat-thinking.test.tsx` + `chat-tool-status.test.tsx` | Chat primitives — thinking expand/collapse + streaming state, tool status pill | 7 |
 
 Tests are fully deterministic — no real database, no HTTP server, no auth
 cookies. All Prisma calls and API clients are mocked at the module level.
@@ -291,6 +305,7 @@ their own suites.
 | `GITHUB_CLIENT_ID` | no | GitHub OAuth |
 | `GITHUB_CLIENT_SECRET` | no | GitHub OAuth |
 | `NEXT_PUBLIC_APP_URL` | no | SSR base URL for RPC client (defaults to `http://localhost:3000`) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | no (chat) | Google AI Studio key for the AI assistant (`/api/chat`) |
 
 ## Deployment
 
@@ -315,6 +330,7 @@ deploy — no manual migration step needed.
    | `NEXT_PUBLIC_APP_URL` | Same as `BETTER_AUTH_URL` |
    | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth credentials (optional) |
    | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | OAuth credentials (optional) |
+   | `GOOGLE_GENERATIVE_AI_API_KEY` | Google AI Studio key (optional — required for the AI assistant) |
 
 3. **Push to `main`** → Vercel runs `bun run build`:
    - `prisma migrate deploy` applies pending migrations via `DIRECT_URL`

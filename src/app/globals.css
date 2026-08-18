@@ -82,6 +82,17 @@ body {
   }
 }
 
+@keyframes typingPulse {
+  0%, 100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0);

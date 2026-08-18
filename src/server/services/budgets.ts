@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { periodStartDate } from "@/lib/budget";
 import type { CreateBudget, UpdateBudget } from "@/server/schemas/budget";
 
 export async function listBudgets(userId: string) {
@@ -6,6 +7,28 @@ export async function listBudgets(userId: string) {
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
+}
+
+export async function listBudgetsWithSpent(userId: string) {
+  const budgets = await prisma.budget.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+  const withSpent = await Promise.all(
+    budgets.map(async (b) => {
+      const agg = await prisma.transaction.aggregate({
+        where: {
+          userId,
+          type: "expense",
+          category: b.category,
+          date: { gte: periodStartDate(b.periodDays) },
+        },
+        _sum: { amount: true },
+      });
+      return { ...b, spent: agg._sum.amount ?? 0 };
+    }),
+  );
+  return withSpent;
 }
 
 export async function getBudget(userId: string, id: string) {

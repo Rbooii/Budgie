@@ -160,3 +160,118 @@ facts, and every footer/nav link resolves to a real page or section.
   chevrons are hidden in previews via `TransactionItem hideChevron`).
 - When embedding an app component in a bento, use its `bare`/`hideChevron`
   variants instead of boxing it — media sits directly on the gray card.
+
+## 17. Chat UI (auth-gated `/chat`)
+
+`src/components/chat/` is the Budgie AI assistant surface (`ChatView` in
+`src/app/chat/page.tsx` via `PageShell`). It follows the calm minimal fintech
+register of the rest of the app — no chatbot clichés (no rounded chat-gradient
+bubbles, no avatar circles, no confetti). Same tokens as §2/§6: one brand green
+`#00C610`, the 3 semantic tints (income green / expense red / transfer orange),
+`bg-[#F2F2F2]`/`bg-[#FAFAFA]` surfaces, `tabular-nums`, `formatRupiah`, motion
+≤200ms `ease-out` (`stepReveal` keyframe), `motion-reduce` respected.
+
+### Layout
+
+```
+flex-col h-[calc(100dvh-12rem)] md:h-[calc(100vh-8rem)]
+├─ header: h1 "Chat" + one-line subtitle
+├─ scrollable message list (flex-1 overflow-y-auto)
+│   ├─ empty state (greeting + 4 suggestion chips)   ← when no messages
+│   ├─ message bubbles (user right / assistant left)
+│   ├─ Thinking block + tool status + tool result cards
+│   └─ 3-dot typing indicator (role="status")          ← status === "submitted"
+└─ input bar: rounded-full textarea pill + round send/stop button
+```
+
+### Bubbles & text
+
+| Element | Style |
+| ------- | ----- |
+| User bubble | right-aligned, `max-w-[85%] sm:max-w-[70%]`, `rounded-[35px] rounded-br-[8px] bg-black text-white px-4 py-2.5 text-sm`, `whitespace-pre-wrap` |
+| Assistant text | left, `rounded-[20px] rounded-tl-[6px] bg-[#F2F2F2] px-4 py-2.5 text-sm`, `whitespace-pre-wrap` (plain text — no markdown renderer; the model is told to keep it simple) |
+| Typing indicator | 3 dots (`w-1.5 h-1.5`, `bg-black/30`) pulsing via the `typingPulse` keyframe (opacity + 2px lift, staggered 200ms), in a `rounded-[20px] bg-[#F2F2F2]` pill, `role="status"` |
+
+### Thinking state (`ChatThinking`)
+
+The "Thinking…" row is **not** a bubble — it's a quiet caption under the
+assistant text:
+
+- **Streaming** (`part.state === "streaming"`): `Loader2 animate-spin` + muted
+  `text-black/45` "Thinking…". Not clickable.
+- **Done**: collapses to a `Sparkles` + "Thought for a moment" toggle
+  (`text-black/45 hover:text-black/70`). Clicking reveals the reasoning text in
+  a `rounded-[14px] bg-[#F9F9F8] border border-black/5 font-mono text-xs
+  text-black/55` block (max-h, scrollable). Chevron rotates on expand.
+
+### Tool calling feedback
+
+- **Running** (`input-streaming` / `input-available`) → `ChatToolStatus`: a
+  `rounded-[20px] bg-[#F2F2F2]` pill with `Loader2` (brand green `text-[#1F9B29]`)
+  + per-tool text ("Looking up your accounts…", "Adding the transaction…").
+- **Result** (`output-available`) → a `ChatToolResult` card: `max-w-[85%]
+  sm:max-w-[70%]`, `rounded-[20px] bg-[#FAFAFA] border border-black/5 p-4`,
+  `stepReveal` 200ms in. Cards reuse the app's existing patterns:
+  - **Accounts** — "Total balance" label + hero `tabular-nums` amount, then
+    `divide-y divide-black/[0.04]` rows (8×8 `Wallet` tile on income-green,
+    name + `capitalize` type, right-aligned balance).
+  - **Transactions** — "N transactions" eyebrow + up to **8 rows** in the
+    `TransactionItem` visual language (tinted type icon, name + category ·
+    account, signed `formatRupiah` in the type tint, `formatDate`); "+N more"
+    caption beyond 8. Empty → "No transactions found."
+  - **Budgets** — per budget: label + `periodLabel` pill, 2px progress track
+    (`bg-[#00C610]` under / `bg-[#D8000C]` over), "spent of limit" caption.
+  - **Subscriptions** — rows with `Repeat` tile (transfer orange), name +
+    "Category · Period · Inactive", amount + "Next {date}".
+  - **Insights** — net worth hero + two `rounded-[14px]` tint tiles (income
+    green / expense red) for month totals + "Top categories" mini bars.
+  - **create_transaction** — success: `CheckCircle2` green "Transaction added"
+    + row (name, category · account, signed amount). Failure: `XCircle` red
+    "Couldn't add the transaction" + the reason (e.g. "Insufficient balance").
+- **Error** (`output-error`) → §7.6-style `softred` callout (border
+  `#FFBABA`, `bg-[#FFBABA]/30`, `text-[#D8000C]`), "… failed" + message.
+
+### Input bar (`ChatInput`)
+
+`rounded-[22px] bg-[#F2F2F2]` auto-growing textarea (up to 160px), focus →
+white + 2px black/15 ring. Submit is a circular `w-11 h-11 bg-[#00C610]` button
+with an `ArrowUp` (disabled at 40% opacity while empty or not `ready`); while
+streaming it swaps to a white-outline `Square` **Stop** button. `Enter` sends,
+`Shift+Enter` newline. Disabled (60% opacity) in the error state.
+
+### Empty state (`ChatEmptyState`)
+
+§7.5 shape: 12×12 `bg-[#F2F2F2]` circle + `MessageCircle` icon, "Hi {name}, ask
+me anything about your money" heading, one-line helper, then up to 4 suggestion
+chips (`rounded-full bg-[#F2F2F2] hover:bg-[#E9E9E9]`, `active:scale-[0.98]`).
+Tapping a chip sends immediately (no confirmation).
+
+### Error surface
+
+`softred` callout above the input: "Something went wrong" + hint that the
+Gemini API key must be set + an `outline` "Retry" button → `regenerate()`.
+
+### Gotchas
+
+- The assistant text is plain `whitespace-pre-wrap` — no markdown/markdown-it
+  dependency. Keep model instructions "no markdown tables unless asked".
+- Result cards are **static** — they don't navigate or open sheets (the model's
+  cards summarize; the real lists live on `/dashboard`, `/transactions`,
+  `/budget`).
+- Icons only from `lucide-react`; no new colors beyond the §2 tokens.
+
+### Persistence & Clear chat
+
+- The conversation (messages) and the typed input draft persist in
+  `localStorage` (`budgie.chat.{userId}.messages` / `.draft`), so switching
+  between sidebar tabs or closing the tab never loses the chat. Restored
+  post-hydration (no SSR mismatch).
+- A small `Trash2` icon button (outline circle, `text-black/40
+  hover:text-black hover:bg-[#F2F2F2]`) sits right-aligned on the helper row
+  when there are messages. `aria-label="Clear chat"`. Clears storage + state
+  and resets the model choice.
+- **Lighter-model notice** — when the assistant auto-downgraded to
+  `gemini-2.5-flash-lite` (free-tier quota) or a saved downgrade is in effect,
+  a quiet one-liner appears under the helper row: a `Sparkles` icon
+  (`text-[#1F9B29]`) + `text-xs text-black/40` "Switched to a lighter model to
+  stay within free limits." Dash-free, no badges, no toast.
