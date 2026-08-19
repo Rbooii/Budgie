@@ -1,11 +1,20 @@
 export const MODEL_CHAIN = [
   "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
+  "gemini-3.5-flash-lite",
 ] as const;
 
 export type ChatModelId = (typeof MODEL_CHAIN)[number];
 
 export const DEFAULT_MODEL: ChatModelId = MODEL_CHAIN[0];
+
+export const MODEL_LABELS: Record<ChatModelId, string> = {
+  "gemini-2.5-flash": "Gemini 2.5 Flash",
+  "gemini-3.5-flash-lite": "Gemini 3.5 Flash Lite",
+};
+
+export function modelLabel(model: ChatModelId): string {
+  return MODEL_LABELS[model] ?? model;
+}
 
 export function resolveModel(input: unknown): ChatModelId {
   if (typeof input === "string" && (MODEL_CHAIN as readonly string[]).includes(input)) {

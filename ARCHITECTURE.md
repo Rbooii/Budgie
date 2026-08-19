@@ -2082,7 +2082,7 @@ Gemini free tier caps requests **per model per project** (e.g. 20/day for
 to a cheaper model on a quota error:
 
 - `src/lib/chat-models.ts` holds `MODEL_CHAIN = ["gemini-2.5-flash",
-  "gemini-2.5-flash-lite"]`. The client always sends `body.model` (allowlisted
+  "gemini-3.5-flash-lite"]`. The client always sends `body.model` (allowlisted
   server-side by `resolveModel` — unknown values fall back to the default, so a
   client can't force an arbitrary model).
 - `isRateLimitError(error)` matches `429` / `quota` / `RESOURCE_EXHAUSTED` /
@@ -2095,6 +2095,10 @@ to a cheaper model on a quota error:
 - `thinkingConfigFor(model)` — primary keeps streaming reasoning for the
   Thinking UI (budget capped at 256); the lite model disables it entirely
   (saves reasoning tokens).
+- The composer shows the **active model** at all times: `modelLabel(model)`
+  (`MODEL_LABELS` in `src/lib/chat-models.ts` → "Gemini 2.5 Flash" /
+  "Gemini 3.5 Flash Lite") renders as a static chip inside `ChatInput` (see
+  UI_DESIGN §17).
 
 ### "AI call optimized" measures
 
@@ -2152,7 +2156,7 @@ multi-step tool calls resume correctly across turns.
   route streams a provider error → the UI shows the §7.6 error callout with
   Retry. Also set it in Vercel (§12.5 table).
 - **Free-tier quotas are per model.** `gemini-2.5-flash` caps around 20
-  requests/day; `gemini-2.5-flash-lite` has its own (much higher) bucket — the
+  requests/day; `gemini-3.5-flash-lite` has its own (much higher) bucket — the
   auto-downgrade in `ChatView` is what dodges the cap. The chosen model is
   persisted in `budgie.chat.{userId}.model` (12h) so revisits don't waste a
   guaranteed 429 on the primary.

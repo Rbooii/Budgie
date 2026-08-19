@@ -174,22 +174,42 @@ bubbles, no avatar circles, no confetti). Same tokens as §2/§6: one brand gree
 ### Layout
 
 ```
-flex-col h-[calc(100dvh-12rem)] md:h-[calc(100vh-8rem)]
-├─ header: h1 "Chat" + one-line subtitle
-├─ scrollable message list (flex-1 overflow-y-auto)
-│   ├─ empty state (greeting + 4 suggestion chips)   ← when no messages
-│   ├─ message bubbles (user right / assistant left)
-│   ├─ Thinking block + tool status + tool result cards
-│   └─ 3-dot typing indicator (role="status")          ← status === "submitted"
-└─ input bar: rounded-full textarea pill + round send/stop button
+mx-auto w-full max-w-3xl flex-col (viewport-fitted height)
+├─ header slot: AccountTab + h1 "Chat" (page renders these as children)
+├─ slim row: lighter-model notice (left) · Clear chat button (right)
+└─ scroll thread (flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable])
+    ├─ feed: max-w-3xl mx-auto, gap-5 (empty state / bubbles / thinking / tool cards / typing)
+    ├─ grow spacer (keeps composer near bottom on short chats)
+    └─ composer: sticky bottom-0 z-[5] — translucent card (model chip + send/stop) + caption
 ```
+
+Claude's anatomy, light-mode: the whole conversation lives in a **narrow
+centered column** (`max-w-3xl mx-auto` — 768px; full width on mobile), the
+composer is **sticky at the bottom of the scrolling thread** so messages scroll
+behind its frosted-glass card, and the column height is **measured at runtime**
+(`ChatView` reads its `getBoundingClientRect().top` and sets
+`height: calc(100dvh - top - bottomPad)`, re-measuring on resize) — the
+**page never scrolls**, the message list is the only scroll area (no double
+scrollbars).
+
+### Scrollbar (Claude-style)
+
+The thread uses Claude's quiet scrollbar: `[scrollbar-gutter:stable]` (no
+layout shift) + the `chat-scroll` class (`globals.css`) — a **thin 8px
+scrollbar** with a transparent track and a rounded `rgba(0,0,0,0.15)` thumb
+(2px inner padding, `hover` darkens to `0.3`), plus Firefox's
+`scrollbar-width: thin`. The bar stays visually quiet and only stands out on
+hover, exactly like Claude.
 
 ### Bubbles & text
 
+Mirrors Claude's message anatomy (light-mode tokens):
+
 | Element | Style |
 | ------- | ----- |
-| User bubble | right-aligned, `max-w-[85%] sm:max-w-[70%]`, `rounded-[35px] rounded-br-[8px] bg-black text-white px-4 py-2.5 text-sm`, `whitespace-pre-wrap` |
-| Assistant text | left, `rounded-[20px] rounded-tl-[6px] bg-[#F2F2F2] px-4 py-2.5 text-sm`, `whitespace-pre-wrap` (plain text — no markdown renderer; the model is told to keep it simple) |
+| User bubble | right-aligned, `max-w-[85%]`, `rounded-[20px] bg-[#F2F2F2] px-4 py-2.5 text-[15px]` (neutral gray bubble, no black) |
+| Assistant text | **full column width, no bubble**, **app sans font** (`text-[15px] leading-relaxed`, NOT serif), `whitespace-pre-wrap`, `pb-0.75rem` breathing |
+| Message gap | `gap-5` between messages (Claude's airy ~1.5rem rhythm) |
 | Typing indicator | 3 dots (`w-1.5 h-1.5`, `bg-black/30`) pulsing via the `typingPulse` keyframe (opacity + 2px lift, staggered 200ms), in a `rounded-[20px] bg-[#F2F2F2]` pill, `role="status"` |
 
 ### Thinking state (`ChatThinking`)
@@ -231,13 +251,29 @@ assistant text:
 - **Error** (`output-error`) → §7.6-style `softred` callout (border
   `#FFBABA`, `bg-[#FFBABA]/30`, `text-[#D8000C]`), "… failed" + message.
 
-### Input bar (`ChatInput`)
+### Input bar (`ChatInput`) — Claude-style composer
 
-`rounded-[22px] bg-[#F2F2F2]` auto-growing textarea (up to 160px), focus →
-white + 2px black/15 ring. Submit is a circular `w-11 h-11 bg-[#00C610]` button
-with an `ArrowUp` (disabled at 40% opacity while empty or not `ready`); while
-streaming it swaps to a white-outline `Square` **Stop** button. `Enter` sends,
-`Shift+Enter` newline. Disabled (60% opacity) in the error state.
+The composer is **sticky at the bottom of the scroll thread** (Claude's exact
+pattern): `sticky bottom-0 z-[5] pt-4` inside the `overflow-y-auto` thread, so
+messages scroll **behind** it and the translucent card + `backdrop-blur`
+actually read as frosted glass. A `grow` spacer above it keeps the composer
+near the bottom on short conversations.
+
+- **Card** — Claude's `rounded-[20px]` surface: `border-transparent
+  bg-[#F4F4F4]/70 backdrop-blur-md` with a hairline shadow
+  (`shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_4px_20px_-12px_rgba(0,0,0,0.1)]`);
+  on focus it firms to `bg-white/85` and deepens the shadow. `px-4 pt-3.5 pb-2`,
+  ≤150ms transition.
+- **Textarea** — Claude's sizing: `min-h-[1.5rem] max-h-96 text-base`
+  auto-grow, placeholder "Write a message…". `Enter` sends, `Shift+Enter`
+  newline. Disabled (60% opacity) in the error state.
+- **Bottom row inside the card** — left: static model chip (`Sparkles`, green
+  when lite, + "Gemini 2.5 Flash" / "Gemini 3.5 Flash Lite", `text-xs
+  text-black/45`); right: circular send (`w-9 h-9 rounded-full bg-[#00C610]`
+  + `ArrowUp`, disabled at 40% while empty/not ready; swaps to a white-outline
+  `Square` Stop while streaming).
+- **Caption below the card** — "Budgie can make mistakes. Double-check the
+  important numbers." — `text-[11px] text-black/35 text-center mt-2`.
 
 ### Empty state (`ChatEmptyState`)
 
@@ -267,11 +303,12 @@ Gemini API key must be set + an `outline` "Retry" button → `regenerate()`.
   between sidebar tabs or closing the tab never loses the chat. Restored
   post-hydration (no SSR mismatch).
 - A small `Trash2` icon button (outline circle, `text-black/40
-  hover:text-black hover:bg-[#F2F2F2]`) sits right-aligned on the helper row
-  when there are messages. `aria-label="Clear chat"`. Clears storage + state
-  and resets the model choice.
+  hover:text-black hover:bg-[#F2F2F2]`) sits right-aligned on the slim row
+  above the message list when there are messages. `aria-label="Clear chat"`.
+  Clears storage + state and resets the model choice.
 - **Lighter-model notice** — when the assistant auto-downgraded to
-  `gemini-2.5-flash-lite` (free-tier quota) or a saved downgrade is in effect,
-  a quiet one-liner appears under the helper row: a `Sparkles` icon
+  `gemini-3.5-flash-lite` (free-tier quota) or a saved downgrade is in effect,
+  a quiet one-liner appears left-aligned on the slim row: a `Sparkles` icon
   (`text-[#1F9B29]`) + `text-xs text-black/40` "Switched to a lighter model to
-  stay within free limits." Dash-free, no badges, no toast.
+  stay within free limits." Dash-free, no badges, no toast. The composer's
+  model chip shows the active model at all times.

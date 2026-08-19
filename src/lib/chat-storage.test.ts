@@ -74,8 +74,8 @@ describe("chat-storage model", () => {
   });
 
   it("round-trips the saved model", () => {
-    saveChatModel("user-1", "gemini-2.5-flash-lite");
-    expect(loadChatModel("user-1")).toBe("gemini-2.5-flash-lite");
+    saveChatModel("user-1", "gemini-3.5-flash-lite");
+    expect(loadChatModel("user-1")).toBe("gemini-3.5-flash-lite");
   });
 
   it("defaults to the primary model when nothing is saved", () => {
@@ -96,17 +96,17 @@ describe("chat-storage model", () => {
   it("expires a saved model after 12 hours", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-18T00:00:00"));
-    saveChatModel("user-1", "gemini-2.5-flash-lite");
+    saveChatModel("user-1", "gemini-3.5-flash-lite");
 
     vi.setSystemTime(new Date("2026-08-18T11:59:00"));
-    expect(loadChatModel("user-1")).toBe("gemini-2.5-flash-lite");
+    expect(loadChatModel("user-1")).toBe("gemini-3.5-flash-lite");
 
     vi.setSystemTime(new Date("2026-08-18T12:01:00"));
     expect(loadChatModel("user-1")).toBe("gemini-2.5-flash");
   });
 
   it("resets the model on clear", () => {
-    saveChatModel("user-1", "gemini-2.5-flash-lite");
+    saveChatModel("user-1", "gemini-3.5-flash-lite");
     clearChat("user-1");
     expect(loadChatModel("user-1")).toBe("gemini-2.5-flash");
   });

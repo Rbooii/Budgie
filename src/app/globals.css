@@ -93,6 +93,15 @@ body {
   }
 }
 
+.chat-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chat-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0);

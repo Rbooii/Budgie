@@ -17,7 +17,7 @@ import { loadChatDraft, loadChatMessages } from "@/lib/chat-storage";
 
 const USER_ID = "user-1";
 const PRIMARY_MODEL = "gemini-2.5-flash";
-const LITE_MODEL = "gemini-2.5-flash-lite";
+const LITE_MODEL = "gemini-3.5-flash-lite";
 
 const defaultChat = {
   sendMessage: vi.fn(),
@@ -103,6 +103,36 @@ describe("ChatView", () => {
     expect(screen.getByText(/add a rp 45.000 lunch expense/i)).toBeInTheDocument();
   });
 
+  it("shows the active model in the composer chip and the disclaimer caption", () => {
+    renderChat();
+    expect(screen.getByLabelText("Select model")).toHaveValue(PRIMARY_MODEL);
+    expect(
+      screen.getByText(/budgie can make mistakes/i),
+    ).toBeInTheDocument();
+  });
+
+  it("manually switches the model and persists it", async () => {
+    renderChat();
+    const select = screen.getByLabelText("Select model");
+
+    fireEvent.change(select, { target: { value: LITE_MODEL } });
+
+    expect(select).toHaveValue(LITE_MODEL);
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(`budgie.chat.${USER_ID}.model`) ?? "{}",
+      ).model,
+    ).toBe(LITE_MODEL);
+    expect(screen.queryByText(/switched to a lighter model/i)).toBeNull();
+
+    const input = screen.getByPlaceholderText(/write a message/i);
+    await userEvent.type(input, "hello{enter}");
+    expect(defaultChat.sendMessage).toHaveBeenCalledWith(
+      { text: "hello" },
+      { body: { model: LITE_MODEL } },
+    );
+  });
+
   it("sends the suggestion text with the current model when a chip is clicked", async () => {
     renderChat();
     await userEvent.click(screen.getByText(/net worth right now/i));
@@ -168,7 +198,7 @@ describe("ChatView", () => {
 
   it("sends a typed message on Enter with the current model and clears the input", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/ask about your money/i);
+    const input = screen.getByPlaceholderText(/write a message/i);
 
     await userEvent.type(input, "hello budgie{enter}");
 
@@ -181,7 +211,7 @@ describe("ChatView", () => {
 
   it("does not send empty input", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/ask about your money/i);
+    const input = screen.getByPlaceholderText(/write a message/i);
     fireEvent.change(input, { target: { value: "   " } });
 
     await userEvent.click(screen.getByRole("button", { name: /send/i }));
@@ -244,7 +274,7 @@ describe("ChatView", () => {
 
   it("disables the input while the chat is in error state", () => {
     renderChat({ error: new Error("boom"), status: "error" });
-    expect(screen.getByPlaceholderText(/ask about your money/i)).toBeDisabled();
+    expect(screen.getByPlaceholderText(/write a message/i)).toBeDisabled();
   });
 
   it("restores saved messages and draft from localStorage on mount", async () => {
@@ -257,7 +287,7 @@ describe("ChatView", () => {
 
     const { setMessages } = renderChat();
     await waitFor(() => expect(setMessages).toHaveBeenCalledWith(saved));
-    expect(screen.getByPlaceholderText(/ask about your money/i)).toHaveValue(
+    expect(screen.getByPlaceholderText(/write a message/i)).toHaveValue(
       "half typed",
     );
   });
@@ -278,7 +308,7 @@ describe("ChatView", () => {
 
   it("persists the input draft as the user types", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/ask about your money/i);
+    const input = screen.getByPlaceholderText(/write a message/i);
 
     await userEvent.type(input, "spending");
     await waitFor(() => {
@@ -349,8 +379,9 @@ describe("ChatView", () => {
     await waitFor(() => {
       expect(screen.getByText(/switched to a lighter model/i)).toBeInTheDocument();
     });
+    expect(screen.getByLabelText("Select model")).toHaveValue(LITE_MODEL);
 
-    const input = screen.getByPlaceholderText(/ask about your money/i);
+    const input = screen.getByPlaceholderText(/write a message/i);
     await userEvent.type(input, "hello{enter}");
     expect(defaultChat.sendMessage).toHaveBeenCalledWith(
       { text: "hello" },

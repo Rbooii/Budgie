@@ -18,11 +18,12 @@ export default async function ChatPage() {
 
   return (
     <PageShell>
-      <AccountTab userName={session.user.name} />
-      <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mt-6 md:mt-8">
-        Chat
-      </h1>
-      <ChatView userId={session.user.id} userName={session.user.name} />
+      <ChatView userId={session.user.id} userName={session.user.name}>
+        <AccountTab userName={session.user.name} />
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mt-6 md:mt-8">
+          Chat
+        </h1>
+      </ChatView>
     </PageShell>
   );
 }
