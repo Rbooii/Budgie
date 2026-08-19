@@ -144,9 +144,11 @@ facts, and every footer/nav link resolves to a real page or section.
   NOT rendered in tests (jsdom can't await async RSC — same rule as
   `AccountTab`).
 - `LandingPageView` — the **sync presentational** half, props
-  `{ session: boolean }`. This is what `index.test.tsx` exercises: full page
+  `{ session: boolean }`. This is what `tests/components/landing/index.test.tsx`
+  exercises: full page
   composition, CTA copy, section headings, session-conditional nav. When
-  editing landing copy, update `index.test.tsx` in the same change.
+  editing landing copy, update `tests/components/landing/index.test.tsx` in the
+  same change.
 
 ### Reuse rules
 - Reuse the §2 color tokens and §6 radius system — **do not invent new
@@ -160,3 +162,155 @@ facts, and every footer/nav link resolves to a real page or section.
   chevrons are hidden in previews via `TransactionItem hideChevron`).
 - When embedding an app component in a bento, use its `bare`/`hideChevron`
   variants instead of boxing it — media sits directly on the gray card.
+
+## 17. Chat UI (auth-gated `/chat`)
+
+`src/components/chat/` is the Budgie AI assistant surface (`ChatView` in
+`src/app/chat/page.tsx` via `PageShell`). It follows the calm minimal fintech
+register of the rest of the app — no chatbot clichés (no rounded chat-gradient
+bubbles, no avatar circles, no confetti). Same tokens as §2/§6: one brand green
+`#00C610`, the 3 semantic tints (income green / expense red / transfer orange),
+`bg-[#F2F2F2]`/`bg-[#FAFAFA]` surfaces, `tabular-nums`, `formatRupiah`, motion
+≤200ms `ease-out` (`stepReveal` keyframe), `motion-reduce` respected.
+
+### Layout
+
+```
+mx-auto w-full max-w-3xl flex-col (viewport-fitted height)
+├─ header slot: AccountTab + h1 "Chat" (page renders these as children)
+├─ slim row: lighter-model notice (left) · Clear chat button (right)
+└─ scroll thread (flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable])
+    ├─ feed: max-w-3xl mx-auto, gap-5 (empty state / bubbles / thinking / tool cards / typing)
+    ├─ grow spacer (keeps composer near bottom on short chats)
+    └─ composer: sticky bottom-0 z-[5] — translucent card (model chip + send/stop) + caption
+```
+
+Claude's anatomy, light-mode: the whole conversation lives in a **narrow
+centered column** (`max-w-3xl mx-auto` — 768px; full width on mobile), the
+composer is **sticky at the bottom of the scrolling thread** so messages scroll
+behind its frosted-glass card, and the column height is **measured at runtime**
+(`ChatView` reads its `getBoundingClientRect().top` and sets
+`height: calc(100dvh - top - bottomPad)`, re-measuring on resize) — the
+**page never scrolls**, the message list is the only scroll area (no double
+scrollbars).
+
+### Scrollbar (Claude-style)
+
+The thread uses Claude's quiet scrollbar: `[scrollbar-gutter:stable]` (no
+layout shift) + the `chat-scroll` class (`globals.css`) — a **thin 8px
+scrollbar** with a transparent track and a rounded `rgba(0,0,0,0.15)` thumb
+(2px inner padding, `hover` darkens to `0.3`), plus Firefox's
+`scrollbar-width: thin`. The bar stays visually quiet and only stands out on
+hover, exactly like Claude.
+
+### Bubbles & text
+
+Mirrors Claude's message anatomy (light-mode tokens):
+
+| Element | Style |
+| ------- | ----- |
+| User bubble | right-aligned, `max-w-[85%]`, `rounded-[20px] bg-[#F2F2F2] px-4 py-2.5 text-[15px]` (neutral gray bubble, no black) |
+| Assistant text | **full column width, no bubble**, **app sans font** (`text-[15px] leading-relaxed`, NOT serif), `whitespace-pre-wrap`, `pb-0.75rem` breathing |
+| Message gap | `gap-5` between messages (Claude's airy ~1.5rem rhythm) |
+| Typing indicator | 3 dots (`w-1.5 h-1.5`, `bg-black/30`) pulsing via the `typingPulse` keyframe (opacity + 2px lift, staggered 200ms), in a `rounded-[20px] bg-[#F2F2F2]` pill, `role="status"` |
+
+### Thinking state (`ChatThinking`)
+
+The "Thinking…" row is **not** a bubble — it's a quiet caption under the
+assistant text:
+
+- **Streaming** (`part.state === "streaming"`): `Loader2 animate-spin` + muted
+  `text-black/45` "Thinking…". Not clickable.
+- **Done**: collapses to a `Sparkles` + "Thought for a moment" toggle
+  (`text-black/45 hover:text-black/70`). Clicking reveals the reasoning text in
+  a `rounded-[14px] bg-[#F9F9F8] border border-black/5 font-mono text-xs
+  text-black/55` block (max-h, scrollable). Chevron rotates on expand.
+
+### Tool calling feedback
+
+- **Running** (`input-streaming` / `input-available`) → `ChatToolStatus`: a
+  `rounded-[20px] bg-[#F2F2F2]` pill with `Loader2` (brand green `text-[#1F9B29]`)
+  + per-tool text ("Looking up your accounts…", "Adding the transaction…").
+- **Result** (`output-available`) → a `ChatToolResult` card: `max-w-[85%]
+  sm:max-w-[70%]`, `rounded-[20px] bg-[#FAFAFA] border border-black/5 p-4`,
+  `stepReveal` 200ms in. Cards reuse the app's existing patterns:
+  - **Accounts** — "Total balance" label + hero `tabular-nums` amount, then
+    `divide-y divide-black/[0.04]` rows (8×8 `Wallet` tile on income-green,
+    name + `capitalize` type, right-aligned balance).
+  - **Transactions** — "N transactions" eyebrow + up to **8 rows** in the
+    `TransactionItem` visual language (tinted type icon, name + category ·
+    account, signed `formatRupiah` in the type tint, `formatDate`); "+N more"
+    caption beyond 8. Empty → "No transactions found."
+  - **Budgets** — per budget: label + `periodLabel` pill, 2px progress track
+    (`bg-[#00C610]` under / `bg-[#D8000C]` over), "spent of limit" caption.
+  - **Subscriptions** — rows with `Repeat` tile (transfer orange), name +
+    "Category · Period · Inactive", amount + "Next {date}".
+  - **Insights** — net worth hero + two `rounded-[14px]` tint tiles (income
+    green / expense red) for month totals + "Top categories" mini bars.
+  - **create_transaction** — success: `CheckCircle2` green "Transaction added"
+    + row (name, category · account, signed amount). Failure: `XCircle` red
+    "Couldn't add the transaction" + the reason (e.g. "Insufficient balance").
+- **Error** (`output-error`) → §7.6-style `softred` callout (border
+  `#FFBABA`, `bg-[#FFBABA]/30`, `text-[#D8000C]`), "… failed" + message.
+
+### Input bar (`ChatInput`) — Claude-style composer
+
+The composer is **sticky at the bottom of the scroll thread** (Claude's exact
+pattern): `sticky bottom-0 z-[5] pt-4` inside the `overflow-y-auto` thread, so
+messages scroll **behind** it and the translucent card + `backdrop-blur`
+actually read as frosted glass. A `grow` spacer above it keeps the composer
+near the bottom on short conversations.
+
+- **Card** — Claude's `rounded-[20px]` surface: `border-transparent
+  bg-[#F4F4F4]/70 backdrop-blur-md` with a hairline shadow
+  (`shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_4px_20px_-12px_rgba(0,0,0,0.1)]`);
+  on focus it firms to `bg-white/85` and deepens the shadow. `px-4 pt-3.5 pb-2`,
+  ≤150ms transition.
+- **Textarea** — Claude's sizing: `min-h-[1.5rem] max-h-96 text-base`
+  auto-grow, placeholder "Write a message…". `Enter` sends, `Shift+Enter`
+  newline. Disabled (60% opacity) in the error state.
+- **Bottom row inside the card** — left: static model chip (`Sparkles`, green
+  when lite, + "Gemini 2.5 Flash" / "Gemini 3.5 Flash Lite", `text-xs
+  text-black/45`); right: circular send (`w-9 h-9 rounded-full bg-[#00C610]`
+  + `ArrowUp`, disabled at 40% while empty/not ready; swaps to a white-outline
+  `Square` Stop while streaming).
+- **Caption below the card** — "Budgie can make mistakes. Double-check the
+  important numbers." — `text-[11px] text-black/35 text-center mt-2`.
+
+### Empty state (`ChatEmptyState`)
+
+§7.5 shape: 12×12 `bg-[#F2F2F2]` circle + `MessageCircle` icon, "Hi {name}, ask
+me anything about your money" heading, one-line helper, then up to 4 suggestion
+chips (`rounded-full bg-[#F2F2F2] hover:bg-[#E9E9E9]`, `active:scale-[0.98]`).
+Tapping a chip sends immediately (no confirmation).
+
+### Error surface
+
+`softred` callout above the input: "Something went wrong" + hint that the
+Gemini API key must be set + an `outline` "Retry" button → `regenerate()`.
+
+### Gotchas
+
+- The assistant text is plain `whitespace-pre-wrap` — no markdown/markdown-it
+  dependency. Keep model instructions "no markdown tables unless asked".
+- Result cards are **static** — they don't navigate or open sheets (the model's
+  cards summarize; the real lists live on `/dashboard`, `/transactions`,
+  `/budget`).
+- Icons only from `lucide-react`; no new colors beyond the §2 tokens.
+
+### Persistence & Clear chat
+
+- The conversation (messages) and the typed input draft persist in
+  `localStorage` (`budgie.chat.{userId}.messages` / `.draft`), so switching
+  between sidebar tabs or closing the tab never loses the chat. Restored
+  post-hydration (no SSR mismatch).
+- A small `Trash2` icon button (outline circle, `text-black/40
+  hover:text-black hover:bg-[#F2F2F2]`) sits right-aligned on the slim row
+  above the message list when there are messages. `aria-label="Clear chat"`.
+  Clears storage + state and resets the model choice.
+- **Lighter-model notice** — when the assistant auto-downgraded to
+  `gemini-3.5-flash-lite` (free-tier quota) or a saved downgrade is in effect,
+  a quiet one-liner appears left-aligned on the slim row: a `Sparkles` icon
+  (`text-[#1F9B29]`) + `text-xs text-black/40` "Switched to a lighter model to
+  stay within free limits." Dash-free, no badges, no toast. The composer's
+  model chip shows the active model at all times.

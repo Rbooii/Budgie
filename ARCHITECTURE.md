@@ -47,6 +47,7 @@ controllers/services → typed RPC client for the frontend.
 | Styling            | Tailwind CSS v4                         | 4.3.x      |
 | PDF generation     | `jspdf` + `jspdf-autotable`             | 4.x / 5.x |
 | Smooth scroll      | `lenis` (landing page only)         | 1.3.x     |
+| AI chat            | Vercel AI SDK v7 (`ai` + `@ai-sdk/react`) + `@ai-sdk/google` (Gemini 2.5 Flash) | 7.x / 4.x |
 | Lint               | ESLint 9 + `eslint-config-next`         | 9.x       |
 
 > **Note on Prisma 7:** Prisma 7 removed the built-in query engine. A **Driver
@@ -79,7 +80,7 @@ budgie/
    │  ├─ page.tsx                    # PUBLIC landing page (RSC) — <LandingPage/>, SEO metadata + JSON-LD — see §21
    │  ├─ globals.css                 # color-scheme: light, html bg-white, keyframes
    │  ├─ budget/                      # budget page (RSC, force-dynamic) — see §19
-   │  ├─ chat/                       # chat page
+   │  ├─ chat/                       # chat page (RSC auth gate → <ChatView/>) — see §22
    │  ├─ dashboard/                  # main dashboard (RSC, force-dynamic)
    │  ├─ profile/                    # profile & Plus membership page (RSC) — see §20
    │  ├─ transactions/               # transactions page + add sub-route
@@ -88,6 +89,8 @@ budgie/
    │  │     └─ page.tsx              # 3-step add wizard (RSC fetches accounts)
    │  ├─ sign-in/                     # sign-in page
    │  └─ api/
+   │     ├─ chat/
+   │     │  └─ route.ts              # AI SDK streamText handler (Gemini 2.5 Flash) — see §22
    │     └─ [[...route]]/
    │        └─ route.ts              # catch-all Route Handler → Hono (strips /api prefix)
     ├─ components/                     # React UI (see §16 transactions, §18 dashboard, §19 budgets, §21 landing)
@@ -111,6 +114,16 @@ budgie/
     │  ├─ subscription-detail-sheet.tsx # bottom sheet + confirm Dialog before delete
     │  ├─ quick-insight-empty-state.tsx # "use client" empty state when user has no transactions
     │  ├─ page-shell.tsx            # shared authenticated shell (Sidebar + max-w-screen-2xl content wrapper)
+    │  ├─ chat/                     # AI assistant UI (see §22 + UI_DESIGN.md §17)
+    │  │  ├─ chat-view.tsx          # "use client" — useChat + transport, message list, typing/error/stop states
+    │  │  ├─ chat-message.tsx       # user/assistant bubbles; iterates parts (text/reasoning/tool)
+    │  │  ├─ chat-thinking.tsx      # collapsible "Thinking…" block (reasoning parts)
+    │  │  ├─ chat-tool-card.tsx     # tool part dispatcher (status pill / result card / error)
+    │  │  ├─ chat-tool-status.tsx   # running pill (Loader2 + label)
+    │  │  ├─ chat-tool-result.tsx   # per-tool result cards (accounts/transactions/budgets/subscriptions/insights/create)
+    │  │  ├─ chat-input.tsx         # rounded-full textarea + send/stop button
+    │  │  ├─ chat-empty-state.tsx   # greeting + suggestion chips
+    │  │  └─ types.ts               # typed tool-result payloads
     │  └─ download-pdf-dialog.tsx   # jsPDF export (all / filtered / date range)
     ├─ lib/
     │  ├─ auth.ts                     # better-auth server instance (prismaAdapter)
@@ -124,6 +137,10 @@ budgie/
     │  └─ format.ts                   # formatRupiah / formatBalanceInput / formatDate / formatTime / formatDateTimeLocalValue
    ├─ server/                        # ALL backend logic lives here
    │  ├─ index.ts                    # Hono app (NO basePath), mounts routers; exports type App
+    │  ├─ chat/                      # AI assistant (see §22) — NOT a Hono route
+    │  │  ├─ tools.ts                # createChatTools(userId) → AI SDK tool() set (calls services directly)
+    │  │  ├─ schemas.ts              # CreateTransactionToolSchema + GetTransactionsToolSchema
+    │  │  └─ system.ts               # buildSystemPrompt({ userName, now })
     │  ├─ routes/                     # Layer 1: routers
     │  │  ├─ budgets.ts
     │  │  ├─ subscriptions.ts
@@ -139,10 +156,11 @@ budgie/
     │  │  ├─ user.ts
     │  │  └─ plus.ts
     │  ├─ services/                   # Layer 3: services
-    │  │  ├─ budgets.ts
+    │  │  ├─ budgets.ts               # + listBudgetsWithSpent (per-category aggregate in period, used by chat)
     │  │  ├─ subscriptions.ts
     │  │  ├─ balance-accounts.ts
     │  │  ├─ transactions.ts          # $transaction balance auto-update (see §17)
+    │  │  ├─ insights.ts              # getFinancialInsights — net worth + month aggregates (chat tool)
     │  │  ├─ user.ts                  # getPlusStatus / updatePlusStatus — findUnique (User IS the user, no findFirst ownership)
     │  │  └─ plus.ts                  # createCheckout / getStatus / simulatePaymentForOrder / handleWebhook (orchestrates midtrans.ts + PlusOrder + User)
     │  ├─ middleware/
@@ -1142,7 +1160,7 @@ bun run dev                 # next dev  (http://localhost:3000)
 bun run build               # prisma migrate deploy && prisma generate && next build
 bun run lint                # eslint
 bun run typecheck           # tsc --noEmit
-bun run test                # vitest run — 899 tests / 80 suites (one-shot)
+bun run test                # vitest run — 954 tests / 86 suites (one-shot)
 bun run test:watch          # vitest watch mode
 bun run db:generate         # regenerate Prisma client + Zod schemas
 bun run db:migrate          # prisma migrate dev (create + apply)
@@ -1164,28 +1182,28 @@ curl localhost:3000/api/budgets -b 'better-auth.session_token=<token>'
 
 ## 12.4 Testing
 
-**899 tests / 80 suites** (`bun run test`, Vitest + jsdom + @testing-library).
+**954 tests / 86 suites** (`bun run test`, Vitest + jsdom + @testing-library).
 Fully deterministic — no database, no HTTP server: Prisma is mocked via
 `vi.hoisted` module mocks, the typed RPC client (`@/lib/api-client`) is mocked
 per component suite, and `next/navigation` (`useRouter`/`usePathname`) is
 stubbed. See `README.md` → Testing for the full suite table.
 
-Coverage layers:
-- **Services** (`src/server/services/*.test.ts`) — every resource's full CRUD
+Coverage layers (all tests live in a dedicated `tests/` tree mirroring `src/`):
+- **Services** (`tests/server/services/*.test.ts`) — every resource's full CRUD
   (budgets, balance-accounts, subscriptions, plus, user, transactions incl.
   balance math + insufficient-balance guards for create **and** delete, and
   exact-empties-allowed boundary).
-- **Controllers** (`src/server/controllers/*.test.ts`) — status mapping
+- **Controllers** (`tests/server/controllers/*.test.ts`) — status mapping
   (400/404/409/204), ownership via `c.get("user").id`, error rethrow.
-- **Schemas** (`src/server/schemas/*.test.ts`) — defaults, every premade
+- **Schemas** (`tests/server/schemas/*.test.ts`) — defaults, every premade
   category, non-positive/non-integer/NaN rejection, no-defaults-on-update.
-- **Lib** (`src/lib/*.test.ts`) — pure TS: formatting, categories, dashboard
+- **Lib** (`tests/lib/*.test.ts`) — pure TS: formatting, categories, dashboard
   math, budget helpers (`nextBillingDate` boundaries, month/leap crossings),
   midtrans mock (auto-expire at 15 min, webhook parsing), category icons.
-- **Components** (`src/components/*.test.tsx`) — dialogs/wizards/lists/sheets
+- **Components** (`tests/components/*.test.tsx`) — dialogs/wizards/lists/sheets
   incl. budget & subscription feature sets and the Plus QRIS wizard's status
   polling (settlement/expire/cancel via fake timers).
-- **Landing** (`src/components/landing/*.test.tsx`) — `IntersectionObserver` /
+- **Landing** (`tests/components/landing/*.test.tsx`) — `IntersectionObserver` /
   reduced-motion / rAF / scroll behavior for `auto-video`, `animated-counter`,
   `scroll-progress`, `reveal`, `hero-preview`; the CSS-var interaction
   primitives (`spotlight`, `tilt`, `magnetic`, `hero-headline` — vars/classes,
@@ -1219,6 +1237,7 @@ database before building the app. No manual migration step is needed.
 | `NEXT_PUBLIC_APP_URL` | Production | Same as `BETTER_AUTH_URL` (used by `api-client.ts` for SSR `api` calls). |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Production | OAuth credentials (redirect URI must include the Vercel URL). |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Production | OAuth credentials. |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Production | Google AI Studio key — required by `/api/chat` (see §22). |
 
 ### How a deploy runs
 
@@ -1987,3 +2006,173 @@ Supporting files in `src/app/`: `sitemap.ts`, `robots.ts`, `opengraph-image.tsx`
   usage site (`video-showcase.tsx`) and `README.md` together.
 - **Missing video assets must never break the page.** The poster stays up by
   design; do not "fix" the silent failure into an error state.
+
+---
+
+## 22. Chat AI Assistant (frontend + backend)
+
+The chat page (`/chat`) is an AI financial assistant powered by the **Vercel
+AI SDK v7** + **Google Gemini 2.5 Flash**. It can read the user's real data
+through tools and record transactions. It deliberately follows a **different
+HTTP shape** than the REST resources: a dedicated Next.js Route Handler
+(`src/app/api/chat/route.ts`) instead of a Hono router — same reasoning as
+`/api/auth/*` (see §14). All backend logic still lives in `src/server/`.
+
+### Why a dedicated Route Handler (not Hono)
+
+- **Per-route `maxDuration = 30`.** Gemini 2.5 thinking + tool loops regularly
+  exceed Vercel's 15s default. A dedicated route file can set it; the Hono
+  catch-all (`src/app/api/[[...route]]/route.ts`) cannot set it per-path.
+- **The stream protocol passes through untouched.** `toUIMessageStreamResponse()`
+  emits `text/event-stream` + `X-Experimental-Stream-Data`; a dedicated handler
+  forwards it straight to Next instead of through `hono/vercel`'s `handle()`.
+- **Static route precedence.** `/api/chat/route.ts` wins over the `[[...route]]`
+  catch-all deterministically.
+- **It's not a REST resource** — no Zod body validator, no RPC typing, no
+  `ValidatedContext`. It's a thin HTTP glue: better-auth session check →
+  `streamText` → streamed Response.
+
+### Architecture
+
+```
+src/app/chat/page.tsx            # RSC: auth gate + <PageShell><ChatView/></PageShell>
+src/components/chat/             # "use client" chat UI (see §17 UI_DESIGN.md)
+src/app/api/chat/route.ts        # POST handler: session → streamText → toUIMessageStreamResponse
+src/lib/chat-models.ts           # MODEL_CHAIN / resolveModel / isRateLimitError / thinkingConfigFor (client + server)
+src/server/chat/
+  ├─ system.ts                   # buildSystemPrompt({ userName, now })
+  ├─ schemas.ts                  # CreateTransactionToolSchema + GetTransactionsToolSchema
+  ├─ prepare.ts                  # prepareMessagesForApi — last-10 window + old tool/reasoning strip
+  └─ tools.ts                    # createChatTools(userId) → AI SDK tool() set
+src/server/services/
+  ├─ insights.ts                 # getFinancialInsights(userId) — net worth + month aggregates
+  ├─ budgets.ts                  # + listBudgetsWithSpent(userId) (per-category aggregate)
+  └─ (existing)                  # balance-accounts, transactions, subscriptions
+```
+
+### The tools (`createChatTools(userId)`)
+
+| Tool | What it does | Backing service |
+| ---- | ------------ | --------------- |
+| `get_balance_accounts` | Accounts + balances + total | `listBalanceAccounts` |
+| `get_transactions` | Filtered search (type/category/query/date/limit), capped list + `count` | `listTransactions` |
+| `get_budgets` | Budgets with spent-in-period | `listBudgetsWithSpent` |
+| `get_subscriptions` | Subscriptions + next billing date | `listSubscriptions` + `nextBillingDate` |
+| `get_insights` | Net worth, month income/expense, top categories | `getFinancialInsights` |
+| `create_transaction` | Records a transaction (validated), returns `{ ok, transaction \| error }` | `createTransaction` |
+
+Tools are `userId`-scoped via closure (never accept a `userId` from the model).
+They import **services directly** — the only Prisma-touching layer — and return
+**compact JSON** so the model gets small tool results. `create_transaction`
+wraps service errors (`"Account not found"`, `"Insufficient balance"`, schema
+violations) into `{ ok: false, error }` so the model narrates them naturally.
+
+### Create-transaction safety
+
+The tool executes **immediately** (single step, no confirm card), guarded by a
+system-prompt rule: the model must already have explicit user intent in the
+conversation; if ambiguous it asks first. It must fetch a real
+`balanceAccountId` via `get_balance_accounts` — never fabricate one. The
+transaction is reversible (delete rebalances the account per §17).
+
+### Model fallback (free-tier quota)
+
+Gemini free tier caps requests **per model per project** (e.g. 20/day for
+`gemini-2.5-flash`). Each model has its own bucket, so the chat auto-downgrades
+to a cheaper model on a quota error:
+
+- `src/lib/chat-models.ts` holds `MODEL_CHAIN = ["gemini-2.5-flash",
+  "gemini-3.5-flash-lite"]`. The client always sends `body.model` (allowlisted
+  server-side by `resolveModel` — unknown values fall back to the default, so a
+  client can't force an arbitrary model).
+- `isRateLimitError(error)` matches `429` / `quota` / `RESOURCE_EXHAUSTED` /
+  `rate limit` in the error message (the wire-level error is a plain `Error`).
+- On such an error, `ChatView` bumps the model index, persists the choice
+  (`budgie.chat.{userId}.model`, 12h validity so the daily quota reset
+  restores the primary), shows a "Switched to a lighter model" notice, and
+  auto-retries via `regenerate({ body: { model } })`. It downgrades at most
+  once; if the lite model also 429s, the standard error callout + Retry stays.
+- `thinkingConfigFor(model)` — primary keeps streaming reasoning for the
+  Thinking UI (budget capped at 256); the lite model disables it entirely
+  (saves reasoning tokens).
+- The composer shows the **active model** at all times: `modelLabel(model)`
+  (`MODEL_LABELS` in `src/lib/chat-models.ts` → "Gemini 2.5 Flash" /
+  "Gemini 3.5 Flash Lite") renders as a static chip inside `ChatInput` (see
+  UI_DESIGN §17).
+
+### "AI call optimized" measures
+
+1. **History windowing + pruning** — `prepareMessagesForApi` keeps the last 10
+   messages and strips `tool-*`/`dynamic-tool` parts older than the last 2
+   messages and `reasoning` parts older than the last 1 (old tool payloads are
+   the biggest token eater on long chats).
+2. **Compact tool output** — minimal fields, capped lists, plus `count` so the
+   model can answer "you have 47 expenses" without 47 rows. `get_transactions`
+   defaults to 10 rows (max 30) with slimmed fields.
+3. **`get_insights` returns aggregates, not rows** — cheapest path for
+   "how am I doing?" questions.
+4. **`stopWhen: stepCountIs(3)`** — bounds the agentic multi-step loop.
+5. **`maxOutputTokens: 640`** + a "2-3 short sentences" brevity rule.
+6. **Capped thinking budget** — 256 on the primary (streams reasoning for the
+   Thinking UI), disabled on the lite model.
+7. **`smoothStream`** — word-chunked transform (8ms delay) for a natural
+   typewriter feel instead of token bursts (no token cost).
+8. **Parallel tool calls** — Gemini fires independent reads in one round-trip.
+
+### Route handler
+
+```ts
+// src/app/api/chat/route.ts
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 30;   // streaming can exceed the 15s default
+
+export async function POST(req: Request) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return new Response("Unauthorized", { status: 401 });
+  const model = resolveModel(body.model);                     // allowlisted
+  const messages = prepareMessagesForApi(body.messages);      // token-pruned
+  const result = streamText({
+    model: google(model),
+    instructions: buildSystemPrompt({ userName, now: new Date() }),
+    messages: await convertToModelMessages(messages),
+    tools: createChatTools(session.user.id),
+    stopWhen: stepCountIs(3),
+    maxOutputTokens: 640,
+    providerOptions: { google: { thinkingConfig: thinkingConfigFor(model) } },
+    experimental_transform: smoothStream({ chunking: "word", delayInMs: 8 }),
+  });
+  return result.toUIMessageStreamResponse();
+}
+```
+
+The client is `useChat({ transport: new DefaultChatTransport({ api: "/api/chat" }) })`
+from `@ai-sdk/react` — it posts the whole `UIMessage[]` conversation, so
+multi-step tool calls resume correctly across turns.
+
+### Gotchas
+
+- **Env:** `GOOGLE_GENERATIVE_AI_API_KEY` (Google AI Studio key). Missing → the
+  route streams a provider error → the UI shows the §7.6 error callout with
+  Retry. Also set it in Vercel (§12.5 table).
+- **Free-tier quotas are per model.** `gemini-2.5-flash` caps around 20
+  requests/day; `gemini-3.5-flash-lite` has its own (much higher) bucket — the
+  auto-downgrade in `ChatView` is what dodges the cap. The chosen model is
+  persisted in `budgie.chat.{userId}.model` (12h) so revisits don't waste a
+  guaranteed 429 on the primary.
+- **AI SDK v7 uses `instructions`, not `system`** in `streamText` (the `system`
+  option is deprecated). Gemini's thinking config is
+  `providerOptions.google.thinkingConfig` — `includeThoughts: true` is what
+  makes the reasoning stream as `reasoning` parts for the Thinking UI.
+- **`useChat` no longer owns `input`/`setInput` in v7** — `ChatView` manages
+  them with `useState` (the hook only exposes `sendMessage`, `messages`,
+  `status`, `stop`, `error`, `regenerate`, `setMessages`).
+- **Client receives `parts`, not `toolInvocations`** — render by iterating
+  `message.parts` with the `isTextUIPart` / `isReasoningUIPart` / `isToolUIPart`
+  type guards. Tool part `state` is `input-streaming | input-available |
+  output-available | output-error`.
+- **Never send other users' data** — every tool is userId-scoped and the model
+  never receives a raw Prisma row, only the compact tool output.
+- **`pruneMessages`/`convertToModelMessages` are async** — `await` them.
+- **Tests** mock `@ai-sdk/react`'s `useChat` (`vi.hoisted`) and the service
+  modules for tools — no network, no DB.

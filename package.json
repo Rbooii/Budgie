@@ -17,9 +17,12 @@
     "db:dev": "prisma db push && prisma generate"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.44",
+    "@ai-sdk/react": "^4.0.69",
     "@hono/zod-validator": "^0.8.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "ai": "^7.0.66",
     "better-auth": "^1.6.23",
     "hono": "^4.12.27",
     "jspdf": "^4.2.1",

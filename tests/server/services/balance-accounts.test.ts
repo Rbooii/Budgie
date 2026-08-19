@@ -31,7 +31,7 @@ import {
   updateBalanceAccount,
   deleteBalanceAccount,
 } from "@/server/services/balance-accounts";
-import { balanceAccounts } from "../routes/balance-accounts";
+import { balanceAccounts } from "@/server/routes/balance-accounts";
 
 const USER_ID = "user-1";
 const OTHER_USER_ID = "user-2";
