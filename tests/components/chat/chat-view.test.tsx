@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const { mockUseChat } = vi.hoisted(() => ({
@@ -105,7 +105,9 @@ describe("ChatView", () => {
 
   it("shows the active model in the composer chip and the disclaimer caption", () => {
     renderChat();
-    expect(screen.getByLabelText("Select model")).toHaveValue(PRIMARY_MODEL);
+    expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
+      "Gemini 2.5 Flash",
+    );
     expect(
       screen.getByText(/budgie can make mistakes/i),
     ).toBeInTheDocument();
@@ -113,11 +115,9 @@ describe("ChatView", () => {
 
   it("manually switches the model and persists it", async () => {
     renderChat();
-    const select = screen.getByLabelText("Select model");
+    await userEvent.click(screen.getByLabelText(/select model/i));
+    await userEvent.click(screen.getByText("Gemini 3.5 Flash Lite"));
 
-    fireEvent.change(select, { target: { value: LITE_MODEL } });
-
-    expect(select).toHaveValue(LITE_MODEL);
     expect(
       JSON.parse(
         window.localStorage.getItem(`budgie.chat.${USER_ID}.model`) ?? "{}",
@@ -212,9 +212,7 @@ describe("ChatView", () => {
   it("does not send empty input", async () => {
     renderChat();
     const input = screen.getByPlaceholderText(/write a message/i);
-    fireEvent.change(input, { target: { value: "   " } });
-
-    await userEvent.click(screen.getByRole("button", { name: /send/i }));
+    await userEvent.type(input, "   {enter}");
     expect(defaultChat.sendMessage).not.toHaveBeenCalled();
   });
 
@@ -379,7 +377,9 @@ describe("ChatView", () => {
     await waitFor(() => {
       expect(screen.getByText(/switched to a lighter model/i)).toBeInTheDocument();
     });
-    expect(screen.getByLabelText("Select model")).toHaveValue(LITE_MODEL);
+    expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
+      "Gemini 3.5 Flash Lite",
+    );
 
     const input = screen.getByPlaceholderText(/write a message/i);
     await userEvent.type(input, "hello{enter}");

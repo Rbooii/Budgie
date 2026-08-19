@@ -20,7 +20,7 @@ CI/CD, and fast feature shipping with rigorous type-safety and testing.
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![Bun](https://img.shields.io/badge/Bun-1.3-000000?style=flat-square&logo=bun&logoColor=white)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-954%20passing-00C610?style=flat-square)](./src/components/account-card.test.tsx)
+[![Tests](https://img.shields.io/badge/tests-959%20passing-00C610?style=flat-square)](./tests/components/account-card.test.tsx)
 
 ### Demo
 
@@ -72,7 +72,7 @@ contribution — human or AI — follows the same structured workflow.
 - **Responsive design** — Mobile-first with fixed bottom nav; desktop reveals a persistent sidebar. Calm minimal fintech aesthetic.
 - **Public landing page** — Root `/` (`src/app/page.tsx`) renders `<LandingPage/>` (server component, no auth gate): hero + animated stat counters, marquee, `<video>` "See it in motion" showcase (`AutoVideo` client component — mirrors the README demo, with the same Vercel-Blob mp4 source), feature grid, product vignettes, privacy spotlight, Plus pricing, FAQ, final CTA, footer. Rich SEO metadata + JSON-LD (WebApplication, BreadcrumbList, FAQPage, VideoObject). Video assets drop into `public/videos/` (see `public/videos/README.md`).
 - **Chat (AI financial assistant)** — `/chat` powered by Vercel AI SDK v7 + Google Gemini 2.5 Flash. Natural streaming responses with a collapsible Thinking state, real-time tool-calling feedback cards (accounts, transactions, budgets, subscriptions, insights), and the ability to record transactions from chat. **Free-tier friendly**: auto-downgrades to `gemini-3.5-flash-lite` when the primary model's daily quota runs out (per-model quota buckets) and persists the choice for 12h; token-lean by design (10-message window with old tool/reasoning parts pruned, 640 output tokens, capped thinking, compact tool results). Conversation + input draft survive tab switches via localStorage. Backend: dedicated Route Handler `src/app/api/chat/route.ts` + `src/server/chat/` tools that call the existing services directly (userId-scoped). See `ARCHITECTURE.md` §22.
-- **Testing** — Vitest + jsdom + Testing Library (954 tests across 86 suites: component + service + controller + schema + mock midtrans + chat + landing layers)
+- **Testing** — Vitest + jsdom + Testing Library (959 tests across 86 suites: component + service + controller + schema + mock midtrans + chat + landing layers)
 
 ### In Progress
 
@@ -238,45 +238,45 @@ budgie/
 ## Testing
 
 ```bash
-bun run test          # 954 tests, 86 suites (one-shot)
+bun run test          # 959 tests, 86 suites (one-shot)
 bun run test:watch    # watch mode for development
 ```
 
 | Suite | Scope | Cases |
 | --- | --- | --- |
-| `src/lib/budget.test.ts` | Lib — period labels (incl. 0/negative/fractional), next-billing-date boundaries, month/leap-year crossings | 30 |
-| `src/lib/category-icon.test.tsx` | Lib — every category → icon, fallback, className passthrough, TYPE_ICON | 12 |
-| `src/lib/midtrans.test.ts` | Mock Midtrans — QRIS generation, 15-min expiry/auto-expire, status transitions, webhook parsing | 22 |
-| `src/lib/format.test.ts` | Lib — rupiah formatting (NaN/∞/large), balance input sanitization, dates | 27 |
-| `src/server/services/subscriptions.test.ts` | Service — full CRUD, duplicate-name clash (create + rename w/ `NOT {id}`), ownership scoping | 15 |
-| `src/server/schemas/subscription.test.ts` | Schema — defaults (IDR, active), every expense category, non-positive/non-int/NaN rejection | 30 |
-| `src/server/controllers/subscriptions.test.ts` | Controller — 400/404/409/204 mapping, error rethrow | 15 |
-| `src/server/services/transactions.test.ts` | Service — balance math, insufficient-balance guards (create + delete), exact-empties allowed | 25 |
-| `src/server/services/balance-accounts.test.ts` | Service — ownership scoping, cross-user delete prevention | 8 |
-| `src/server/services/plus.test.ts` | Service — checkout, status polling, simulate-payment, webhook settlement | 15 |
-| `src/components/account-card.test.tsx` | Component — confirm dialog flow, delete safety, error paths | 9 |
-| `src/components/budgets-list.test.tsx` | Component — empty state, progress bars (over/under), detail-sheet delete flow | 12 |
-| `src/components/add-budget-dialog.test.tsx` | Component — 3-step wizard gating, custom-period sanitization, submit payload/error paths | 21 |
-| `src/components/budget-detail-sheet.test.tsx` | Component — detail rows, over-budget Remaining, delete confirm/loading/error | 15 |
-| `src/components/budget-summary-cards.test.tsx` | Component — with/without budget, over-budget labels, bar width/color | 13 |
-| `src/components/subscription-list.test.tsx` | Component — rows, next-billing dates, inactive badge, sheet delete flow | 10 |
-| `src/components/subscription-detail-sheet.test.tsx` | Component — detail rows, Active/Inactive, delete confirm/error paths | 11 |
-| `src/components/add-subscription-dialog.test.tsx` | Component — validation gating, payload shape, ISO start date, success/error | 19 |
-| `src/components/spending-streams-chart.test.tsx` | Component — sorting, zero-spend filtering, budget markers, hover/click tooltips | 20 |
-| `src/components/plus-payment-wizard.test.tsx` | Component — 3-step QRIS wizard flow, simulate payment, status polling (settlement/expire/cancel) | 14 |
-| `src/components/upgradePlusButton.test.tsx` | Component — upgrade (opens wizard) vs downgrade (PATCH) flows | 8 |
-| `src/components/landing/*.test.tsx` + `mock-data.test.ts` | Landing — full-page composition via `LandingPageView` (session-conditional nav, section order, CTA copy), IO/reduced-motion behavior (auto-video, animated-counter, scroll-progress, reveal, hero-preview), CSS-var interaction primitives (spotlight, tilt, magnetic, hero-headline), content suites, mock-data integrity | 151 |
-| `src/server/controllers/*.test.ts` + `schemas/*.test.ts` | Server — budgets/balance-accounts/plus/user 3-layer + route handler, auth middleware | ~120 |
-| `src/server/chat/tools.test.ts` | Chat tools — each tool calls the right service with `userId`, transaction filtering + limit cap, create_transaction ok/error paths (insufficient balance, category/type mismatch, transfer refine) | 17 |
-| `src/server/chat/schemas.test.ts` | Chat tool schemas — filter validation, transfer refines, category/type matching, unknown-key rejection | 14 |
-| `src/server/chat/system.test.ts` | Chat system prompt — user name, date, language rule, no-inventing rule, confirm-before-create | 8 |
-| `src/server/services/insights.test.ts` | Service — net worth + month aggregates + top-category ranking, empty user, five-cap | 3 |
-| `src/server/chat/prepare.test.ts` | Chat prep — 10-message window, tool-part strip beyond last 2, reasoning strip beyond last 1 | 6 |
-| `src/lib/chat-models.test.ts` | Chat models — resolveModel allowlist, isRateLimitError variants, thinking config per model, display labels | 10 |
-| `src/lib/chat-storage.test.ts` | Chat storage — messages/draft/model round-trip, corrupt fallback, per-user isolation, 12h model expiry, clear | 11 |
-| `src/components/chat/chat-view.test.tsx` | Chat UI — bubbles, thinking toggle, tool status + result cards, typing indicator, stop/retry/send flows, model chip + disclaimer, persistence + clear, auto model-downgrade on quota errors (useChat mocked) | 23 |
-| `src/components/chat/chat-tool-result.test.tsx` | Chat tool cards — accounts/transactions/budgets/subscriptions/insights/create_transaction (success + failure), 8-row cap, empty states | 9 |
-| `src/components/chat/chat-thinking.test.tsx` + `chat-tool-status.test.tsx` | Chat primitives — thinking expand/collapse + streaming state, tool status pill | 7 |
+| `tests/lib/budget.test.ts` | Lib — period labels (incl. 0/negative/fractional), next-billing-date boundaries, month/leap-year crossings | 30 |
+| `tests/lib/category-icon.test.tsx` | Lib — every category → icon, fallback, className passthrough, TYPE_ICON | 12 |
+| `tests/lib/midtrans.test.ts` | Mock Midtrans — QRIS generation, 15-min expiry/auto-expire, status transitions, webhook parsing | 22 |
+| `tests/lib/format.test.ts` | Lib — rupiah formatting (NaN/∞/large), balance input sanitization, dates | 27 |
+| `tests/server/services/subscriptions.test.ts` | Service — full CRUD, duplicate-name clash (create + rename w/ `NOT {id}`), ownership scoping | 15 |
+| `tests/server/schemas/subscription.test.ts` | Schema — defaults (IDR, active), every expense category, non-positive/non-int/NaN rejection | 30 |
+| `tests/server/controllers/subscriptions.test.ts` | Controller — 400/404/409/204 mapping, error rethrow | 15 |
+| `tests/server/services/transactions.test.ts` | Service — balance math, insufficient-balance guards (create + delete), exact-empties allowed | 25 |
+| `tests/server/services/balance-accounts.test.ts` | Service — ownership scoping, cross-user delete prevention | 8 |
+| `tests/server/services/plus.test.ts` | Service — checkout, status polling, simulate-payment, webhook settlement | 15 |
+| `tests/components/account-card.test.tsx` | Component — confirm dialog flow, delete safety, error paths | 9 |
+| `tests/components/budgets-list.test.tsx` | Component — empty state, progress bars (over/under), detail-sheet delete flow | 12 |
+| `tests/components/add-budget-dialog.test.tsx` | Component — 3-step wizard gating, custom-period sanitization, submit payload/error paths | 21 |
+| `tests/components/budget-detail-sheet.test.tsx` | Component — detail rows, over-budget Remaining, delete confirm/loading/error | 15 |
+| `tests/components/budget-summary-cards.test.tsx` | Component — with/without budget, over-budget labels, bar width/color | 13 |
+| `tests/components/subscription-list.test.tsx` | Component — rows, next-billing dates, inactive badge, sheet delete flow | 10 |
+| `tests/components/subscription-detail-sheet.test.tsx` | Component — detail rows, Active/Inactive, delete confirm/error paths | 11 |
+| `tests/components/add-subscription-dialog.test.tsx` | Component — validation gating, payload shape, ISO start date, success/error | 19 |
+| `tests/components/spending-streams-chart.test.tsx` | Component — sorting, zero-spend filtering, budget markers, hover/click tooltips | 20 |
+| `tests/components/plus-payment-wizard.test.tsx` | Component — 3-step QRIS wizard flow, simulate payment, status polling (settlement/expire/cancel) | 14 |
+| `tests/components/upgradePlusButton.test.tsx` | Component — upgrade (opens wizard) vs downgrade (PATCH) flows | 8 |
+| `tests/components/landing/*.test.tsx` + `mock-data.test.ts` | Landing — full-page composition via `LandingPageView` (session-conditional nav, section order, CTA copy), IO/reduced-motion behavior (auto-video, animated-counter, scroll-progress, reveal, hero-preview), CSS-var interaction primitives (spotlight, tilt, magnetic, hero-headline), content suites, mock-data integrity | 151 |
+| `tests/server/controllers/*.test.ts` + `schemas/*.test.ts` | Server — budgets/balance-accounts/plus/user 3-layer + route handler, auth middleware | ~120 |
+| `tests/server/chat/tools.test.ts` | Chat tools — each tool calls the right service with `userId`, transaction filtering + limit cap, create_transaction ok/error paths (insufficient balance, category/type mismatch, transfer refine) | 17 |
+| `tests/server/chat/schemas.test.ts` | Chat tool schemas — filter validation, transfer refines, category/type matching, unknown-key rejection | 14 |
+| `tests/server/chat/system.test.ts` | Chat system prompt — user name, date, language rule, no-inventing rule, confirm-before-create | 8 |
+| `tests/server/services/insights.test.ts` | Service — net worth + month aggregates + top-category ranking, empty user, five-cap | 3 |
+| `tests/server/chat/prepare.test.ts` | Chat prep — 10-message window, tool-part strip beyond last 2, reasoning strip beyond last 1 | 6 |
+| `tests/lib/chat-models.test.ts` | Chat models — resolveModel allowlist, isRateLimitError variants, thinking config per model, display labels | 10 |
+| `tests/lib/chat-storage.test.ts` | Chat storage — messages/draft/model round-trip, corrupt fallback, per-user isolation, 12h model expiry, clear | 11 |
+| `tests/components/chat/chat-view.test.tsx` | Chat UI — bubbles, thinking toggle, tool status + result cards, typing indicator, stop/retry/send flows, model chip + disclaimer, persistence + clear, auto model-downgrade on quota errors (useChat mocked) | 23 |
+| `tests/components/chat/chat-tool-result.test.tsx` | Chat tool cards — accounts/transactions/budgets/subscriptions/insights/create_transaction (success + failure), 8-row cap, empty states | 9 |
+| `tests/components/chat/chat-thinking.test.tsx` + `chat-tool-status.test.tsx` | Chat primitives — thinking expand/collapse + streaming state, tool status pill | 7 |
 
 Tests are fully deterministic — no real database, no HTTP server, no auth
 cookies. All Prisma calls and API clients are mocked at the module level.

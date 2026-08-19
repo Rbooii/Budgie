@@ -1188,22 +1188,22 @@ Fully deterministic — no database, no HTTP server: Prisma is mocked via
 per component suite, and `next/navigation` (`useRouter`/`usePathname`) is
 stubbed. See `README.md` → Testing for the full suite table.
 
-Coverage layers:
-- **Services** (`src/server/services/*.test.ts`) — every resource's full CRUD
+Coverage layers (all tests live in a dedicated `tests/` tree mirroring `src/`):
+- **Services** (`tests/server/services/*.test.ts`) — every resource's full CRUD
   (budgets, balance-accounts, subscriptions, plus, user, transactions incl.
   balance math + insufficient-balance guards for create **and** delete, and
   exact-empties-allowed boundary).
-- **Controllers** (`src/server/controllers/*.test.ts`) — status mapping
+- **Controllers** (`tests/server/controllers/*.test.ts`) — status mapping
   (400/404/409/204), ownership via `c.get("user").id`, error rethrow.
-- **Schemas** (`src/server/schemas/*.test.ts`) — defaults, every premade
+- **Schemas** (`tests/server/schemas/*.test.ts`) — defaults, every premade
   category, non-positive/non-integer/NaN rejection, no-defaults-on-update.
-- **Lib** (`src/lib/*.test.ts`) — pure TS: formatting, categories, dashboard
+- **Lib** (`tests/lib/*.test.ts`) — pure TS: formatting, categories, dashboard
   math, budget helpers (`nextBillingDate` boundaries, month/leap crossings),
   midtrans mock (auto-expire at 15 min, webhook parsing), category icons.
-- **Components** (`src/components/*.test.tsx`) — dialogs/wizards/lists/sheets
+- **Components** (`tests/components/*.test.tsx`) — dialogs/wizards/lists/sheets
   incl. budget & subscription feature sets and the Plus QRIS wizard's status
   polling (settlement/expire/cancel via fake timers).
-- **Landing** (`src/components/landing/*.test.tsx`) — `IntersectionObserver` /
+- **Landing** (`tests/components/landing/*.test.tsx`) — `IntersectionObserver` /
   reduced-motion / rAF / scroll behavior for `auto-video`, `animated-counter`,
   `scroll-progress`, `reveal`, `hero-preview`; the CSS-var interaction
   primitives (`spotlight`, `tilt`, `magnetic`, `hero-headline` — vars/classes,

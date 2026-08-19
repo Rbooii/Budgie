@@ -29,11 +29,9 @@ const SUGGESTIONS = [
 export function ChatView({
   userId,
   userName,
-  children,
 }: {
   userId: string;
   userName: string;
-  children?: React.ReactNode;
 }) {
   const {
     messages,
@@ -161,8 +159,6 @@ export function ChatView({
       style={columnHeight ? { height: columnHeight } : undefined}
       className="mx-auto w-full max-w-3xl flex flex-col"
     >
-      {children}
-
       <div className="flex items-center justify-between gap-2 min-h-[18px] mt-2">
         {autoDowngraded && modelIndex > 0 && (
           <p className="flex items-center gap-1.5 text-xs text-black/40">

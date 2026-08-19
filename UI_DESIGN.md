@@ -144,9 +144,11 @@ facts, and every footer/nav link resolves to a real page or section.
   NOT rendered in tests (jsdom can't await async RSC — same rule as
   `AccountTab`).
 - `LandingPageView` — the **sync presentational** half, props
-  `{ session: boolean }`. This is what `index.test.tsx` exercises: full page
+  `{ session: boolean }`. This is what `tests/components/landing/index.test.tsx`
+  exercises: full page
   composition, CTA copy, section headings, session-conditional nav. When
-  editing landing copy, update `index.test.tsx` in the same change.
+  editing landing copy, update `tests/components/landing/index.test.tsx` in the
+  same change.
 
 ### Reuse rules
 - Reuse the §2 color tokens and §6 radius system — **do not invent new
