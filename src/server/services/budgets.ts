@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { periodStartDate } from "@/lib/budget";
+import { budgetPeriodStart, budgetPeriodEnd } from "@/lib/budget";
 import type { CreateBudget, UpdateBudget } from "@/server/schemas/budget";
 
 export async function listBudgets(userId: string) {
@@ -21,7 +21,10 @@ export async function listBudgetsWithSpent(userId: string) {
           userId,
           type: "expense",
           category: b.category,
-          date: { gte: periodStartDate(b.periodDays) },
+          date: {
+            gte: budgetPeriodStart(b.periodDays),
+            lte: budgetPeriodEnd(),
+          },
         },
         _sum: { amount: true },
       });

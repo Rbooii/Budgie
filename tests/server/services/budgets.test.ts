@@ -9,6 +9,9 @@ const { mockPrisma } = vi.hoisted(() => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    transaction: {
+      aggregate: vi.fn(),
+    },
   },
 }));
 
@@ -18,6 +21,7 @@ vi.mock("@/lib/prisma", () => ({
 
 import {
   listBudgets,
+  listBudgetsWithSpent,
   getBudget,
   createBudget,
   updateBudget,
@@ -51,6 +55,61 @@ describe("listBudgets", () => {
       where: { userId: USER_ID },
       orderBy: { createdAt: "desc" },
     });
+  });
+});
+
+describe("listBudgetsWithSpent", () => {
+  it("aggregates expense transactions within the calendar-aligned window with both bounds", async () => {
+    mockPrisma.budget.findMany.mockResolvedValue([
+      { ...mockBudget, id: "bud-1", category: "FoodAndDrink", periodDays: 30 },
+      { ...mockBudget, id: "bud-2", category: "Rent", periodDays: 7 },
+    ]);
+    mockPrisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: 45000 } });
+
+    const result = await listBudgetsWithSpent(USER_ID);
+
+    expect(mockPrisma.budget.findMany).toHaveBeenCalledWith({
+      where: { userId: USER_ID },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(mockPrisma.transaction.aggregate).toHaveBeenCalledTimes(2);
+
+    const firstAgg = mockPrisma.transaction.aggregate.mock.calls[0][0];
+    expect(firstAgg.where.type).toBe("expense");
+    expect(firstAgg.where.category).toBe("FoodAndDrink");
+    // monthly window is bounded by both a start (gte) and end (lte) so old
+    // transactions from a previous month do not leak into the new period
+    expect(firstAgg.where.date.gte).toBeInstanceOf(Date);
+    expect(firstAgg.where.date.lte).toBeInstanceOf(Date);
+    // the upper bound must be after "now" so a transaction recorded today
+    // (any time of day) still counts toward the budget
+    expect(firstAgg.where.date.lte.getTime()).toBeGreaterThan(Date.now());
+
+    expect(result[0]).toMatchObject({
+      id: "bud-1",
+      category: "FoodAndDrink",
+      spent: 45000,
+    });
+    expect(result[1].spent).toBe(45000);
+  });
+
+  it("starts the monthly window at the 1st of the current month", async () => {
+    mockPrisma.budget.findMany.mockResolvedValue([mockBudget]);
+    mockPrisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
+
+    await listBudgetsWithSpent(USER_ID);
+
+    const where = mockPrisma.transaction.aggregate.mock.calls[0][0].where;
+    expect(where.date.gte.getDate()).toBe(1);
+    expect(where.date.gte.getHours()).toBe(0);
+  });
+
+  it("reports spent as 0 when a category has no transactions", async () => {
+    mockPrisma.budget.findMany.mockResolvedValue([mockBudget]);
+    mockPrisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: null } });
+
+    const result = await listBudgetsWithSpent(USER_ID);
+    expect(result[0].spent).toBe(0);
   });
 });
 

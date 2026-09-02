@@ -14,7 +14,7 @@ import {
   type SubscriptionRow,
 } from "@/components/subscription-list";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
-import { startOfMonth, startOfToday, periodStartDate } from "@/lib/budget";
+import { startOfMonth, budgetPeriodStart, budgetPeriodEnd } from "@/lib/budget";
 
 export const dynamic = "force-dynamic";
 
@@ -74,13 +74,14 @@ export default async function BudgetPage() {
   const spentByBudgetCategory: Record<string, number> = {};
   await Promise.all(
     budgets.map(async (b) => {
-      const periodStart = periodStartDate(b.periodDays);
+      const periodStart = budgetPeriodStart(b.periodDays);
+      const periodEnd = budgetPeriodEnd();
       const agg = await prisma.transaction.aggregate({
         where: {
           userId,
           type: "expense",
           category: b.category as Category,
-          date: { gte: periodStart },
+          date: { gte: periodStart, lte: periodEnd },
         },
         _sum: { amount: true },
       });

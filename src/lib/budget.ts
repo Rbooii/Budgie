@@ -6,10 +6,27 @@ export function periodLabel(periodDays: number): string {
   return `Every ${periodDays} days`;
 }
 
-export function periodStartDate(periodDays: number): Date {
+export function startOfWeek(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export function budgetPeriodStart(periodDays: number): Date {
+  if (periodDays === 7) return startOfWeek();
+  if (periodDays === 30) return startOfMonth();
+  if (periodDays === 1) return startOfToday();
   const d = new Date();
   d.setDate(d.getDate() - periodDays);
   d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Upper bound (exclusive) for the current budget period — end of today. */
+export function budgetPeriodEnd(): Date {
+  const d = startOfToday();
+  d.setDate(d.getDate() + 1);
   return d;
 }
 

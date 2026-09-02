@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   periodLabel,
-  periodStartDate,
+  budgetPeriodStart,
+  budgetPeriodEnd,
+  startOfWeek,
   nextBillingDate,
   startOfToday,
   startOfMonth,
@@ -103,7 +105,101 @@ describe("startOfMonth", () => {
   });
 });
 
-describe("periodStartDate", () => {
+describe("startOfWeek", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 15, 14, 30, 45, 123)); // Wed Jul 15
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns Monday of the current week at midnight", () => {
+    const d = startOfWeek();
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6); // July
+    expect(d.getDate()).toBe(13); // Monday Jul 13
+    expect(d.getDay()).toBe(1);
+    expect(d.getHours()).toBe(0);
+    expect(d.getSeconds()).toBe(0);
+    expect(d.getMilliseconds()).toBe(0);
+  });
+
+  it("rolls a Sunday back to the previous Monday", () => {
+    vi.setSystemTime(new Date(2026, 6, 19, 8)); // Sun Jul 19
+    const d = startOfWeek();
+    expect(d.getDay()).toBe(1);
+    expect(d.getDate()).toBe(13); // Monday Jul 13
+  });
+
+  it("returns Monday itself unchanged", () => {
+    vi.setSystemTime(new Date(2026, 6, 13, 12)); // Mon Jul 13
+    const d = startOfWeek();
+    expect(d.getDate()).toBe(13);
+  });
+});
+
+describe("budgetPeriodStart", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 15, 14, 30, 45, 123)); // Wed Jul 15
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns the 1st of the month for a monthly (30) budget", () => {
+    const d = budgetPeriodStart(30);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getMonth()).toBe(6);
+    expect(d.getDate()).toBe(1);
+    expect(d.getHours()).toBe(0);
+  });
+
+  it("returns Monday for a weekly (7) budget", () => {
+    const d = budgetPeriodStart(7);
+    expect(d.getDate()).toBe(13); // Monday Jul 13
+    expect(d.getDay()).toBe(1);
+    expect(d.getHours()).toBe(0);
+  });
+
+  it("returns today's midnight for a daily (1) budget", () => {
+    const d = budgetPeriodStart(1);
+    expect(d.getDate()).toBe(15);
+    expect(d.getHours()).toBe(0);
+  });
+
+  it("returns a rolling window for a custom period", () => {
+    const d = budgetPeriodStart(14);
+    expect(d.getDate()).toBe(1);
+    expect(d.getMonth()).toBe(6); // July 1
+    expect(d.getHours()).toBe(0);
+  });
+
+  it("crosses year boundaries for a custom (rolling) period", () => {
+    vi.setSystemTime(new Date(2026, 0, 5, 10));
+    const d = budgetPeriodStart(14);
+    expect(d.getFullYear()).toBe(2025);
+    expect(d.getMonth()).toBe(11); // December
+    expect(d.getDate()).toBe(22);
+  });
+
+  it("returns Monday of the current week near a year boundary", () => {
+    vi.setSystemTime(new Date(2026, 0, 5, 10)); // Mon Jan 5
+    const d = budgetPeriodStart(7);
+    expect(d.getDay()).toBe(1);
+    expect(d.getFullYear()).toBe(2026);
+    expect(d.getDate()).toBe(5);
+  });
+
+  it("returns today's midnight when periodDays is 0", () => {
+    const d = budgetPeriodStart(0);
+    expect(d.getDate()).toBe(15);
+    expect(d.getHours()).toBe(0);
+  });
+});
+
+describe("budgetPeriodEnd", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 6, 15, 14, 30, 45, 123));
@@ -112,41 +208,32 @@ describe("periodStartDate", () => {
     vi.useRealTimers();
   });
 
-  it("returns midnight of the date periodDays ago", () => {
-    const d = periodStartDate(7);
-    expect(d.getFullYear()).toBe(2026);
-    expect(d.getMonth()).toBe(6);
-    expect(d.getDate()).toBe(8);
-    expect(d.getHours()).toBe(0);
-    expect(d.getMinutes()).toBe(0);
-    expect(d.getSeconds()).toBe(0);
-    expect(d.getMilliseconds()).toBe(0);
+  it("returns the end of today (tomorrow's midnight) so today's transactions are included", () => {
+    vi.setSystemTime(new Date(2026, 6, 15, 14, 30, 45, 123)); // Jul 15 2026
+    const end = budgetPeriodEnd();
+    expect(end.getFullYear()).toBe(2026);
+    expect(end.getMonth()).toBe(6);
+    expect(end.getDate()).toBe(16); // tomorrow midnight
+    expect(end.getHours()).toBe(0);
+    expect(end.getMinutes()).toBe(0);
+    expect(end.getSeconds()).toBe(0);
   });
 
-  it("subtracts 30 days for a monthly window", () => {
-    const d = periodStartDate(30);
-    expect(d.getDate()).toBe(15);
-    expect(d.getMonth()).toBe(5); // June
+  it("covers a transaction recorded today regardless of its time", () => {
+    vi.setSystemTime(new Date(2026, 6, 15, 14, 30, 45, 123));
+    const end = budgetPeriodEnd();
+    const todayTxn = new Date(2026, 6, 15, 14, 0, 0); // earlier today
+    const midnight = new Date(2026, 6, 15, 0, 0, 0);
+    expect(todayTxn.getTime()).toBeLessThan(end.getTime());
+    expect(todayTxn.getTime()).toBeGreaterThanOrEqual(midnight.getTime());
   });
 
-  it("crosses month boundaries correctly (daily window)", () => {
-    const d = periodStartDate(1);
-    expect(d.getDate()).toBe(14);
-    expect(d.getMonth()).toBe(6);
-  });
-
-  it("crosses year boundaries correctly", () => {
-    vi.setSystemTime(new Date(2026, 0, 5, 10));
-    const d = periodStartDate(7);
-    expect(d.getFullYear()).toBe(2025);
-    expect(d.getMonth()).toBe(11); // December
-    expect(d.getDate()).toBe(29);
-  });
-
-  it("returns today's midnight when periodDays is 0", () => {
-    const d = periodStartDate(0);
-    expect(d.getDate()).toBe(15);
-    expect(d.getHours()).toBe(0);
+  it("bounds each period so old transactions do not leak", () => {
+    const monthlyStart = budgetPeriodStart(30);
+    const weeklyStart = budgetPeriodStart(7);
+    const end = budgetPeriodEnd();
+    expect(monthlyStart.getTime()).toBeLessThan(end.getTime());
+    expect(weeklyStart.getTime()).toBeLessThan(end.getTime());
   });
 });
 

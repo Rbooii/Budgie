@@ -58,3 +58,6 @@ next-env.d.ts
 
 # generated zod schemas (from prisma-zod-generator)
 /src/server/schemas/generated
+
+# remotion video project
+/video
