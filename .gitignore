@@ -33,6 +33,12 @@ Desktop.ini
 *.swo
 *~
 
+# xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+*.xcworkspace/xcuserdata/
+
 # logs
 *.log
 npm-debug.log*
