@@ -1,6 +1,13 @@
+//
+//  ChatAPI.swift
+//  Budgie
+//
+//  AI SDK v7 UI-message SSE client for POST /api/chat.
+//
+
 import Foundation
 
-// MARK: - SSE chunk union (AI SDK v7 UI message stream)
+// MARK: - SSE chunk
 
 struct ChatChunk: Decodable {
     var type: String
@@ -18,7 +25,7 @@ struct ChatChunk: Decodable {
     var reason: String?
 }
 
-// MARK: - Chat request/response
+// MARK: - Chat request
 
 struct ChatRequestBody: Encodable {
     var id: String
@@ -27,7 +34,7 @@ struct ChatRequestBody: Encodable {
     var model: String
 }
 
-// MARK: - UIMessage / parts (local chat state)
+// MARK: - Local message model
 
 struct UIMessage: Codable, Identifiable, Hashable {
     var id: String
@@ -100,7 +107,7 @@ enum UIPart: Codable, Hashable {
     }
 }
 
-// MARK: - SSE client
+// MARK: - Streaming client
 
 enum ChatAPI {
     static let models: [String] = ["gemini-2.5-flash", "gemini-3.5-flash-lite"]
@@ -131,8 +138,9 @@ enum ChatAPI {
                     if let pair = SessionCookieBox.shared.pair {
                         request.setValue("\(pair.name)=\(pair.value)", forHTTPHeaderField: "Cookie")
                     }
-                    let body = ChatRequestBody(id: chatId, messages: messages, model: model)
-                    request.httpBody = try DateFormatters.encoder.encode(body)
+                    request.httpBody = try JSONCoding.encoder.encode(
+                        ChatRequestBody(id: chatId, messages: messages, model: model)
+                    )
 
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
                     guard let http = response as? HTTPURLResponse else {
@@ -162,7 +170,7 @@ enum ChatAPI {
                         let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
                         if payload == "[DONE]" { break }
                         guard let data = payload.data(using: .utf8) else { continue }
-                        let chunk = try DateFormatters.decoder.decode(ChatChunk.self, from: data)
+                        let chunk = try JSONCoding.decoder.decode(ChatChunk.self, from: data)
                         continuation.yield(chunk)
                     }
                     continuation.finish()

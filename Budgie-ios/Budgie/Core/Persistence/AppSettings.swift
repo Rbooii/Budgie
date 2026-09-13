@@ -1,24 +1,83 @@
+//
+//  AppSettings.swift
+//  Budgie
+//
+//  Shared user preferences persisted to UserDefaults. Values are only persisted
+//  through the public setters, so debug overrides never leak into storage.
+//
+
 import Foundation
 import SwiftUI
 
-/// Shared, observable app settings (mask + dark mode), persisted to UserDefaults.
+enum AppearancePreference: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class AppSettings {
     static let shared = AppSettings()
 
+    private static let maskedKey = "budgie.masked"
+    private static let appearanceKey = "budgie.appearance"
+
+    private var storedMasked: Bool
+    private var storedAppearance: AppearancePreference
+
+    /// Whether money amounts are hidden behind "Rp ••••••". Masked by default.
     var masked: Bool {
-        didSet { UserDefaults.standard.set(masked, forKey: LocalStore.maskKey) }
+        get { storedMasked }
+        set {
+            storedMasked = newValue
+            UserDefaults.standard.set(newValue, forKey: Self.maskedKey)
+        }
     }
 
-    var darkMode: Bool {
-        didSet { UserDefaults.standard.set(darkMode, forKey: Self.darkModeKey) }
+    /// Appearance override. Defaults to following the device theme.
+    var appearance: AppearancePreference {
+        get { storedAppearance }
+        set {
+            storedAppearance = newValue
+            UserDefaults.standard.set(newValue.rawValue, forKey: Self.appearanceKey)
+        }
     }
 
-    static let darkModeKey = "budgie.darkMode"
+    private init() {
+        var masked = UserDefaults.standard.object(forKey: Self.maskedKey) as? Bool ?? true
+        var appearance = UserDefaults.standard.string(forKey: Self.appearanceKey)
+            .flatMap(AppearancePreference.init(rawValue:)) ?? .system
 
-    init() {
-        masked = UserDefaults.standard.object(forKey: LocalStore.maskKey) as? Bool ?? true
-        darkMode = UserDefaults.standard.bool(forKey: Self.darkModeKey)
+        #if DEBUG
+        if let raw = ProcessInfo.processInfo.environment["BUDGIE_MASKED"] {
+            masked = (raw as NSString).boolValue
+        }
+        if let raw = ProcessInfo.processInfo.environment["BUDGIE_APPEARANCE"],
+           let preference = AppearancePreference(rawValue: raw) {
+            appearance = preference
+        }
+        #endif
+
+        self.storedMasked = masked
+        self.storedAppearance = appearance
     }
 }

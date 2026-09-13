@@ -1,32 +1,73 @@
+//
+//  AppTabView.swift
+//  Budgie
+//
+//  Signed-in shell. Uses the native iOS 26 Liquid Glass tab bar.
+//
+
 import SwiftUI
 
-struct AppTabView: View {
-    @Environment(\.scenePhase) private var scenePhase
+enum AppTab: String, CaseIterable, Identifiable {
+    case home
+    case transactions
+    case budget
+    case chat
 
-    var body: some View {
-        TabView {
-            DashboardView()
-                .tabItem { Label("Dashboard", systemImage: SFIcons.dashboard) }
+    var id: String { rawValue }
 
-            TransactionsView()
-                .tabItem { Label("Transactions", systemImage: SFIcons.transactions) }
-
-            BudgetsView()
-                .tabItem { Label("Budget", systemImage: SFIcons.budgets) }
-
-            ChatView()
-                .tabItem { Label("Chat", systemImage: SFIcons.chat) }
+    var title: String {
+        switch self {
+        case .home: return "Home"
+        case .transactions: return "Transactions"
+        case .budget: return "Budget"
+        case .chat: return "Chat"
         }
-        .tint(.budgieBrand)
-        .tabBarMinimizeBehavior(.onScrollDown)
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                NotificationCenter.default.post(name: .budgieAppDidBecomeActive, object: nil)
-            }
+    }
+
+    var icon: String {
+        switch self {
+        case .home: return "house.fill"
+        case .transactions: return "arrow.left.arrow.right"
+        case .budget: return "chart.pie.fill"
+        case .chat: return "message.fill"
         }
     }
 }
 
-extension Notification.Name {
-    static let budgieAppDidBecomeActive = Notification.Name("budgie.appDidBecomeActive")
+struct AppTabView: View {
+    @State private var tab: AppTab = {
+        #if DEBUG
+        return DebugSeed.initialTab ?? .home
+        #else
+        return .home
+        #endif
+    }()
+
+    var body: some View {
+        TabView(selection: $tab) {
+            DashboardView()
+                .tabItem { Label(AppTab.home.title, systemImage: AppTab.home.icon) }
+                .tag(AppTab.home)
+
+            TransactionsView()
+                .tabItem { Label(AppTab.transactions.title, systemImage: AppTab.transactions.icon) }
+                .tag(AppTab.transactions)
+
+            BudgetsView()
+                .tabItem { Label(AppTab.budget.title, systemImage: AppTab.budget.icon) }
+                .tag(AppTab.budget)
+
+            ChatView()
+                .tabItem { Label(AppTab.chat.title, systemImage: AppTab.chat.icon) }
+                .tag(AppTab.chat)
+        }
+        .tint(.budgieBrand)
+        .tabBarMinimizeBehavior(.onScrollDown)
+    }
+}
+
+#Preview {
+    AppTabView()
+        .environment(SessionStore.shared)
+        .environment(AppSettings.shared)
 }

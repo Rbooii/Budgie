@@ -1,3 +1,8 @@
+//
+//  BudgieError.swift
+//  Budgie
+//
+
 import Foundation
 
 enum BudgieError: Error, LocalizedError {
@@ -24,21 +29,16 @@ enum BudgieError: Error, LocalizedError {
     }
 
     static func parse(status: Int, data: Data) -> BudgieError {
-        if status == 401 {
-            return .unauthorized(message(from: data))
+        switch status {
+        case 401: return .unauthorized(message(from: data))
+        case 404: return .notFound(message(from: data))
+        case 409: return .conflict(message(from: data))
+        case 400: return .validation(message(from: data))
+        default: return .server(status: status, message: message(from: data))
         }
-        if status == 404 {
-            return .notFound(message(from: data))
-        }
-        if status == 409 {
-            return .conflict(message(from: data))
-        }
-        if status == 400 {
-            return .validation(message(from: data))
-        }
-        return .server(status: status, message: message(from: data))
     }
 
+    /// Handles both `{ "error": "..." }` and the Zod `{ success: false, error: { issues: [...] } }` shapes.
     private static func message(from data: Data) -> String {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return String(data: data, encoding: .utf8) ?? ""

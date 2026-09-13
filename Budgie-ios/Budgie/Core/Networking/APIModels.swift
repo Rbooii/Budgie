@@ -1,3 +1,10 @@
+//
+//  APIModels.swift
+//  Budgie
+//
+//  1:1 with the wire contract in API.md / HANDSOFF_IOS.md §6.
+//
+
 import Foundation
 
 // MARK: - Auth
@@ -108,6 +115,10 @@ struct Subscription: Codable, Identifiable, Hashable {
     var updatedAt: String
 }
 
+struct UserStatus: Codable {
+    var plus: Bool
+}
+
 struct PlusStatus: Codable {
     var transactionStatus: String
     var plus: Bool
@@ -118,10 +129,6 @@ struct CheckoutResult: Codable {
     var qrString: String
     var status: String
     var expiresAt: String
-}
-
-struct UserStatus: Codable {
-    var plus: Bool
 }
 
 struct HealthResponse: Codable {
@@ -137,7 +144,7 @@ struct CreateTransactionBody: Encodable {
     var type: TransactionType
     var category: String
     var date: String
-    var adminFee: Double = 0
+    var adminFee: Double
     var balanceAccountId: String
     var toBalanceAccountId: String?
 
@@ -148,17 +155,11 @@ struct CreateTransactionBody: Encodable {
         self.amount = amount
         self.type = type
         self.category = category
-        self.date = DateFormatters.iso.string(from: date)
+        self.date = JSONCoding.isoString(from: date)
         self.adminFee = adminFee
         self.balanceAccountId = balanceAccountId
         self.toBalanceAccountId = toBalanceAccountId
     }
-}
-
-struct CreateBudgetBody: Encodable {
-    var category: String
-    var amount: Double
-    var periodDays: Int
 }
 
 struct CreateAccountBody: Encodable {
@@ -173,6 +174,12 @@ struct UpdateAccountBody: Encodable {
     var balance: Double
     var currency: String
     var type: String
+}
+
+struct CreateBudgetBody: Encodable {
+    var category: String
+    var amount: Double
+    var periodDays: Int
 }
 
 struct UpdateBudgetBody: Encodable {
@@ -197,107 +204,11 @@ struct CreateSubscriptionBody: Encodable {
         self.currency = currency
         self.category = category
         self.periodDays = periodDays
-        self.startDate = DateFormatters.iso.string(from: startDate)
+        self.startDate = JSONCoding.isoString(from: startDate)
         self.active = active
     }
 }
 
 struct PatchUserBody: Encodable {
     var plus: Bool
-}
-
-// MARK: - Formatters
-
-enum DateFormatters {
-    static let iso: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    static let isoNoFraction: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime]
-        return f
-    }()
-
-    static let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let raw = try container.decode(String.self)
-            if let date = iso.date(from: raw) ?? isoNoFraction.date(from: raw) {
-                return date
-            }
-            throw DecodingError.dataCorruptedError(in: container,
-                debugDescription: "Invalid ISO-8601 date: \(raw)")
-        }
-        return d
-    }()
-
-    static let encoder: JSONEncoder = {
-        let e = JSONEncoder()
-        e.dateEncodingStrategy = .custom { date, encoder in
-            var container = encoder.singleValueContainer()
-            try container.encode(iso.string(from: date))
-        }
-        return e
-    }()
-}
-
-// MARK: - JSON value (for chat tool inputs/outputs)
-
-enum JSONValue: Codable, Hashable {
-    case null
-    case bool(Bool)
-    case number(Double)
-    case string(String)
-    case array([JSONValue])
-    case object([String: JSONValue])
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if container.decodeNil() {
-            self = .null
-        } else if let b = try? container.decode(Bool.self) {
-            self = .bool(b)
-        } else if let n = try? container.decode(Double.self) {
-            self = .number(n)
-        } else if let s = try? container.decode(String.self) {
-            self = .string(s)
-        } else if let a = try? container.decode([JSONValue].self) {
-            self = .array(a)
-        } else if let o = try? container.decode([String: JSONValue].self) {
-            self = .object(o)
-        } else {
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unknown JSON value")
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch self {
-        case .null: try container.encodeNil()
-        case .bool(let b): try container.encode(b)
-        case .number(let n): try container.encode(n)
-        case .string(let s): try container.encode(s)
-        case .array(let a): try container.encode(a)
-        case .object(let o): try container.encode(o)
-        }
-    }
-
-    var stringValue: String? {
-        if case .string(let s) = self { return s }
-        return nil
-    }
-
-    var numberValue: Double? {
-        if case .number(let n) = self { return n }
-        return nil
-    }
-
-    var objectValue: [String: JSONValue]? {
-        if case .object(let o) = self { return o }
-        return nil
-    }
 }

@@ -1,55 +1,66 @@
+//
+//  ChatComponents.swift
+//  Budgie
+//
+//  iMessage + Cash App inspired chat pieces. No sparkles.
+//
+
 import SwiftUI
 
 // MARK: - JSONValue helpers
 
 extension JSONValue {
     var array: [JSONValue]? {
-        if case .array(let a) = self { return a }
+        if case .array(let value) = self { return value }
         return nil
     }
 
     var bool: Bool? {
-        if case .bool(let b) = self { return b }
+        if case .bool(let value) = self { return value }
         return nil
     }
+
+    var string: String? { stringValue }
+
+    var number: Double? { numberValue }
 
     subscript(_ key: String) -> JSONValue? {
         objectValue?[key]
     }
 
-    var string: String? {
-        stringValue
-    }
-
-    var number: Double? {
-        numberValue
-    }
-
     var description: String {
         switch self {
         case .null: return "null"
-        case .bool(let b): return b ? "true" : "false"
-        case .number(let n): return String(n)
-        case .string(let s): return s
-        case .array(let a): return a.map(\.description).joined(separator: ", ")
-        case .object(let o): return o.values.map(\.description).joined(separator: ", ")
+        case .bool(let value): return value ? "true" : "false"
+        case .number(let value): return String(value)
+        case .string(let value): return value
+        case .array(let value): return value.map(\.description).joined(separator: ", ")
+        case .object(let value): return value.values.map(\.description).joined(separator: ", ")
         }
     }
 }
 
-// MARK: - User bubble
+// MARK: - User bubble (Cash App green, iMessage tail)
 
 struct ChatUserBubble: View {
     var text: String
 
     var body: some View {
         Text(text)
-            .font(.system(size: 15))
-            .foregroundStyle(Color.budgieTextPrimary)
+            .font(.system(size: 16))
+            .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(Color.budgieChatBubble)
-            .clipShape(.rect(cornerRadius: 20))
+            .background(
+                Color.budgieBrand,
+                in: UnevenRoundedRectangle(
+                    topLeadingRadius: 20,
+                    bottomLeadingRadius: 20,
+                    bottomTrailingRadius: 6,
+                    topTrailingRadius: 20,
+                    style: .continuous
+                )
+            )
             .frame(maxWidth: 300, alignment: .trailing)
     }
 }
@@ -61,17 +72,19 @@ struct ChatAssistantText: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 15))
+            .font(.system(size: 16))
             .foregroundStyle(Color.budgieTextPrimary)
             .textSelection(.enabled)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-// MARK: - Thinking block
+// MARK: - Thinking
 
 struct ChatThinkingBlock: View {
     var part: UIPart
+
     @State private var expanded = false
 
     var body: some View {
@@ -100,7 +113,7 @@ struct ChatThinkingBlock: View {
                         }
                         .foregroundStyle(Color.budgieTextSecondary)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(.plain)
 
                     if expanded {
                         Text(text)
@@ -112,10 +125,7 @@ struct ChatThinkingBlock: View {
                     }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(Color.budgieLandingGray)
-            .clipShape(.rect(cornerRadius: 14))
+            .padding(.vertical, 2)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -134,8 +144,8 @@ struct ChatToolCard: View {
     }
 
     private var failed: Bool {
-        if case .tool(_, _, let state, _, _, let err) = part {
-            return state == "output-error" || err != nil
+        if case .tool(_, _, let state, _, _, let error) = part {
+            return state == "output-error" || error != nil
         }
         return false
     }
@@ -153,8 +163,7 @@ struct ChatToolCard: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .background(Color.budgieSurfaceGray)
-                .clipShape(Capsule())
+                .background(Color.budgieSurfaceGray, in: Capsule())
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else if failed {
                 HStack(spacing: 8) {
@@ -168,8 +177,7 @@ struct ChatToolCard: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.budgieExpensePastel.opacity(0.45))
-                .clipShape(.rect(cornerRadius: 20))
+                .background(Color.budgieExpense.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else if let output {
                 toolResult(name: name, output: output, state: state)
             } else if let input {
@@ -185,7 +193,7 @@ struct ChatToolCard: View {
             HStack(spacing: 6) {
                 Image(systemName: toolIcon(name))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.budgieBrand)
+                    .foregroundStyle(Color.budgieTextSecondary)
                 Text(toolTitle(name))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.budgieTextPrimary)
@@ -207,23 +215,26 @@ struct ChatToolCard: View {
             }
         }
         .padding(14)
-        .background(Color.budgieCard)
-        .clipShape(.rect(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.budgieHairline, lineWidth: 1))
-        .frame(maxWidth: 300, alignment: .leading)
+        .background(Color.budgieCard, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.budgieHairline, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        .frame(maxWidth: 310, alignment: .leading)
     }
 
-    // MARK: Tool contents
+    // MARK: Contents
 
     @ViewBuilder
     private func accountsContent(_ output: JSONValue) -> some View {
         if let total = output["totalBalance"]?.number {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Total balance")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.budgieTextTertiary)
                 Text(formatRupiah(total))
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(Color.budgieTextPrimary)
             }
@@ -239,13 +250,12 @@ struct ChatToolCard: View {
 
     @ViewBuilder
     private func transactionsContent(_ output: JSONValue) -> some View {
-        if let count = output["count"]?.number, count == 0, let items = output["items"]?.array, items.isEmpty {
+        if let items = output["items"]?.array, items.isEmpty {
             Text("No transactions found.")
                 .font(.system(size: 13))
                 .foregroundStyle(Color.budgieTextSecondary)
         } else if let items = output["items"]?.array {
-            let visible = items.prefix(8)
-            ForEach(Array(visible.enumerated()), id: \.offset) { _, item in
+            ForEach(Array(items.prefix(6).enumerated()), id: \.offset) { _, item in
                 let amount = item["amount"]?.number ?? 0
                 let type = item["type"]?.string ?? "expense"
                 let tint: Color = type == "income" ? .budgieIncome : (type == "transfer" ? .budgieTransfer : .budgieExpense)
@@ -254,19 +264,21 @@ struct ChatToolCard: View {
                         Text(item["name"]?.string ?? "—")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Color.budgieTextPrimary)
+                            .lineLimit(1)
                         Text("\(Categories.label(item["category"]?.string ?? "")) · \(item["account"]?.string ?? "Deleted account")")
                             .font(.system(size: 11))
                             .foregroundStyle(Color.budgieTextTertiary)
+                            .lineLimit(1)
                     }
-                    Spacer()
-                    Text(formatRupiahCompact(amount))
+                    Spacer(minLength: 6)
+                    Text(formatRupiah(amount))
                         .font(.system(size: 13, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(tint)
                 }
             }
-            if items.count > 8 {
-                Text("+\(items.count - 8) more")
+            if items.count > 6 {
+                Text("+\(items.count - 6) more")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.budgieTextSecondary)
             }
@@ -290,7 +302,7 @@ struct ChatToolCard: View {
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(Color.budgieTextPrimary)
                             Spacer()
-                            Text("\(formatRupiahCompact(spent)) / \(formatRupiahCompact(amount))")
+                            Text("\(formatRupiah(spent)) / \(formatRupiah(amount))")
                                 .font(.system(size: 12, weight: .semibold))
                                 .monospacedDigit()
                                 .foregroundStyle(spent > amount ? Color.budgieExpense : Color.budgieTextSecondary)
@@ -310,18 +322,18 @@ struct ChatToolCard: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Color.budgieTextSecondary)
             } else {
-                ForEach(Array(subscriptions.enumerated()), id: \.offset) { _, sub in
+                ForEach(Array(subscriptions.enumerated()), id: \.offset) { _, subscription in
                     HStack {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(sub["name"]?.string ?? "—")
+                            Text(subscription["name"]?.string ?? "—")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(Color.budgieTextPrimary)
-                            Text("Next \(formatDate(isoDate(sub["nextBillingDate"]?.string)))")
+                            Text("Next \(formatDate(isoDate(subscription["nextBillingDate"]?.string)))")
                                 .font(.system(size: 11))
                                 .foregroundStyle(Color.budgieTextTertiary)
                         }
                         Spacer()
-                        Text(formatRupiahCompact(sub["amount"]?.number ?? 0))
+                        Text(formatRupiah(subscription["amount"]?.number ?? 0))
                             .font(.system(size: 13, weight: .semibold))
                             .monospacedDigit()
                             .foregroundStyle(Color.budgieTransfer)
@@ -333,26 +345,26 @@ struct ChatToolCard: View {
 
     @ViewBuilder
     private func insightsContent(_ output: JSONValue) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(formatRupiah(output["netWorth"]?.number ?? 0))
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: 18, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(Color.budgieTextPrimary)
-            HStack(spacing: 8) {
-                insightTile(icon: SFIcons.income, tint: .budgieIncome, pastel: .budgieIncomePastel,
-                            label: "Income", value: output["monthIncome"]?.number ?? 0)
-                insightTile(icon: SFIcons.expense, tint: .budgieExpense, pastel: .budgieExpensePastel,
-                            label: "Expense", value: output["monthExpense"]?.number ?? 0)
+
+            HStack(spacing: 10) {
+                insightTile(label: "Income", value: output["monthIncome"]?.number ?? 0, tint: .budgieIncome)
+                insightTile(label: "Expense", value: output["monthExpense"]?.number ?? 0, tint: .budgieExpense)
             }
+
             if let top = output["topCategories"]?.array, !top.isEmpty {
                 VStack(spacing: 6) {
-                    ForEach(Array(top.prefix(5).enumerated()), id: \.offset) { _, cat in
+                    ForEach(Array(top.prefix(5).enumerated()), id: \.offset) { _, category in
                         HStack {
-                            Text(Categories.label(cat["category"]?.string ?? ""))
+                            Text(Categories.label(category["category"]?.string ?? ""))
                                 .font(.system(size: 12))
                                 .foregroundStyle(Color.budgieTextSecondary)
                             Spacer()
-                            Text(formatRupiahCompact(cat["amount"]?.number ?? 0))
+                            Text(formatRupiah(category["amount"]?.number ?? 0))
                                 .font(.system(size: 12, weight: .semibold))
                                 .monospacedDigit()
                                 .foregroundStyle(Color.budgieTextPrimary)
@@ -370,12 +382,12 @@ struct ChatToolCard: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16))
                     .foregroundStyle(Color.budgieIncome)
-                if let txn = output["transaction"] {
+                if let transaction = output["transaction"] {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(txn["name"]?.string ?? "Transaction")
+                        Text(transaction["name"]?.string ?? "Transaction")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Color.budgieTextPrimary)
-                        Text("\(formatRupiahCompact(txn["amount"]?.number ?? 0)) · \(txn["account"]?.string ?? "")")
+                        Text("\(formatRupiah(transaction["amount"]?.number ?? 0)) · \(transaction["account"]?.string ?? "")")
                             .font(.system(size: 11))
                             .foregroundStyle(Color.budgieTextTertiary)
                     }
@@ -385,33 +397,22 @@ struct ChatToolCard: View {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.budgieExpense)
                 Text(error)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.budgieExpense)
             }
+            .foregroundStyle(Color.budgieExpense)
         }
     }
 
-    private func insightTile(icon: String, tint: Color, pastel: Color, label: String, value: Double) -> some View {
-        HStack(spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(pastel.opacity(0.32))
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(tint)
-            }
-            .frame(width: 26, height: 26)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(label)
-                    .font(.system(size: 10))
-                    .foregroundStyle(Color.budgieTextTertiary)
-                Text(formatRupiahCompact(value))
-                    .font(.system(size: 12, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(tint)
-            }
+    private func insightTile(label: String, value: Double, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundStyle(Color.budgieTextTertiary)
+            Text(formatRupiah(value))
+                .font(.system(size: 12, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(tint)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -431,19 +432,19 @@ struct ChatToolCard: View {
     }
 
     private func isoDate(_ raw: String?) -> Date {
-        guard let raw else { return Date() }
-        return DateFormatters.iso.date(from: raw) ?? DateFormatters.isoNoFraction.date(from: raw) ?? Date()
+        guard let raw, let date = JSONCoding.date(from: raw) else { return Date() }
+        return date
     }
 
     private func toolIcon(_ name: String) -> String {
         switch name {
         case "get_balance_accounts": return "wallet.pass"
-        case "get_transactions": return "arrow.right.arrow.left"
+        case "get_transactions": return "arrow.left.arrow.right"
         case "get_budgets": return "target"
         case "get_subscriptions": return "arrow.triangle.2.circlepath"
         case "get_insights": return "chart.pie"
         case "create_transaction": return "plus"
-        default: return "sparkles"
+        default: return "square.grid.2x2"
         }
     }
 
@@ -472,29 +473,39 @@ struct ChatToolCard: View {
     }
 }
 
-// MARK: - Typing dots
+// MARK: - Typing bubble (iMessage style)
 
-struct TypingDots: View {
+struct ChatTypingBubble: View {
     @State private var animating = false
 
     var body: some View {
         HStack(spacing: 5) {
             ForEach(0..<3, id: \.self) { index in
                 Circle()
-                    .fill(Color.black.opacity(0.3))
-                    .frame(width: 6, height: 6)
-                    .opacity(animating ? 1 : 0.35)
+                    .fill(Color.budgieTextTertiary)
+                    .frame(width: 7, height: 7)
+                    .opacity(animating ? 1 : 0.3)
                     .animation(
                         .easeInOut(duration: 0.4)
                             .repeatForever(autoreverses: true)
-                            .delay(Double(index) * 0.2),
+                            .delay(Double(index) * 0.18),
                         value: animating
                     )
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .background(Capsule().fill(Color.budgieSurfaceGray))
+        .padding(.vertical, 12)
+        .background(
+            Color.budgieCard,
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 6,
+                bottomLeadingRadius: 20,
+                bottomTrailingRadius: 20,
+                topTrailingRadius: 20,
+                style: .continuous
+            )
+        )
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
         .onAppear { animating = true }
     }
 }

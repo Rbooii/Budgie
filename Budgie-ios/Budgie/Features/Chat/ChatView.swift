@@ -1,3 +1,10 @@
+//
+//  ChatView.swift
+//  Budgie
+//
+//  Minimal Claude-style chat on a warm canvas.
+//
+
 import SwiftUI
 import Combine
 
@@ -5,150 +12,171 @@ struct ChatView: View {
     @State private var vm = ChatViewModel()
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                slimTopBar
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            if vm.messages.isEmpty {
-                                emptyState
-                            } else {
-                                ForEach(vm.messages) { message in
-                                    messageRow(message)
-                                        .id(message.id)
-                                }
+        VStack(spacing: 0) {
+            header
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 14) {
+                        if vm.messages.isEmpty {
+                            emptyState
+                        } else {
+                            ForEach(vm.messages) { message in
+                                messageRow(message)
+                                    .id(message.id)
                             }
-                            Color.clear
-                                .frame(height: 1)
-                                .id("bottom")
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .frame(maxWidth: 768)
-                        .frame(maxWidth: .infinity)
-                        .animation(.easeOut(duration: 0.25), value: vm.messages.count)
+                        Color.clear
+                            .frame(height: 1)
+                            .id("bottom")
                     }
-                    .scrollDismissesKeyboard(.interactively)
-                    .onAppear {
-                        proxy.scrollTo("bottom", anchor: .bottom)
-                    }
-                    .onChange(of: vm.messages.count) { _, _ in
-                        scrollToBottom(proxy)
-                    }
-                    .onReceive(Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()) { _ in
-                        if vm.isLoading { scrollToBottom(proxy) }
-                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .animation(.easeOut(duration: 0.25), value: vm.messages.count)
                 }
-
-                if let errorMessage = vm.errorMessage {
-                    errorSurface(errorMessage)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
-                }
-
-                composer
-            }
-            .background(Color(.systemBackground))
-            .navigationTitle("Budgie AI")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 6) {
-                        Image(systemName: SFIcons.sparkles)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.budgieBrand)
-                        Text("Budgie AI")
-                            .font(.system(size: 17, weight: .semibold))
-                    }
+                .scrollDismissesKeyboard(.interactively)
+                .onAppear { proxy.scrollTo("bottom", anchor: .bottom) }
+                .onChange(of: vm.messages.count) { _, _ in scrollToBottom(proxy) }
+                .onReceive(Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()) { _ in
+                    if vm.isLoading { scrollToBottom(proxy) }
                 }
             }
-            .task { vm.refreshFromStorageIfNeeded() }
+
+            if let errorMessage = vm.errorMessage {
+                errorSurface(errorMessage)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+            }
+
+            composer
+        }
+        .background(Color.budgieChatBackground)
+        .task { vm.refreshFromStorageIfNeeded() }
+        .onAppear {
+            #if DEBUG
+            if let prompt = DebugSeed.chatPrompt, vm.messages.isEmpty {
+                vm.send(prompt)
+            }
+            #endif
         }
     }
 
-    // MARK: Slim top bar (downgrade notice · clear chat)
+    // MARK: - Header
 
-    private var slimTopBar: some View {
-        HStack {
-            if vm.downgraded {
-                HStack(spacing: 5) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 11))
-                    Text("Switched to a lighter model to stay within free limits.")
-                        .font(.system(size: 11))
+    private var header: some View {
+        ZStack {
+            modelMenu
+
+            HStack {
+                circleButton(icon: "square.and.pencil") {
+                    withAnimation(.easeOut(duration: 0.2)) { vm.clear() }
                 }
-                .foregroundStyle(Color.budgieTextSecondary)
-                .lineLimit(1)
+
+                Spacer()
+
+                if !vm.messages.isEmpty {
+                    circleButton(icon: "trash") {
+                        withAnimation(.easeOut(duration: 0.2)) { vm.clear() }
+                    }
+                    .transition(.opacity)
+                }
             }
-            Spacer()
-            if !vm.messages.isEmpty {
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
+        .padding(.bottom, 10)
+    }
+
+    private func circleButton(icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.budgieInk)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(Color.budgieCard))
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+        }
+        .buttonStyle(PressableButtonStyle())
+    }
+
+    private var modelMenu: some View {
+        Menu {
+            ForEach(ChatAPI.models, id: \.self) { candidate in
                 Button {
-                    vm.clear()
+                    vm.model = candidate
+                    vm.downgraded = false
+                    ChatStore.saveModel(candidate)
                 } label: {
-                    Image(systemName: SFIcons.trash)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.budgieTextSecondary)
-                        .frame(width: 30, height: 30)
-                        .background(Circle().fill(Color.budgieSurfaceGray))
+                    if candidate == vm.model {
+                        Label(ChatAPI.modelLabel(candidate), systemImage: "checkmark")
+                    } else {
+                        Text(ChatAPI.modelLabel(candidate))
+                    }
                 }
-                .buttonStyle(PlainButtonStyle())
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(vm.activeModelLabel)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.budgieInk)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.budgieInk.opacity(0.7))
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
     }
 
-    // MARK: Empty state
+    // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                Circle().fill(Color.budgieIncomePastel.opacity(0.4))
-                Image(systemName: SFIcons.sparkles)
-                    .font(.system(size: 26))
-                    .foregroundStyle(Color.budgieBrand)
-            }
-            .frame(width: 64, height: 64)
-            .padding(.top, 56)
+        VStack(spacing: 28) {
+            Spacer(minLength: 60)
 
-            Text("Hi \(vm.userFirstName()), ask me anything about your money")
-                .font(.system(size: 20, weight: .semibold))
-                .tracking(-0.3)
-                .foregroundStyle(Color.budgieTextPrimary)
+            Text("How can I help you \(timeOfDayPhrase)?")
+                .font(.system(size: 34, weight: .regular, design: .serif))
                 .multilineTextAlignment(.center)
+                .foregroundStyle(Color.budgieTextPrimary)
+                .padding(.horizontal, 20)
 
-            RowContainer {
-                ForEach(Array(ChatViewModel.suggestions.enumerated()), id: \.offset) { index, suggestion in
-                    if index > 0 { RowDivider() }
+            VStack(spacing: 10) {
+                ForEach(ChatViewModel.suggestions.prefix(3), id: \.self) { suggestion in
                     Button {
                         vm.send(suggestion)
                     } label: {
-                        HStack {
-                            Text(suggestion)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(Color.budgieTextPrimary)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.vertical, 11)
-                        .contentShape(Rectangle())
+                        Text(suggestion)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Color.budgieTextSecondary)
+                            .padding(.horizontal, 18)
+                            .frame(height: 40)
+                            .background(Capsule().fill(Color.budgieCard))
+                            .overlay(Capsule().stroke(Color.budgieHairline, lineWidth: 1))
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(PressableButtonStyle())
                 }
             }
-            .padding(.horizontal, 8)
+
+            Spacer(minLength: 60)
         }
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: Message rows
+    private var timeOfDayPhrase: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "this morning"
+        case 12..<17: return "this afternoon"
+        case 17..<22: return "this evening"
+        default: return "this late night"
+        }
+    }
+
+    // MARK: - Messages
 
     @ViewBuilder
     private func messageRow(_ message: UIMessage) -> some View {
         if message.role == "user" {
             HStack {
-                Spacer()
+                Spacer(minLength: 44)
                 ChatUserBubble(text: message.textContent)
             }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -167,7 +195,7 @@ struct ChatView: View {
                     }
                 }
                 if vm.isLoading, message.parts.isEmpty {
-                    TypingDots()
+                    ChatTypingBubble()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -175,7 +203,7 @@ struct ChatView: View {
         }
     }
 
-    // MARK: Error surface
+    // MARK: - Error
 
     private func errorSurface(_ message: String) -> some View {
         HStack(spacing: 10) {
@@ -184,7 +212,7 @@ struct ChatView: View {
             Text(message)
                 .font(.system(size: 13, weight: .medium))
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer()
+            Spacer(minLength: 8)
             Button {
                 vm.retry()
             } label: {
@@ -195,108 +223,80 @@ struct ChatView: View {
                     .frame(height: 32)
                     .background(Capsule().stroke(Color.budgieExpense.opacity(0.5), lineWidth: 1))
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
         }
         .foregroundStyle(Color.budgieExpense)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(Color.budgieExpensePastel.opacity(0.45))
-        .clipShape(.rect(cornerRadius: 20))
+        .background(Color.budgieExpense.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    // MARK: Composer (compact)
+    // MARK: - Composer
+
+    private var draftBinding: Binding<String> {
+        Binding(get: { vm.draft }, set: { vm.updateDraft($0) })
+    }
+
+    private var canSend: Bool {
+        vm.isStreaming || !vm.draft.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     private var composer: some View {
-        VStack(spacing: 5) {
-            HStack(alignment: .bottom, spacing: 8) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Menu {
-                        ForEach(ChatAPI.models, id: \.self) { m in
-                            Button {
-                                vm.model = m
-                                LocalStore.saveModel(m)
-                                vm.downgraded = false
-                            } label: {
-                                if m == vm.model {
-                                    Label(ChatAPI.modelLabel(m), systemImage: "checkmark")
-                                } else {
-                                    Text(ChatAPI.modelLabel(m))
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: SFIcons.sparkles)
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(Color.budgieBrand)
-                            Text(vm.activeModelLabel)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Color.budgieTextSecondary)
-                                .lineLimit(1)
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 8))
-                                .foregroundStyle(Color.budgieTextFaint)
-                        }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(Color.budgieSurfaceGray))
-                    }
-
-                    TextField("Ask about your money…", text: Binding(
-                            get: { vm.draft },
-                            set: { vm.updateDraft($0) }
-                        ), axis: .vertical)
-                        .font(.system(size: 15))
-                        .lineLimit(1...4)
-                        .onSubmit {
-                            vm.send()
-                        }
+        VStack(spacing: 8) {
+            if vm.downgraded {
+                HStack(spacing: 5) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 11))
+                    Text("Switched to a lighter model to stay within free limits.")
+                        .font(.system(size: 11))
+                        .lineLimit(1)
+                    Spacer()
                 }
-
-                Button {
-                    if vm.isStreaming {
-                        vm.stop()
-                    } else {
-                        vm.send()
-                    }
-                } label: {
-                    ZStack {
-                        Circle()
-                            .glassEffect(
-                                .regular.tint(vm.isStreaming ? Color(hex: 0x171717) : Color.budgieBrand),
-                                in: .circle
-                            )
-                        if vm.isStreaming {
-                            Image(systemName: "stop.fill")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.white)
-                        } else {
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(.white)
-                        }
-                    }
-                    .frame(width: 34, height: 34)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(!vm.isStreaming && vm.draft.trimmingCharacters(in: .whitespaces).isEmpty)
-                .opacity((!vm.isStreaming && vm.draft.isEmpty) ? 0.45 : 1)
+                .foregroundStyle(Color.budgieTextSecondary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
-            .clipShape(.rect(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.budgieHairline, lineWidth: 1))
-            .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
 
-            Text("Budgie can make mistakes. Double-check the important numbers.")
-                .font(.system(size: 11))
-                .foregroundStyle(Color.budgieTextFaint)
+            VStack(spacing: 6) {
+                TextField("Message Budgie…", text: draftBinding, axis: .vertical)
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color.budgieTextPrimary)
+                    .tint(.budgieBrand)
+                    .lineLimit(1...5)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 14)
+
+                HStack {
+                    Spacer()
+                    sendButton
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+            }
+            .background(Color.budgieCard, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .shadow(color: .black.opacity(0.06), radius: 16, y: 6)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .padding(.top, 6)
-        .padding(.bottom, 6)
-        .frame(maxWidth: 768)
+        .padding(.bottom, 8)
+    }
+
+    private var sendButton: some View {
+        Button {
+            if vm.isStreaming {
+                vm.stop()
+            } else {
+                vm.send()
+            }
+        } label: {
+            ZStack {
+                Circle().fill(canSend ? Color.budgieInk : Color.budgieInk.opacity(0.2))
+                Image(systemName: vm.isStreaming ? "stop.fill" : "arrow.up")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Color.budgieInkContrast)
+            }
+            .frame(width: 38, height: 38)
+        }
+        .buttonStyle(PressableButtonStyle())
+        .disabled(!canSend)
     }
 
     private func scrollToBottom(_ proxy: ScrollViewProxy) {
@@ -304,4 +304,9 @@ struct ChatView: View {
             proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
+}
+
+#Preview {
+    ChatView()
+        .environment(SessionStore.shared)
 }

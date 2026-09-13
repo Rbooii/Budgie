@@ -1,11 +1,18 @@
-import Foundation
+//
+//  ChatViewModel.swift
+//  Budgie
+//
+//  Chat state machine: UIMessage model, SSE chunk handling, model fallback.
+//
 
-/// Chat state machine: UIMessage model, SSE chunk handling, model fallback (§7).
+import Foundation
+import SwiftUI
+
 @MainActor
 @Observable
 final class ChatViewModel {
     var messages: [UIMessage] = []
-    var draft: String = ""
+    var draft = ""
     var isLoading = false
     var errorMessage: String?
     var model: String
@@ -18,10 +25,10 @@ final class ChatViewModel {
     private var persistTask: Task<Void, Never>?
 
     init() {
-        model = LocalStore.activeModel()
+        model = ChatStore.activeModel()
         if let userId = SessionStore.shared.user?.id {
-            messages = LocalStore.loadMessages(for: userId)
-            draft = LocalStore.draft(for: userId)
+            messages = ChatStore.loadMessages(for: userId)
+            draft = ChatStore.draft(for: userId)
         }
     }
 
@@ -29,20 +36,16 @@ final class ChatViewModel {
 
     var isStreaming: Bool { isLoading }
 
-    /// The last user message id (for Retry).
-    var lastUserMessageId: String? {
-        messages.last { $0.role == "user" }?.id
-    }
-
     func userFirstName() -> String {
-        (SessionStore.shared.user?.name ?? "there").split(separator: " ").first.map(String.init) ?? "there"
+        (SessionStore.shared.user?.name ?? "there")
+            .split(separator: " ").first.map(String.init) ?? "there"
     }
 
-    /// Reload persisted messages if they weren't available at init (user id missing).
+    /// Messages may not be loadable at init time (no user yet).
     func refreshFromStorageIfNeeded() {
         guard messages.isEmpty, let userId = SessionStore.shared.user?.id else { return }
-        messages = LocalStore.loadMessages(for: userId)
-        draft = LocalStore.draft(for: userId)
+        messages = ChatStore.loadMessages(for: userId)
+        draft = ChatStore.draft(for: userId)
     }
 
     // MARK: - Send
@@ -53,8 +56,11 @@ final class ChatViewModel {
         guard !text.isEmpty else { return }
         draft = ""
 
-        let userMessage = UIMessage(id: UUID().uuidString, role: "user",
-                                    parts: [.text(id: nil, text: text, state: "done")])
+        let userMessage = UIMessage(
+            id: UUID().uuidString,
+            role: "user",
+            parts: [.text(id: nil, text: text, state: "done")]
+        )
         messages.append(userMessage)
         pendingUserMessage = userMessage
         persistNow()
@@ -90,16 +96,16 @@ final class ChatViewModel {
         didAutoRetry = false
         chatId = UUID().uuidString
         if let userId = SessionStore.shared.user?.id {
-            LocalStore.clearMessages(for: userId)
-            LocalStore.clearDraft(for: userId)
+            ChatStore.clearMessages(for: userId)
+            ChatStore.clearDraft(for: userId)
         }
-        LocalStore.clearModel()
+        ChatStore.clearModel()
     }
 
     func updateDraft(_ value: String) {
         draft = value
         if let userId = SessionStore.shared.user?.id {
-            LocalStore.saveDraft(value, for: userId)
+            ChatStore.saveDraft(value, for: userId)
         }
     }
 
@@ -108,8 +114,7 @@ final class ChatViewModel {
     private func streamUserMessage(_ userMessage: UIMessage) {
         errorMessage = nil
         isLoading = true
-        let assistantId = UUID().uuidString
-        let assistant = UIMessage(id: assistantId, role: "assistant", parts: [])
+        let assistant = UIMessage(id: UUID().uuidString, role: "assistant", parts: [])
         messages.append(assistant)
 
         let apiMessages = preparedMessages()
@@ -139,23 +144,17 @@ final class ChatViewModel {
         }
     }
 
-    /// §7.4 — send last 10; tool parts only in last 2; reasoning only in last 1.
+    /// Send only the last 10 messages; tools only in the last 2, reasoning only in the last 1.
     private func preparedMessages() -> [UIMessage] {
         let recent = Array(messages.suffix(10))
         return recent.enumerated().map { index, message in
             let fromEnd = recent.count - 1 - index
             var parts = message.parts
             if fromEnd > 2 {
-                parts = parts.filter {
-                    if case .tool = $0 { return false }
-                    return true
-                }
+                parts = parts.filter { if case .tool = $0 { return false }; return true }
             }
             if fromEnd > 1 {
-                parts = parts.filter {
-                    if case .reasoning = $0 { return false }
-                    return true
-                }
+                parts = parts.filter { if case .reasoning = $0 { return false }; return true }
             }
             return UIMessage(id: message.id, role: message.role, parts: parts)
         }
@@ -183,9 +182,6 @@ final class ChatViewModel {
             appendPart(.tool(name: chunk.toolName ?? "unknown",
                              callId: chunk.toolCallId ?? UUID().uuidString,
                              state: "input-streaming", input: nil, output: nil, errorText: nil))
-        case "tool-input-delta":
-            // streaming tool args (rare) — ignore content, keep state
-            break
         case "tool-input-available":
             setToolInput(callId: chunk.toolCallId, input: chunk.input, state: "input-available")
         case "tool-input-error":
@@ -212,15 +208,14 @@ final class ChatViewModel {
 
     private func handleErrorChunk(_ chunk: ChatChunk) {
         let text = chunk.errorText ?? "Something went wrong."
-        // §7.6 model fallback: one downgrade + auto-retry on quota errors
         if !didAutoRetry, model == ChatAPI.models[0], ChatAPI.isRateLimitError(text) {
             didAutoRetry = true
             model = ChatAPI.models[1]
-            LocalStore.saveModel(model)
+            ChatStore.saveModel(model)
             downgraded = true
             errorMessage = nil
             if messages.last?.role == "assistant" {
-                messages.removeLast() // drop the failed assistant message (partial or empty)
+                messages.removeLast()
             }
             isLoading = false
             if let pending = pendingUserMessage ?? messages.last(where: { $0.role == "user" }) {
@@ -251,42 +246,37 @@ final class ChatViewModel {
         messages.removeLast()
     }
 
-    // MARK: - Part mutation helpers
+    // MARK: - Part mutations
 
     private enum PartKind { case text, reasoning }
 
     private func appendPart(_ part: UIPart) {
-        guard let idx = messages.indices.last, messages[idx].role == "assistant" else { return }
-        messages[idx].parts.append(part)
+        guard let index = messages.indices.last, messages[index].role == "assistant" else { return }
+        messages[index].parts.append(part)
     }
 
     private func appendDelta(to kind: PartKind, text: String) {
-        guard let idx = messages.indices.last, messages[idx].role == "assistant" else { return }
-        let parts = messages[idx].parts
-        guard let partIdx = parts.indices.last else { return }
-        switch parts[partIdx] {
-        case .text(let id, let existing, let state):
-            if kind == .text {
-                messages[idx].parts[partIdx] = .text(id: id, text: existing + text, state: state)
-            }
-        case .reasoning(let id, let existing, let state):
-            if kind == .reasoning {
-                messages[idx].parts[partIdx] = .reasoning(id: id, text: existing + text, state: state)
-            }
+        guard let index = messages.indices.last, messages[index].role == "assistant" else { return }
+        let parts = messages[index].parts
+        guard let partIndex = parts.indices.last else { return }
+        switch parts[partIndex] {
+        case .text(let id, let existing, let state) where kind == .text:
+            messages[index].parts[partIndex] = .text(id: id, text: existing + text, state: state)
+        case .reasoning(let id, let existing, let state) where kind == .reasoning:
+            messages[index].parts[partIndex] = .reasoning(id: id, text: existing + text, state: state)
         default:
             break
         }
     }
 
     private func setState(_ kind: PartKind, id: String?, state: String) {
-        guard let idx = messages.indices.last else { return }
-        let parts = messages[idx].parts
-        for (i, part) in parts.enumerated() {
+        guard let index = messages.indices.last else { return }
+        for (partIndex, part) in messages[index].parts.enumerated() {
             switch (kind, part) {
-            case (.text, .text(let pid, let text, _)) where pid == id || id == nil:
-                messages[idx].parts[i] = .text(id: pid, text: text, state: state)
-            case (.reasoning, .reasoning(let pid, let text, _)) where pid == id || id == nil:
-                messages[idx].parts[i] = .reasoning(id: pid, text: text, state: state)
+            case (.text, .text(let partId, let text, _)) where partId == id || id == nil:
+                messages[index].parts[partIndex] = .text(id: partId, text: text, state: state)
+            case (.reasoning, .reasoning(let partId, let text, _)) where partId == id || id == nil:
+                messages[index].parts[partIndex] = .reasoning(id: partId, text: text, state: state)
             default:
                 break
             }
@@ -295,8 +285,8 @@ final class ChatViewModel {
 
     private func setToolInput(callId: String?, input: JSONValue?, state: String) {
         updateTool(callId: callId) { part in
-            if case .tool(let name, let cid, _, _, let output, let err) = part {
-                return .tool(name: name, callId: cid, state: state, input: input, output: output, errorText: err)
+            if case .tool(let name, let id, _, _, let output, let error) = part {
+                return .tool(name: name, callId: id, state: state, input: input, output: output, errorText: error)
             }
             return nil
         }
@@ -304,8 +294,8 @@ final class ChatViewModel {
 
     private func setToolOutput(callId: String?, output: JSONValue?, state: String) {
         updateTool(callId: callId) { part in
-            if case .tool(let name, let cid, _, let input, _, let err) = part {
-                return .tool(name: name, callId: cid, state: state, input: input, output: output, errorText: err)
+            if case .tool(let name, let id, _, let input, _, let error) = part {
+                return .tool(name: name, callId: id, state: state, input: input, output: output, errorText: error)
             }
             return nil
         }
@@ -313,20 +303,19 @@ final class ChatViewModel {
 
     private func setToolError(callId: String?, errorText: String) {
         updateTool(callId: callId) { part in
-            if case .tool(let name, let cid, _, let input, let output, _) = part {
-                return .tool(name: name, callId: cid, state: "output-error", input: input, output: output, errorText: errorText)
+            if case .tool(let name, let id, _, let input, let output, _) = part {
+                return .tool(name: name, callId: id, state: "output-error", input: input, output: output, errorText: errorText)
             }
             return nil
         }
     }
 
     private func updateTool(callId: String?, transform: (UIPart) -> UIPart?) {
-        guard let idx = messages.indices.last else { return }
-        let parts = messages[idx].parts
-        for (i, part) in parts.enumerated() {
-            if case .tool(_, let cid, _, _, _, _) = part, cid == callId || callId == nil {
+        guard let index = messages.indices.last else { return }
+        for (partIndex, part) in messages[index].parts.enumerated() {
+            if case .tool(_, let id, _, _, _, _) = part, id == callId || callId == nil {
                 if let updated = transform(part) {
-                    messages[idx].parts[i] = updated
+                    messages[index].parts[partIndex] = updated
                 }
                 return
             }
@@ -334,29 +323,27 @@ final class ChatViewModel {
     }
 
     private func replaceAssistantId(_ newId: String) {
-        guard let idx = messages.indices.last, messages[idx].role == "assistant" else { return }
-        messages[idx].id = newId
+        guard let index = messages.indices.last, messages[index].role == "assistant" else { return }
+        messages[index].id = newId
     }
 
     private func finalizeCurrentAssistant() {
-        guard let idx = messages.indices.last, messages[idx].role == "assistant" else { return }
-        let parts = messages[idx].parts.map { part -> UIPart in
+        guard let index = messages.indices.last, messages[index].role == "assistant" else { return }
+        messages[index].parts = messages[index].parts.map { part in
             switch part {
             case .text(let id, let text, _):
                 return .text(id: id, text: text, state: "done")
             case .reasoning(let id, let text, _):
                 return .reasoning(id: id, text: text, state: "done")
-            case .tool(let name, let cid, let state, let input, let output, let err):
-                let finalState = (state.hasPrefix("input-") || state == "input-streaming") ? "input-available" : state
-                return .tool(name: name, callId: cid, state: finalState, input: input, output: output, errorText: err)
+            case .tool(let name, let id, let state, let input, let output, let error):
+                let finalState = state.hasPrefix("input-") ? "input-available" : state
+                return .tool(name: name, callId: id, state: finalState, input: input, output: output, errorText: error)
             }
         }
-        messages[idx].parts = parts
     }
 
     // MARK: - Persistence
 
-    /// Debounced write — streaming can fire many times per second.
     private func persistDebounced() {
         persistTask?.cancel()
         persistTask = Task {
@@ -370,12 +357,10 @@ final class ChatViewModel {
         persistTask?.cancel()
         persistTask = nil
         guard let userId = SessionStore.shared.user?.id else { return }
-        LocalStore.saveMessages(messages, for: userId)
-        LocalStore.saveDraft(draft, for: userId)
+        ChatStore.saveMessages(messages, for: userId)
+        ChatStore.saveDraft(draft, for: userId)
     }
 }
-
-// MARK: - Suggestion chips
 
 extension ChatViewModel {
     static let suggestions: [String] = [

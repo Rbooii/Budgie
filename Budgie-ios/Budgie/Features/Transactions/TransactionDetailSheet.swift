@@ -1,3 +1,10 @@
+//
+//  TransactionDetailSheet.swift
+//  Budgie
+//
+//  Bottom-sheet drawer opened from any transaction row.
+//
+
 import SwiftUI
 
 struct TransactionDetailSheet: View {
@@ -12,25 +19,7 @@ struct TransactionDetailSheet: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
-                VStack(spacing: 8) {
-                    Text(transaction.type.displayName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(transaction.type.strongColor)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(transaction.type.pastelColor.opacity(0.4)))
-
-                    Text(heroAmount)
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(transaction.type.strongColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-
-                    Text(transaction.name)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Color.budgieTextPrimary)
-                }
+                header
 
                 InsetCard {
                     InsetRow(label: "Bank", value: accountName)
@@ -53,13 +42,24 @@ struct TransactionDetailSheet: View {
                 Button {
                     showDeleteConfirm = true
                 } label: {
-                    Text("Delete Transaction")
+                    ZStack {
+                        Text("Delete Transaction")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.budgieExpense)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(Color.budgieExpense.opacity(0.12), in: Capsule())
+                        if isDeleting {
+                            ProgressView().tint(.budgieExpense)
+                        }
+                    }
                 }
-                .buttonStyle(.budgieSoftRed(isLoading: isDeleting, expanded: true))
+                .buttonStyle(PressableButtonStyle())
+                .disabled(isDeleting)
             }
             .padding(20)
         }
-        .presentationBackground(.ultraThinMaterial)
+        .budgieDrawer()
         .confirmationDialog(
             "Delete transaction?",
             isPresented: $showDeleteConfirm,
@@ -69,6 +69,30 @@ struct TransactionDetailSheet: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("\"\(transaction.name)\" · \(formatRupiah(transaction.amount)). This cannot be undone.")
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: 8) {
+            Text(transaction.type.displayName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(transaction.type.strongColor)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(transaction.type.strongColor.opacity(0.12)))
+
+            Text(heroAmount)
+                .font(.system(size: 30, weight: .bold))
+                .monospacedDigit()
+                .tracking(-0.5)
+                .foregroundStyle(transaction.type.strongColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+
+            Text(transaction.name)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Color.budgieTextPrimary)
+                .multilineTextAlignment(.center)
         }
     }
 
@@ -82,7 +106,7 @@ struct TransactionDetailSheet: View {
         case .transfer:
             let from = transaction.balanceAccount?.name ?? "Deleted account"
             let to = transaction.toBalanceAccount?.name ?? "Deleted account"
-            return "\(from) → \(to)"
+            return "\(from) to \(to)"
         default:
             return transaction.balanceAccount?.name ?? "Deleted account"
         }
@@ -96,12 +120,24 @@ struct TransactionDetailSheet: View {
                 try await RESTAPI.deleteTransaction(id: transaction.id)
                 onDeleted()
                 dismiss()
-            } catch let error as BudgieError {
-                errorMessage = error.errorDescription
             } catch {
-                errorMessage = "Something went wrong."
+                errorMessage = (error as? BudgieError)?.errorDescription ?? "Something went wrong."
             }
             isDeleting = false
         }
     }
+}
+
+#Preview {
+    TransactionDetailSheet(
+        transaction: Transaction(
+            id: "1", name: "Bought a kebab", amount: 120_000, type: .expense,
+            category: "FoodAndDrink", date: Date(), adminFee: 0,
+            balanceAccountId: "a", toBalanceAccountId: nil, userId: "u",
+            createdAt: "", updatedAt: "",
+            balanceAccount: AccountRef(id: "a", name: "BCA", currency: "IDR"),
+            toBalanceAccount: nil
+        ),
+        onDeleted: {}
+    )
 }

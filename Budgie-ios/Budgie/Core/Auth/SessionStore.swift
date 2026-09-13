@@ -1,47 +1,59 @@
+//
+//  SessionStore.swift
+//  Budgie
+//
+//  Global auth state: owns the Keychain cookie + current user and drives the
+//  root signed-in/signed-out switch.
+//
+
 import Foundation
 import SwiftUI
 
-/// Global session state. Owns the Keychain cookie + current user.
 @MainActor
 @Observable
 final class SessionStore {
     static let shared = SessionStore()
 
-    var user: AuthUser?
-    var plus: Bool = false
-    var isBootstrapping = true
+    private(set) var user: AuthUser?
+    private(set) var plus = false
+    private(set) var isBootstrapping = true
 
     var isSignedIn: Bool { user != nil }
 
+    private static let cachedUserKey = "budgie.cachedUser"
     private var observers: [NSObjectProtocol] = []
 
-    init() {
+    private init() {
         observers.append(NotificationCenter.default.addObserver(
-            forName: .budgieCookieUpdated, object: nil, queue: .main) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                self.persistCookie()
-            }
+            forName: .budgieCookieUpdated, object: nil, queue: .main
+        ) { _ in
+            Task { @MainActor in SessionStore.shared.persistCookie() }
         })
         observers.append(NotificationCenter.default.addObserver(
-            forName: .budgieSessionExpired, object: nil, queue: .main) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                self.handleSessionExpired()
-            }
+            forName: .budgieSessionExpired, object: nil, queue: .main
+        ) { _ in
+            Task { @MainActor in SessionStore.shared.signOutLocally() }
         })
     }
 
     // MARK: - Lifecycle
 
+    /// Restores the Keychain cookie, validates it against the server and loads
+    /// the cached user when the network is unavailable.
     func bootstrap() async {
         isBootstrapping = true
         defer { isBootstrapping = false }
 
         if let data = KeychainStore.read(account: KeychainStore.sessionAccount),
-           let pair = try? DateFormatters.decoder.decode(CookiePair.self, from: data) {
+           let pair = try? JSONCoding.decoder.decode(CookiePair.self, from: data) {
             SessionCookieBox.shared.pair = pair
         }
+
+        #if DEBUG
+        if SessionCookieBox.shared.pair == nil, let pair = DebugSeed.cookie {
+            SessionCookieBox.shared.pair = pair
+        }
+        #endif
 
         guard SessionCookieBox.shared.pair != nil else { return }
 
@@ -49,78 +61,68 @@ final class SessionStore {
             if let info = try await AuthAPI.getSession(), let user = info.user {
                 self.user = user
                 persistCookie()
-                loadPlus()
+                cacheUser(user)
+                await refreshPlus()
             } else {
-                clearLocalSession()
+                signOutLocally()
             }
+        } catch BudgieError.unauthorized {
+            signOutLocally()
         } catch {
-            if case BudgieError.unauthorized = error {
-                clearLocalSession()
-            }
-            // Other failures (offline): keep the cookie, proceed with cached user.
-            if let data = UserDefaults.standard.data(forKey: "budgie.cachedUser") {
-                self.user = try? DateFormatters.decoder.decode(AuthUser.self, from: data)
+            // Offline: fall back to the cached user so the app still opens.
+            if let data = UserDefaults.standard.data(forKey: Self.cachedUserKey) {
+                user = try? JSONCoding.decoder.decode(AuthUser.self, from: data)
             }
         }
     }
 
-    func loadPlus() {
-        Task {
-            if let status = try? await RESTAPI.userStatus() {
-                plus = status.plus
-            }
-        }
-    }
-
-    func refreshUserState() async {
-        if let status = try? await RESTAPI.userStatus() {
-            plus = status.plus
-        }
-    }
-
-    // MARK: - Auth actions
+    // MARK: - Actions
 
     func signIn(email: String, password: String) async throws {
         let user = try await AuthAPI.signIn(email: email, password: password)
         self.user = user
+        persistCookie()
         cacheUser(user)
-        loadPlus()
+        await refreshPlus()
     }
 
     func signUp(name: String, email: String, password: String) async throws {
         let user = try await AuthAPI.signUp(name: name, email: email, password: password)
         self.user = user
+        persistCookie()
         cacheUser(user)
-        loadPlus()
+        await refreshPlus()
     }
 
     func signOut() async {
         _ = try? await AuthAPI.signOut()
-        clearLocalSession()
+        signOutLocally()
     }
 
-    func handleSessionExpired() {
-        clearLocalSession()
+    func refreshPlus() async {
+        if let status = try? await RESTAPI.userStatus() {
+            plus = status.plus
+        }
     }
 
-    // MARK: - Internal
+    // MARK: - Internals
 
     private func persistCookie() {
-        guard let pair = SessionCookieBox.shared.pair else { return }
-        if let data = try? DateFormatters.encoder.encode(pair) {
-            try? KeychainStore.save(data, account: KeychainStore.sessionAccount)
-        }
+        guard let pair = SessionCookieBox.shared.pair,
+              let data = try? JSONCoding.encoder.encode(pair) else { return }
+        try? KeychainStore.save(data, account: KeychainStore.sessionAccount)
     }
 
     private func cacheUser(_ user: AuthUser) {
-        if let data = try? DateFormatters.encoder.encode(user) {
-            UserDefaults.standard.set(data, forKey: "budgie.cachedUser")
+        if let data = try? JSONCoding.encoder.encode(user) {
+            UserDefaults.standard.set(data, forKey: Self.cachedUserKey)
         }
     }
 
-    private func clearLocalSession() {
+    private func signOutLocally() {
         SessionCookieBox.shared.pair = nil
         KeychainStore.delete(account: KeychainStore.sessionAccount)
+        UserDefaults.standard.removeObject(forKey: Self.cachedUserKey)
         user = nil
         plus = false
     }

@@ -195,6 +195,7 @@ src/lib/api-client.ts              hc<App>(baseURL) -> api.resource.$post({ json
 
 | Document | What it covers |
 | --- | --- |
+| [`API.md`](./API.md) | Complete API reference — every endpoint (auth → user → Plus → budgets → balance accounts → transactions → subscriptions → chat), request/response schemas field-by-field, status codes, ownership rules, category enum, data models, curl examples, mock-Midtrans swap-over |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Full architecture reference — request lifecycle, layer contracts, type-safety chain, RPC client usage (SSR gotchas), mounting Hono in Next.js, Prisma 7 + driver adapter, Zod auto-generation, adding a new resource (8-step checklist), gotchas & breaking-change notes; frontend UI sections §18 dashboard, §19 budgets, §20 profile & Plus, §21 landing page |
 | [`AGENTS.md`](./AGENTS.md) | AI agent rules — build commands, stack conventions, resource specs, backend/frontend patterns, formatting helpers, public landing page, UI checklist pointer |
 | [`UI_DESIGN.md`](./UI_DESIGN.md) | UI/UX design reference — design philosophy, color tokens, component library, type scale, radius system, layout patterns, motion rules, accessibility, new-UI checklist; marketing surface §16 landing page |
