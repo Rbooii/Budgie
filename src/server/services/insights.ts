@@ -2,39 +2,39 @@ import { prisma } from "@/lib/prisma";
 import { startOfMonth } from "@/lib/budget";
 
 export async function getFinancialInsights(userId: string) {
-  const [accounts, monthIncome, monthExpense, monthExpenses] = await Promise.all([
-    prisma.balanceAccount.findMany({
+  const monthStart = startOfMonth();
+
+  const [accounts, monthIncome, monthExpense, topRows] = await Promise.all([
+    prisma.balanceAccount.aggregate({
       where: { userId },
-      select: { id: true, balance: true },
+      _sum: { balance: true },
     }),
     prisma.transaction.aggregate({
-      where: { userId, type: "income", date: { gte: startOfMonth() } },
+      where: { userId, type: "income", date: { gte: monthStart } },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
-      where: { userId, type: "expense", date: { gte: startOfMonth() } },
+      where: { userId, type: "expense", date: { gte: monthStart } },
       _sum: { amount: true },
     }),
-    prisma.transaction.findMany({
-      where: { userId, type: "expense", date: { gte: startOfMonth() } },
-      select: { category: true, amount: true },
+    // Grouped + sorted + limited in the database: constant-size payload
+    // regardless of how many transactions the month has.
+    prisma.transaction.groupBy({
+      by: ["category"],
+      where: { userId, type: "expense", date: { gte: monthStart } },
+      _sum: { amount: true },
+      orderBy: { _sum: { amount: "desc" } },
+      take: 5,
     }),
   ]);
 
-  const netWorth = accounts.reduce((sum, a) => sum + a.balance, 0);
-  const byCategory: Record<string, number> = {};
-  for (const t of monthExpenses) {
-    byCategory[t.category] = (byCategory[t.category] ?? 0) + t.amount;
-  }
-  const topCategories = Object.entries(byCategory)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([category, amount]) => ({ category, amount }));
-
   return {
-    netWorth,
+    netWorth: accounts._sum.balance ?? 0,
     monthIncome: monthIncome._sum.amount ?? 0,
     monthExpense: monthExpense._sum.amount ?? 0,
-    topCategories,
+    topCategories: topRows.map((row) => ({
+      category: row.category,
+      amount: row._sum.amount ?? 0,
+    })),
   };
 }

@@ -1,8 +1,9 @@
 import { z } from "zod";
 import {
   TransactionUncheckedCreateInputObjectZodSchema,
-} from "@/server/schemas/generated/schemas/objects";
+} from "@/server/schemas/generated/schemas/objects/TransactionUncheckedCreateInput.schema";
 import { ALL_CATEGORIES, CATEGORIES_BY_TYPE } from "@/lib/categories";
+import { MAX_TRANSACTION_LIMIT } from "@/lib/limits";
 
 export const CreateTransactionSchema =
   TransactionUncheckedCreateInputObjectZodSchema.pick({
@@ -36,3 +37,14 @@ export const CreateTransactionSchema =
   );
 
 export type CreateTransaction = z.infer<typeof CreateTransactionSchema>;
+
+/**
+ * Optional pagination for `GET /api/transactions`. Omitting both keeps the
+ * legacy "return everything as a bare array" contract for existing clients.
+ */
+export const ListTransactionsQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(MAX_TRANSACTION_LIMIT).optional(),
+  cursor: z.string().min(1).optional(),
+});
+
+export type ListTransactionsQuery = z.infer<typeof ListTransactionsQuerySchema>;

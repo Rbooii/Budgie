@@ -15,7 +15,8 @@ export type TransactionRow = {
   amount: number;
   type: string;
   category: string;
-  date: string;
+  /** `string` when it came over JSON (API), `Date` when read in-process (RSC). */
+  date: string | Date;
   adminFee: number;
   balanceAccountId: string | null;
   toBalanceAccountId: string | null;
@@ -44,6 +45,17 @@ const TYPE_META: Record<
   },
 };
 
+/** `Account • Category` line shared by the app row and the marketing previews. */
+export function transactionSubtitle(transaction: TransactionRow): string {
+  return `${
+    transaction.type === "transfer"
+      ? transaction.balanceAccount && transaction.toBalanceAccount
+        ? `${transaction.balanceAccount.name} · ${transaction.toBalanceAccount.name}`
+        : "—"
+      : (transaction.balanceAccount?.name ?? "Deleted account")
+  } • ${categoryLabel(transaction.category)}`;
+}
+
 interface TransactionItemProps {
   transaction: TransactionRow;
   onClick?: (t: TransactionRow) => void;
@@ -64,13 +76,7 @@ export function TransactionItem({
         ? "-"
         : "";
 
-  const subtitle = `${
-    transaction.type === "transfer"
-      ? transaction.balanceAccount && transaction.toBalanceAccount
-        ? `${transaction.balanceAccount.name} · ${transaction.toBalanceAccount.name}`
-        : "—"
-      : (transaction.balanceAccount?.name ?? "Deleted account")
-  } • ${categoryLabel(transaction.category)}`;
+  const subtitle = transactionSubtitle(transaction);
 
   return (
     <button

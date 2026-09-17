@@ -17,6 +17,9 @@ const eslintConfig = defineConfig([
     "src/server/schemas/generated/**",
     // Downloaded reference material (Notion saved page) — not our code:
     "ui/**",
+    "ui-refer/**",
+    // Standalone Remotion video project — has its own package.json/tsconfig:
+    "video/**",
   ]),
 ]);
 

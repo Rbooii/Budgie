@@ -1,8 +1,6 @@
 import { z } from "zod";
-import {
-  BalanceAccountUncheckedCreateInputObjectZodSchema,
-  BalanceAccountUncheckedUpdateInputObjectZodSchema,
-} from "@/server/schemas/generated/schemas/objects";
+import { BalanceAccountUncheckedCreateInputObjectZodSchema } from "@/server/schemas/generated/schemas/objects/BalanceAccountUncheckedCreateInput.schema";
+import { BalanceAccountUncheckedUpdateInputObjectZodSchema } from "@/server/schemas/generated/schemas/objects/BalanceAccountUncheckedUpdateInput.schema";
 
 export const CreateBalanceAccountSchema =
   BalanceAccountUncheckedCreateInputObjectZodSchema.pick({

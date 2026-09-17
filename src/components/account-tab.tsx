@@ -1,8 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/button";
 import Link from "next/link";
-import { api } from "@/lib/api-client";
-import { headers } from "next/headers";
+import { getPlusForUser } from "@/server/queries";
 
 interface AccountTabProps {
   userName: string;
@@ -40,15 +39,7 @@ export function AccountTabView({ userName, plus }: AccountTabProps & { plus: boo
   );
 }
 
-export async function AccountTab({ userName }: AccountTabProps) {
-  const res = await api.user.$get(
-    {},
-    { headers: Object.fromEntries(await headers()) },
-  );
-  let plus = false;
-  if (res.ok) {
-    const data = await res.json();
-    plus = data.plus === true;
-  }
+export async function AccountTab({ userName, userId }: AccountTabProps & { userId: string }) {
+  const plus = await getPlusForUser(userId);
   return <AccountTabView userName={userName} plus={plus} />;
 }

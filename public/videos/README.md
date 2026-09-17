@@ -14,7 +14,11 @@ Recommended specs (silent cinematic product demo, Apple/Wise vibe):
 
 Notes:
 - Provide both `.webm` (smaller, modern) and `.mp4` (Safari fallback). The
-  `<video>` element lists `.webm` first; the browser picks the first it supports.
+  `<video>` element lists **`.mp4` first** and `.webm` second, because the mp4
+  is the asset guaranteed to exist (the hosted demo clip, or your local
+  `brand.mp4`) — listing an optional `.webm` first fired a 404 on every landing
+  visit. The browser takes the first source it can play, so with an mp4 present
+  the webm is ignored; it stays in the markup for when the mp4 is unavailable.
 - Keep them silent. Autoplay is `muted` + `playsInline` + `loop` — no controls.
 - Compress with `ffmpeg -i in.mov -c:v libwebp ...` (webm) and `libx264 -crf 23`
   (mp4). Aim < 3MB per vignette, < 8MB for the brand video.

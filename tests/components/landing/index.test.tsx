@@ -25,14 +25,15 @@ afterEach(() => {
 });
 
 describe("LandingPageView — hero (Notion anatomy)", () => {
-  it("renders the feature-icon pile, headline, and mono deck", () => {
+  it("renders the mascot, headline, and deck", () => {
     renderLanding();
-    expect(screen.getByTitle("Accounts")).toBeInTheDocument();
-    expect(screen.getByTitle("Insights")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /hand-drawn character/ }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Where your money")).toBeInTheDocument();
     expect(screen.getAllByText("works").length).toBeGreaterThan(0);
     expect(
-      screen.getByText(/Capture context, find answers, and automate busywork/),
+      screen.getByText(/Capture every rupiah, find any answer/),
     ).toBeInTheDocument();
   });
 
@@ -57,10 +58,11 @@ describe("LandingPageView — hero (Notion anatomy)", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not render AI-slop chrome (no hero net-worth card, no progress bar)", () => {
+  it("does not render AI-slop chrome (no net-worth card, no busywork labels)", () => {
     renderLanding();
     expect(screen.queryByText("Your Net Worth")).not.toBeInTheDocument();
-    expect(screen.queryByText("December 2026")).toBeInTheDocument(); // the live chart is the only feed
+    expect(screen.queryByText("Automate busywork")).not.toBeInTheDocument();
+    expect(screen.queryByText("Recent activity")).not.toBeInTheDocument();
   });
 });
 

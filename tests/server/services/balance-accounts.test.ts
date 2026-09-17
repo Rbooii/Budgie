@@ -9,6 +9,7 @@ const { mockPrisma } = vi.hoisted(() => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    $transaction: vi.fn(),
     transaction: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -50,6 +51,9 @@ const mockAccount = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockPrisma.$transaction.mockImplementation(
+    async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma),
+  );
 });
 
 describe("listBalanceAccounts", () => {
@@ -137,22 +141,30 @@ describe("deleteBalanceAccount", () => {
   });
 
   it("checks ownership with findFirst({ where: { id, userId } }) before deleting", async () => {
-    mockPrisma.balanceAccount.findFirst.mockResolvedValue(mockAccount);
+    mockPrisma.balanceAccount.findFirst.mockResolvedValue({ id: ACCOUNT_ID });
     mockPrisma.balanceAccount.delete.mockResolvedValue(mockAccount);
     await deleteBalanceAccount(USER_ID, ACCOUNT_ID);
     expect(mockPrisma.balanceAccount.findFirst).toHaveBeenCalledWith({
       where: { id: ACCOUNT_ID, userId: USER_ID },
+      select: { id: true },
     });
     expect(mockPrisma.transaction.deleteMany).toHaveBeenCalledWith({
-      where : { balanceAccountId : ACCOUNT_ID }
-    })
+      where: { balanceAccountId: ACCOUNT_ID, userId: USER_ID },
+    });
     expect(mockPrisma.balanceAccount.delete).toHaveBeenCalledWith({
       where: { id: ACCOUNT_ID },
     });
   });
 
+  it("runs both writes in one $transaction so the account and its history stay consistent", async () => {
+    mockPrisma.balanceAccount.findFirst.mockResolvedValue({ id: ACCOUNT_ID });
+    mockPrisma.balanceAccount.delete.mockResolvedValue(mockAccount);
+    await deleteBalanceAccount(USER_ID, ACCOUNT_ID);
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
   it("deletes by id only (userId already validated via findFirst)", async () => {
-    mockPrisma.balanceAccount.findFirst.mockResolvedValue(mockAccount);
+    mockPrisma.balanceAccount.findFirst.mockResolvedValue({ id: ACCOUNT_ID });
     mockPrisma.balanceAccount.delete.mockResolvedValue(mockAccount);
     await deleteBalanceAccount(USER_ID, ACCOUNT_ID);
     const deleteCall = mockPrisma.balanceAccount.delete.mock.calls[0][0] as {

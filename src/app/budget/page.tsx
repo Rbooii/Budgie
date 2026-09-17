@@ -1,9 +1,10 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { Category } from "@/generated/prisma/client";
+import { getSession } from "@/lib/session";
+import { sumExpenseByBudgetCategory } from "@/server/services/budgets";
 import { PageShell } from "@/components/page-shell";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { AccountTab } from "@/components/account-tab";
 import { BudgetSummaryCards } from "@/components/budget-summary-cards";
 import { SpendingStreamsChart } from "@/components/spending-streams-chart";
@@ -14,14 +15,20 @@ import {
   type SubscriptionRow,
 } from "@/components/subscription-list";
 import { AddSubscriptionDialog } from "@/components/add-subscription-dialog";
-import { startOfMonth, budgetPeriodStart, budgetPeriodEnd } from "@/lib/budget";
+import { startOfMonth } from "@/lib/budget";
 
-export const dynamic = "force-dynamic";
+export default function BudgetPage() {
+  return (
+    <PageShell>
+      <Suspense fallback={<PageSkeleton rows={4} />}>
+        <BudgetContent />
+      </Suspense>
+    </PageShell>
+  );
+}
 
-export default async function BudgetPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+async function BudgetContent() {
+  const session = await getSession();
 
   if (!session) {
     redirect("/sign-in");
@@ -29,7 +36,7 @@ export default async function BudgetPage() {
 
   const userId = session.user.id;
 
-  const [budgets, subscriptions, monthExpenses] = await Promise.all([
+  const [budgets, subscriptions, monthExpenseRows] = await Promise.all([
     prisma.budget.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -59,35 +66,16 @@ export default async function BudgetPage() {
         updatedAt: true,
       },
     }),
-    prisma.transaction.findMany({
+    prisma.transaction.groupBy({
+      by: ["category"],
       where: { userId, type: "expense", date: { gte: startOfMonth() } },
-      select: { category: true, amount: true },
+      _sum: { amount: true },
     }),
   ]);
 
-  const monthExpenseByCategory: Record<string, number> = {};
-  for (const t of monthExpenses) {
-    monthExpenseByCategory[t.category] =
-      (monthExpenseByCategory[t.category] ?? 0) + t.amount;
-  }
-
-  const spentByBudgetCategory: Record<string, number> = {};
-  await Promise.all(
-    budgets.map(async (b) => {
-      const periodStart = budgetPeriodStart(b.periodDays);
-      const periodEnd = budgetPeriodEnd();
-      const agg = await prisma.transaction.aggregate({
-        where: {
-          userId,
-          type: "expense",
-          category: b.category as Category,
-          date: { gte: periodStart, lte: periodEnd },
-        },
-        _sum: { amount: true },
-      });
-      spentByBudgetCategory[b.category] = agg._sum.amount ?? 0;
-    }),
-  );
+  // One grouped aggregate per distinct budget period instead of one per budget.
+  const spentByCategoryMap = await sumExpenseByBudgetCategory(userId, budgets);
+  const spentByBudgetCategory = Object.fromEntries(spentByCategoryMap);
 
   const monthlyBudgets = budgets.filter((b) => b.periodDays === 30);
   const dailyBudgets = budgets.filter((b) => b.periodDays === 1);
@@ -103,8 +91,8 @@ export default async function BudgetPage() {
     0,
   );
 
-  const streamsData = Object.entries(monthExpenseByCategory)
-    .map(([category, spent]) => ({ category, spent }))
+  const streamsData = monthExpenseRows
+    .map((row) => ({ category: row.category, spent: row._sum.amount ?? 0 }))
     .filter((d) => d.spent > 0);
 
   const streamsBudgets = budgets.map((b) => ({
@@ -123,8 +111,8 @@ export default async function BudgetPage() {
   const subscriptionRows = subscriptions as unknown as SubscriptionRow[];
 
   return (
-    <PageShell>
-      <AccountTab userName={session.user.name} />
+    <>
+      <AccountTab userName={session.user.name} userId={userId} />
 
       <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mt-6 md:mt-8">
         Budgets
@@ -161,6 +149,6 @@ export default async function BudgetPage() {
         subscriptions={subscriptionRows}
         addTrigger={<AddSubscriptionDialog />}
       />
-    </PageShell>
+    </>
   );
 }

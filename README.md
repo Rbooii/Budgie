@@ -91,7 +91,7 @@ contribution — human or AI — follows the same structured workflow.
 | Web framework | Next.js (App Router, `src/`) | 16.2.9 |
 | UI | React | 19.2.x |
 | Backend API | Hono (catch-all Route Handler — REST, **not** Server Actions) | 4.12.x |
-| ORM | Prisma (+ `@prisma/adapter-pg` driver adapter) | 7.8.x |
+| ORM | Prisma 7 driver adapters — `@prisma/adapter-neon` on Neon, `@prisma/adapter-pg` elsewhere | 7.8.x |
 | Database | PostgreSQL | — |
 | Validation | Zod via `@hono/zod-validator` (auto-generated from Prisma) | 4.4.x |
 | Auth | better-auth (email/password + Google + GitHub) | 1.6.x |
@@ -99,7 +99,7 @@ contribution — human or AI — follows the same structured workflow.
 | Testing | Vitest + jsdom + @testing-library/react | 4.x |
 | PDF | jsPDF + jsPDF-AutoTable | 4.x / 5.x |
 | QR codes | qrcode.react (Plus QRIS checkout) | 4.x |
-| Smooth scroll | lenis (landing page only) | 1.3.x |
+| Rendering | Cache Components / PPR (`cacheComponents: true`) — static shell + streamed dynamic islands | Next 16 |
 | AI chat | Vercel AI SDK v7 (`ai` + `@ai-sdk/react`) + `@ai-sdk/google` (Gemini 2.5 Flash) | 7.x |
 | Lint | ESLint 9 + eslint-config-next | 9.x |
 
@@ -157,8 +157,14 @@ Next.js App Router (RSC / SSR)          Hono REST API (catch-all Route Handler)
                                                     │
                                                     ▼
                                               Prisma + PostgreSQL
-                                          (via @prisma/adapter-pg)
+                                  (host-aware driver adapter: Neon in prod)
 ```
+
+Pages are **Cache Components / PPR**: the static shell (chrome, headings,
+skeletons) is prerendered, and each page's data lives in an async child behind
+`<Suspense>`, so navigation paints instantly and the data streams in. Server
+Components read the database **in-process** (`src/server/queries.ts`) — no
+self-fetch back through `/api`.
 
 **The 3-layer backend contract:**
 
@@ -195,8 +201,8 @@ src/lib/api-client.ts              hc<App>(baseURL) -> api.resource.$post({ json
 
 | Document | What it covers |
 | --- | --- |
-| [`API.md`](./API.md) | Complete API reference — every endpoint (auth → user → Plus → budgets → balance accounts → transactions → subscriptions → chat), request/response schemas field-by-field, status codes, ownership rules, category enum, data models, curl examples, mock-Midtrans swap-over |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Full architecture reference — request lifecycle, layer contracts, type-safety chain, RPC client usage (SSR gotchas), mounting Hono in Next.js, Prisma 7 + driver adapter, Zod auto-generation, adding a new resource (8-step checklist), gotchas & breaking-change notes; frontend UI sections §18 dashboard, §19 budgets, §20 profile & Plus, §21 landing page |
+| [`API.md`](./API.md) | Complete API reference — every endpoint (auth → user → Plus → budgets → balance accounts → transactions → subscriptions → chat), request/response schemas field-by-field, **pagination headers (`limit`/`cursor`, `X-Next-Cursor`/`X-Has-More`)**, **ETag/`304` revalidation contract**, status codes, ownership rules, category enum, curl examples, mock-Midtrans swap-over |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Full architecture reference — request lifecycle, layer contracts, type-safety chain, RPC client usage (SSR gotchas), mounting Hono in Next.js, Prisma 7 + driver adapter, Zod auto-generation, adding a new resource (8-step checklist), gotchas & breaking-change notes; frontend UI sections §18 dashboard, §19 budgets, §20 profile & Plus, §21 landing page, §22 chat, §23 performance & serverless optimization |
 | [`AGENTS.md`](./AGENTS.md) | AI agent rules — build commands, stack conventions, resource specs, backend/frontend patterns, formatting helpers, public landing page, UI checklist pointer |
 | [`UI_DESIGN.md`](./UI_DESIGN.md) | UI/UX design reference — design philosophy, color tokens, component library, type scale, radius system, layout patterns, motion rules, accessibility, new-UI checklist; marketing surface §16 landing page |
 
@@ -219,15 +225,16 @@ budgie/
 │  │     └─ auth/[...all]/        # better-auth handler
 │  ├─ components/                 # React UI (incl. chat/ subfolder, plus-payment-wizard, upgradePlusButton)
 │  │  ├─ chat/                    # ChatView, ChatMessage, ChatThinking, ChatToolCard/Status/Result, ChatInput, ChatEmptyState
-│  │  └─ landing/                 # AutoVideo (<video>), HeroHeadline, Spotlight, Tilt, Magnetic, VideoShowcase, Vignettes, HeroPreview, Marquee, ScrollProgress, Pricing, Faq, Footer, …
-│  ├─ lib/                        # auth, auth-client, prisma, api-client, format, categories, category-icon, budget, midtrans (mock QRIS), dashboard, font-size, chat-models, chat-storage
+│  │  └─ landing/                 # AutoVideo (<video>), HeroHeadline, HeroPill, Bento, UseCases, Pricing, Faq, FactsMarquee, LandingNav, CopyrightYear, Footer, …
+│  ├─ lib/                        # auth, session (cached getSession), auth-client, prisma (lazy, host-aware), api-client, limits, format, categories, category-icon, budget, midtrans (mock QRIS), dashboard, font-size, chat-models, chat-storage
 │  └─ server/                     # ALL backend logic
 │     ├─ chat/                    # buildSystemPrompt, tool schemas, createChatTools(userId)
 │     ├─ routes/                  # Layer 1: HTTP wiring (budgets, subscriptions, balance-accounts, transactions, user, plus)
 │     ├─ controllers/             # Layer 2: I/O + type mapping
 │     ├─ services/                # Layer 3: pure logic + Prisma (+ insights, listBudgetsWithSpent)
-│     ├─ schemas/                 # Zod (.pick + .extend on generated)
-│     └─ middleware/auth.ts       # requireAuth + AppEnv
+│     ├─ schemas/                 # Zod (.pick + .extend on deep-imported generated schema file)
+│     ├─ queries.ts               # React-cache'd RSC reads (no self-fetch)
+│     └─ middleware/              # auth.ts (requireAuth/AppEnv) + cache.ts (etag + privateNoCache)
 ├─ public/videos/                 # landing video drop-in (brand.mp4/.webm + vignettes) — see public/videos/README.md
 ├─ prisma/schema.prisma           # datasource + 2 generators (client, zod) + 9 models (User…PlusOrder)
 ├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets, §20 profile & Plus, §21 landing, §22 chat)
@@ -239,7 +246,7 @@ budgie/
 ## Testing
 
 ```bash
-bun run test          # 959 tests, 86 suites (one-shot)
+bun run test          # 983 tests, 87 suites (one-shot)
 bun run test:watch    # watch mode for development
 ```
 
@@ -252,7 +259,7 @@ bun run test:watch    # watch mode for development
 | `tests/server/services/subscriptions.test.ts` | Service — full CRUD, duplicate-name clash (create + rename w/ `NOT {id}`), ownership scoping | 15 |
 | `tests/server/schemas/subscription.test.ts` | Schema — defaults (IDR, active), every expense category, non-positive/non-int/NaN rejection | 30 |
 | `tests/server/controllers/subscriptions.test.ts` | Controller — 400/404/409/204 mapping, error rethrow | 15 |
-| `tests/server/services/transactions.test.ts` | Service — balance math, insufficient-balance guards (create + delete), exact-empties allowed | 25 |
+| `tests/server/services/transactions.test.ts` | Service — atomic balance math (conditional `updateMany` guards), pagination windowing, filters, insufficient-balance + missing-account mapping (create + delete) | 30 |
 | `tests/server/services/balance-accounts.test.ts` | Service — ownership scoping, cross-user delete prevention | 8 |
 | `tests/server/services/plus.test.ts` | Service — checkout, status polling, simulate-payment, webhook settlement | 15 |
 | `tests/components/account-card.test.tsx` | Component — confirm dialog flow, delete safety, error paths | 9 |
@@ -267,7 +274,7 @@ bun run test:watch    # watch mode for development
 | `tests/components/plus-payment-wizard.test.tsx` | Component — 3-step QRIS wizard flow, simulate payment, status polling (settlement/expire/cancel) | 14 |
 | `tests/components/upgradePlusButton.test.tsx` | Component — upgrade (opens wizard) vs downgrade (PATCH) flows | 8 |
 | `tests/components/landing/*.test.tsx` + `mock-data.test.ts` | Landing — full-page composition via `LandingPageView` (session-conditional nav, section order, CTA copy), IO/reduced-motion behavior (auto-video, animated-counter, scroll-progress, reveal, hero-preview), CSS-var interaction primitives (spotlight, tilt, magnetic, hero-headline), content suites, mock-data integrity | 151 |
-| `tests/server/controllers/*.test.ts` + `schemas/*.test.ts` | Server — budgets/balance-accounts/plus/user 3-layer + route handler, auth middleware | ~120 |
+| `tests/server/controllers/*.test.ts` + `schemas/*.test.ts` + `routes/transactions.test.ts` | Server — budgets/balance-accounts/plus/user 3-layer, route handler, auth middleware, transactions pagination headers + `ETag`/`304` contract | ~130 |
 | `tests/server/chat/tools.test.ts` | Chat tools — each tool calls the right service with `userId`, transaction filtering + limit cap, create_transaction ok/error paths (insufficient balance, category/type mismatch, transfer refine) | 17 |
 | `tests/server/chat/schemas.test.ts` | Chat tool schemas — filter validation, transfer refines, category/type matching, unknown-key rejection | 14 |
 | `tests/server/chat/system.test.ts` | Chat system prompt — user name, date, language rule, no-inventing rule, confirm-before-create | 8 |
@@ -297,7 +304,8 @@ their own suites.
 
 | Variable | Required | Description |
 | --- | :---: | --- |
-| `DATABASE_URL` | yes | PostgreSQL connection string (pooled on Neon, used at runtime) |
+| `DATABASE_URL` | yes | PostgreSQL connection string (pooled on Neon, used at runtime). A `*.neon.tech`/`*.neon.build` host selects the Neon serverless driver (`@prisma/adapter-neon`); anything else falls back to `pg`. |
+| `PRISMA_POOL_MAX` | no | Max connections per function instance (default `1`). Neon multiplexes queries over a single WebSocket connection, so `1` is the right default; raise it only for self-hosted Postgres. |
 | `DIRECT_URL` | yes (prod) | Direct PostgreSQL connection string (non-pooled, used by `prisma migrate deploy` at build time). Local dev may equal `DATABASE_URL`. |
 | `BETTER_AUTH_URL` | yes | Public app URL (default `http://localhost:3000`) |
 | `BETTER_AUTH_SECRET` | yes | Session signing key — generate with `openssl rand -base64 32` |
@@ -333,16 +341,28 @@ deploy — no manual migration step needed.
    | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | OAuth credentials (optional) |
    | `GOOGLE_GENERATIVE_AI_API_KEY` | Google AI Studio key (optional — required for the AI assistant) |
 
-3. **Push to `main`** → Vercel runs `bun run build`:
+3. **Pin the function region to your database region** (Vercel → Project
+   Settings → Functions → Region). Every DB round trip crosses that link, so a
+   mismatch adds 100–300 ms per query. Use the region Neon reports for the
+   project (e.g. Singapore = `sin1` for `aws-ap-southeast-1`). The repo does
+   **not** ship a `vercel.json`, so this stays a dashboard setting.
+4. **Push to `main`** → Vercel runs `bun run build`:
    - `prisma migrate deploy` applies pending migrations via `DIRECT_URL`
    - `prisma generate` regenerates the client
    - `next build` compiles the app
-4. **Serverless functions** use `DATABASE_URL` (pooled) at runtime.
+5. **Serverless functions** use `DATABASE_URL` (pooled) at runtime through the
+   Neon serverless driver (`@prisma/adapter-neon`).
 
 > **Why two URLs?** `prisma migrate deploy` needs a direct connection (PgBouncer
 > pooled connections reject DDL). Serverless functions benefit from pooling
 > (fewer connections under load). On Neon, the `-pooler` hostname is PgBouncer;
 > the direct hostname bypasses it.
+>
+> **Why the Neon adapter?** `src/lib/prisma.ts` picks `@prisma/adapter-neon`
+> for Neon hosts: one WebSocket connection per function instance with query
+> multiplexing (`max: 1` via `PRISMA_POOL_MAX`), which removes the classic
+> "each lambda opens a 10-connection pool" exhaustion failure mode. Non-Neon
+> URLs fall back to `@prisma/adapter-pg` so local Postgres keeps working.
 
 New migrations are created locally with `bun run db:migrate --name <name>`,
 committed to `prisma/migrations/`, and applied automatically on the next deploy.

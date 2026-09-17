@@ -1,8 +1,8 @@
 import { handle } from "hono/vercel";
 import { app } from "@/server";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// No `runtime`/`dynamic` segment config: with `cacheComponents` enabled,
+// Route Handlers are dynamic by default and the Node.js runtime is implied.
 
 const stripApiPrefix = (handler: (req: Request) => Response | Promise<Response>) =>
   (req: Request) => {

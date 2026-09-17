@@ -161,13 +161,24 @@ describe("get_transactions", () => {
   const tools = createChatTools(USER_ID);
 
   beforeEach(() => {
-    mockServices.listTransactions.mockResolvedValue([transaction]);
+    mockServices.listTransactions.mockResolvedValue({
+      items: [transaction],
+      nextCursor: null,
+    });
   });
 
-  it("lists all transactions when no filters are given", async () => {
+  it("defaults to the newest 10 with no filters", async () => {
     const result = await run<TransactionsResult>(tools.get_transactions);
 
-    expect(mockServices.listTransactions).toHaveBeenCalledWith(USER_ID);
+    // filtering + limiting are pushed into the query, not done in JS
+    expect(mockServices.listTransactions).toHaveBeenCalledWith(USER_ID, {
+      limit: 10,
+      type: undefined,
+      category: undefined,
+      from: undefined,
+      to: undefined,
+      search: undefined,
+    });
     expect(result.count).toBe(1);
     expect(result.items[0]).toMatchObject({
       name: "Lunch",
@@ -177,62 +188,62 @@ describe("get_transactions", () => {
     });
   });
 
-  it("filters by type", async () => {
-    const result = await run<TransactionsResult>(tools.get_transactions, {
-      type: "income",
-    });
-    expect(result.count).toBe(0);
+  it("forwards the type filter to the query", async () => {
+    await run<TransactionsResult>(tools.get_transactions, { type: "income" });
+    expect(mockServices.listTransactions).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({ type: "income" }),
+    );
   });
 
-  it("filters by category", async () => {
-    const result = await run<TransactionsResult>(tools.get_transactions, {
+  it("forwards the category filter to the query", async () => {
+    await run<TransactionsResult>(tools.get_transactions, {
       category: "FoodAndDrink",
     });
-    expect(result.count).toBe(1);
+    expect(mockServices.listTransactions).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({ category: "FoodAndDrink" }),
+    );
   });
 
-  it("filters by keyword against name and category label", async () => {
-    const byName = await run<TransactionsResult>(tools.get_transactions, {
-      query: "lunch",
-    });
-    expect(byName.count).toBe(1);
-
-    const byLabel = await run<TransactionsResult>(tools.get_transactions, {
-      query: "food",
-    });
-    expect(byLabel.count).toBe(1);
-
-    const noMatch = await run<TransactionsResult>(tools.get_transactions, {
-      query: "zzz",
-    });
-    expect(noMatch.count).toBe(0);
+  it("forwards the keyword as a server-side search", async () => {
+    await run<TransactionsResult>(tools.get_transactions, { query: "lunch" });
+    expect(mockServices.listTransactions).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({ search: "lunch" }),
+    );
   });
 
-  it("filters by date range", async () => {
-    const inRange = await run<TransactionsResult>(tools.get_transactions, {
+  it("forwards the date range with a full-day upper bound", async () => {
+    await run<TransactionsResult>(tools.get_transactions, {
       from: "2026-08-01",
       to: "2026-08-31",
     });
-    expect(inRange.count).toBe(1);
 
-    const outOfRange = await run<TransactionsResult>(tools.get_transactions, {
-      from: "2027-01-01",
-      to: "2027-12-31",
-    });
-    expect(outOfRange.count).toBe(0);
+    const options = mockServices.listTransactions.mock.calls.at(-1)?.[1];
+    expect(options?.from).toEqual(new Date("2026-08-01T00:00:00"));
+    expect(options?.to).toEqual(new Date("2026-08-31T23:59:59"));
   });
 
-  it("caps the items list at the requested limit while keeping count", async () => {
-    const many = Array.from({ length: 30 }, (_, i) => ({
+  it("forwards the requested limit", async () => {
+    const many = Array.from({ length: 5 }, (_, i) => ({
       ...transaction,
       id: `tx-${i}`,
     }));
-    mockServices.listTransactions.mockResolvedValue(many);
+    mockServices.listTransactions.mockResolvedValue({
+      items: many,
+      nextCursor: "tx-4",
+    });
 
     const result = await run<TransactionsResult>(tools.get_transactions, {
       limit: 5,
     });
-    expect(result.count).toBe(30);
+
+    expect(mockServices.listTransactions).toHaveBeenCalledWith(
+      USER_ID,
+      expect.objectContaining({ limit: 5 }),
+    );
+    expect(result.count).toBe(5);
     expect(result.items).toHaveLength(5);
   });
 });

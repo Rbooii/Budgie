@@ -13,7 +13,7 @@ anything under `src/components/landing/`.
 | Surface | Tone | Radii | Hero type |
 | --- | --- | --- | --- |
 | Auth-gated app (`/dashboard` …) | Calm minimal fintech, dense data | `rounded-2xl` rows, `rounded-[20px]` tiles, `rounded-[35px]` cards | Tabular nums, `dynamicFontSize` |
-| Landing page (`/`) | Notion-calmed product marketing, airy | `rounded-[12px]` bento cards, `rounded-[20px]` link tiles, Budgie `rounded-[35px]` CTAs | Fluid `clamp(2.625rem, 11.25vw - 25.5px, 6rem)` headline |
+| Landing page (`/`) | Notion-calmed product marketing, airy | `rounded-[35px]` ledger panel, `rounded-[20px]` bento tiles + link tiles, Budgie `rounded-[35px]` CTAs | Fluid `clamp(2.625rem, 11.25vw - 25.5px, 6rem)` headline |
 
 The landing runs on white + `#F9F9F8` gray surfaces with **one brand green
 `#00C610`** for CTAs and pricing accents; the semantic pastel tints
@@ -23,16 +23,21 @@ the bento previews. Section rhythm is `py-20 sm:py-28` inside
 
 ### Page anatomy (Notion's exact order)
 
-1. **Nav** (`landing-nav.tsx`) — wordmark, anchor links (Use cases /
-   Features / Pricing / FAQ), then Budgie's green-pill CTAs (Sign in / Get
-   started; Dashboard when authed). Translucent white + hairline after scroll.
-   **No dropdowns, no mega-menus** — Budgie has no sub-pages.
-2. **Hero** — center column: feature-icon pile → headline → mono deck → CTAs →
+1. **Nav** (`landing-nav.tsx`) — app-icon mark (`/android-chrome-192x192.png`
+   via `next/image`, 28px, decorative `alt=""` so the link name stays
+   "Budgie") + wordmark, anchor links (Use cases / Features / Pricing / FAQ),
+   then Budgie's green-pill CTAs (Sign in / Get started; Dashboard when
+   authed). Translucent white + hairline after scroll. **No dropdowns, no
+   mega-menus** — Budgie has no sub-pages.
+2. **Hero** — center column: mascot → headline → mono deck → CTAs →
    demo video.
-   - **Icon pile** — five overlapping round tinted tiles (Accounts,
-     Transactions, Budgets, Subscriptions, Insights) above the H1, each
-     `hover:rotate-[15deg]` — Notion's `pileImage` anatomy, honest version of
-     their agent pile (real app features, not fake avatars).
+   - **Mascot** (`budgie-mascot.tsx`) — Notion's mascot language (Roman
+     Muradov's ink faces: wobbly monoline strokes, dot eyes, short brows, a
+     hooked nose, one flat fill) drawn for Budgie: a round-glasses character
+     in the income-green shirt, 104px tall (124px on `sm`). **Original
+     artwork — no third-party illustration SVGs, no icon pile.** The only
+     motion is a 6s blink, `motion-safe` only (reduced motion keeps the eyes
+     still).
    - **Headline** (`hero-headline.tsx`) — Notion's exact fluid type:
      `font-semibold`, `clamp(2.625rem, 11.25vw - 25.5px, 6rem)`, line-height
      `clamp(3rem, 10.83vw - 17px, 6.25rem)`, tracking
@@ -54,14 +59,30 @@ the bento previews. Section rhythm is `py-20 sm:py-28` inside
      hairline-bordered 8px-radius frame (`aspect-square` mobile,
      `sm:aspect-[1.6]`), 32px round play/pause controller bottom-left
      (`bg-black/10 backdrop-blur`), controller hidden under reduced motion.
-3. **Bento** (`bento.tsx`, `#features`) — "Where your money lives." One wide
-   Capture card + two side cards (Find / Automate). Cards are Notion's:
-   `bg-[#F9F9F8]`, `rounded-[12px]`, **no border, no lift**; hover fades in a
-   soft shadow only. Eyebrow = quiet 14px `text-black/45` caption; title =
-   22px bold; **no arrows**. Media is the **real Budgie UI rendered directly
-   on the gray surface, at natural height** — never a fixed-aspect box, never
-   card-in-card: transaction rows (`TransactionItem hideChevron`), the
-   interactive search (`FindCard`), and `SpendingStreamsChart variant="bare"`.
+3. **Bento** (`bento.tsx`, `#features`) — "Where your money lives." Heading
+   left, one-line deck bottom-aligned right on `lg`. Then an asymmetric
+   `lg:grid-cols-5`: the focal **ledger panel** (`LiveFeed`, `lg:col-span-3`)
+   on a white `rounded-[35px]` surface with hairline border + soft shadow —
+   the app's own card language — beside a `lg:col-span-2` rail stacking the
+   **search panel** (`FindCard`) over the **budget panel** (`LiveSpending`),
+   both quiet `bg-[#F9F9F8]` `rounded-[20px]` tiles. **No eyebrows, no card
+   titles, no uppercase "LIVE" badges, no legends, no trailing result
+   counters, no hover tooltips** — the real Budgie UI is the content, and the
+   section deck carries the words. The ledger lists hairline-divided rows (`LedgerRow` —
+   the app's transaction row one step quieter: 32px tinted tile, 15px type,
+   no hover background, no chevron) and slides one row in per tick. All three
+   tiles share one anatomy — **caption row** (13px `text-black/40` left,
+   `text-xs text-black/35` right), live body, **hairline summary footer** —
+   so they read as one system: ledger "Today / Updating live" → "Net today"
+   (income minus expenses of the visible window, transfers excluded); search
+   "All transactions / Filters as you type" → "Showing 3 of 4"; budgets
+   "Spent in December / total" → "Left to spend". The budget bars measure
+   each category against its own budget (the track *is* the limit, so no
+   marker or legend is needed) and grow via the 200ms width transition. Media
+   sits directly on the panel surface at natural height — never a
+   fixed-aspect box, never card-in-card. The old card eyebrows ("Capture every rupiah" / "Find
+   answers" / "Automate busywork") and 22px card titles were removed as
+   AI-slop chrome and must not return.
 4. **Use cases** (`use-cases.tsx`, `#use-cases`) — "See what Budgie can do":
    five compact `rounded-[20px]` bordered link cards (tinted icon tile +
    bold title, no arrows) → `/sign-in`.
@@ -79,7 +100,7 @@ the bento previews. Section rhythm is `py-20 sm:py-28` inside
    block) with `py-24 sm:py-36`, the green pill ("Get Budgie free") + outline
    secondary.
 9. **Footer** (`footer.tsx`) — Notion's anatomy trimmed to **real links
-   only**: brand + one-liner + ©, then Product (`/#features`, `/#use-cases`,
+   only**: app-icon mark (32px) + wordmark + one-liner + ©, then Product (`/#features`, `/#use-cases`,
    `/#pricing`, `/#faq`) and Get started (`/sign-in` ×2). No fake columns, no
    language selector, no cookie settings.
 
@@ -97,10 +118,11 @@ drop-in):
 | --- | --- | --- |
 | `brand.mp4` + `brand.webm` | Hero demo walkthrough | 16:9 (played at 1.6 in the hero frame), 1920×1080, ~60s, silent, loopable, < 8MB |
 
-List `.webm` first, `.mp4` second — the browser picks the first it supports
-(modern Chromium/Firefox use `.webm`, Safari falls back to `.mp4`). The hosted
-`BudgieDemo` Vercel-Blob mp4 URL is the same clip embedded in `README.md`'s
-demo `<video>` — keep the landing `AutoVideo` and the README demo in sync.
+List `.mp4` first, `.webm` second — the mp4 is the asset that always exists
+(the hosted `BudgieDemo` Vercel-Blob clip, or a local `brand.mp4`), so listing
+the optional `.webm` first used to fire a 404 on every landing visit. The
+hosted `BudgieDemo` mp4 URL is the same clip embedded in `README.md`'s demo
+`<video>` — keep the landing `AutoVideo` and the README demo in sync.
 
 ### Motion (ties to §8)
 
@@ -132,7 +154,10 @@ The landing used to carry classic AI-generated-page chrome; all of it is gone
 and must not return: floating icon chips around the hero, a tilt/parallax
 "live" transaction card, magnetic CTAs, scroll-progress bars, Lenis smooth
 scroll, pulsing pricing badges, fake bank "trusted by" logo walls, invented
-testimonials (Dimas P., Sari W.), and footer links that pointed at `#`.
+testimonials (Dimas P., Sari W.), card eyebrows stacked above every preview,
+uppercase "LIVE" badges, trailing match counters ("3 of 3 most recent" adrift
+under a list — a count belongs in the tile's summary footer, ledger-style),
+chart legends and tooltips, and footer links that pointed at `#`.
 Budgie does not fake social proof: the only marquee carries true product
 facts, and every footer/nav link resolves to a real page or section.
 
@@ -160,8 +185,9 @@ facts, and every footer/nav link resolves to a real page or section.
   (do not "fix" the graceful no-op into an error state).
 - **No decorative arrows** anywhere on the landing (the app's own list
   chevrons are hidden in previews via `TransactionItem hideChevron`).
-- When embedding an app component in a bento, use its `bare`/`hideChevron`
-  variants instead of boxing it — media sits directly on the gray card.
+- When embedding app data in a bento, render it directly on the panel
+  surface (`LedgerRow` for transaction rows) instead of boxing it — never
+  card-in-card.
 
 ## 17. Chat UI (auth-gated `/chat`)
 

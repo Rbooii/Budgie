@@ -8,6 +8,13 @@ describe("Footer", () => {
     expect(screen.getByRole("link", { name: "Budgie" })).toHaveAttribute("href", "/");
   });
 
+  it("shows the app-icon logo next to the wordmark", () => {
+    const { container } = render(<Footer />);
+    const logo = container.querySelector("img");
+    expect(logo?.getAttribute("src")).toContain("android-chrome-192x192");
+    expect(logo?.getAttribute("alt")).toBe("");
+  });
+
   it("links every product section that actually exists", () => {
     render(<Footer />);
     expect(screen.getByRole("link", { name: "Features" })).toHaveAttribute(

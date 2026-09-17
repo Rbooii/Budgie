@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -34,7 +35,17 @@ export function LandingNav({
       }`}
     >
       <nav className="mx-auto max-w-screen-xl flex items-center justify-between px-5 sm:px-8 py-3.5">
-        <Link href="/" className="font-bold text-xl tracking-tight text-black">
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-bold text-xl tracking-tight text-black"
+        >
+          <Image
+            src="/android-chrome-192x192.png"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7"
+          />
           Budgie
         </Link>
         <div className="hidden sm:flex items-center gap-8">

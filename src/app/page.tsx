@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { LandingPage } from "@/components/landing";
+import { Suspense } from "react";
+import { LandingPageView, LandingNavLive } from "@/components/landing";
+import { LandingNav } from "@/components/landing/landing-nav";
 import { FAQ_ITEMS } from "@/components/landing/faq";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -135,6 +137,14 @@ const videoLd = {
 };
 
 export default function HomePage() {
+  // The whole marketing surface is prerenderable; only the session-aware nav
+  // streams in, so `/` ships as a static shell (CDN-cacheable, instant TTFB).
+  const nav = (
+    <Suspense fallback={<LandingNav session={false} />}>
+      <LandingNavLive />
+    </Suspense>
+  );
+
   return (
     <>
       <script
@@ -153,7 +163,7 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(videoLd) }}
       />
-      <LandingPage />
+      <LandingPageView session={false} nav={nav} />
     </>
   );
 }

@@ -131,7 +131,7 @@ better-auth.session_token=<signedToken>
 - Attributes: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` (on HTTPS). No `Domain`.
 - The cookie value is a **signed token** (`token.signature`) — the client never needs to compute or verify it, just replay it verbatim.
 - **Expiry:** session `maxAge` defaults to **7 days**, with **sliding refresh** — `GET /api/auth/get-session` near expiry returns refreshed `Set-Cookie` headers. **Re-save the cookie after any response that carries a new `Set-Cookie`** to keep the session alive.
-- A secondary `__Secure-better-auth.session_data` cookie (5-min cache) may also be set — optional to store; the server read path uses the `session_token` cookie.
+- A secondary `__Secure-better-auth.session_data` cookie (5-min signed session cache) is also set. **Store and replay every cookie the auth response sends**, not just `session_token` — when `session_data` is present and fresh the server validates the session without touching the database (fast path), and it falls back to a DB lookup when it's missing or expired. Sessions are still revoked server-side, so the cached cookie can outlive a revoke by at most 5 minutes.
 
 ### 4.2 Wire protocol
 
@@ -250,6 +250,26 @@ The iOS client should treat any non-2xx as an error and surface `body.error ?? "
 
 **Dates:** all `DateTime` fields serialize as ISO-8601 strings (`2026-08-21T12:34:56.789Z`). **Numbers:** `amount`, `balance`, `adminFee` are floats (may have decimals). **IDs:** `cuid()` strings.
 
+**Caching & conditional requests (use this):** every authenticated `GET` returns
+`Cache-Control: private, no-cache` plus a strong `ETag`. Store the `ETag` per
+URL (per session) and send it back as `If-None-Match`; a **`304 Not Modified`
+with an empty body** means "keep what you cached" — the cheapest refresh for a
+mobile screen. Never reuse an `ETag` across sessions.
+
+**Pagination (transactions only):** list endpoints keep returning a **bare
+array**; page metadata lives in headers:
+
+| Header | Meaning |
+| --- | --- |
+| `X-Has-More` | `"true"` when more rows exist |
+| `X-Next-Cursor` | pass as `?cursor=` to fetch the next page |
+
+`GET /api/transactions?limit=100&cursor=<id>` — omitting both params returns
+everything (legacy). `limit` is clamped to `1…500`; a bare `cursor` implies
+`limit=100`. Ordering is `date DESC, id DESC`, so paging never skips or
+duplicates rows. Budgets / subscriptions / accounts are small — fetch them
+whole.
+
 ### 5.1 Health
 
 ```
@@ -352,10 +372,24 @@ Create body: `name` (string, required), `balance` (number, **optional**, default
 ### 5.6 Transactions — list / get / create / delete (NO update)
 
 ```
-GET    /api/transactions        → 200 [ Transaction ]   (orderBy date desc, includes account relations)
+GET    /api/transactions?limit=&cursor=  → 200 [ Transaction ]  (orderBy date desc, id desc; includes account relations)
 GET    /api/transactions/:id    → 200 Transaction | 400 | 404
 POST   /api/transactions        body CreateTransaction → 201 Transaction | 400/404 (business rules)
 DELETE /api/transactions/:id    → 204 | 400 | 404
+```
+
+**Paging:** the body is always a bare array — read `X-Has-More` /
+`X-Next-Cursor` from the response headers and request the next page with
+`?limit=100&cursor=<X-Next-Cursor>`. Send `If-None-Match: <ETag>` when
+re-entering the screen; `304` means the cached rows are still current.
+
+```swift
+var req = URLRequest(url: url)                       // .../transactions?limit=100
+if let cursor { req.url = URL(string: url.absoluteString + "&cursor=\(cursor)") }
+if let etag { req.setValue(etag, forHTTPHeaderField: "If-None-Match") }
+let (data, response) = try await session.data(for: req)
+if (response as? HTTPURLResponse)?.statusCode == 304 { return cachedRows }
+let next = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "X-Next-Cursor")
 ```
 
 **List/get row shape** (includes `balanceAccount` / `toBalanceAccount` with only `{ id, name, currency }`, both nullable):
@@ -403,7 +437,7 @@ Errors (service-mapped): `404` `"Account not found"`, `404` `"Destination accoun
 | expense | source `-amount` (guard) | source `+amount` |
 | transfer | source `-(amount+adminFee)` (guard), dest `+amount` | source `+(amount+adminFee)`, dest `-amount` (guard) |
 
-**Insufficient-balance rules (server):** expense/transfer create checks `source.balance − (amount [+ adminFee]) < 0` → 400; income delete and transfer-dest delete also guard. The iOS add wizard should **pre-check client-side** (`amount > source.balance`, or `amount + fee > source.balance` for transfer) and show "Insufficient balance" instantly, matching the web UX.
+**Insufficient-balance rules (server):** the balance write itself is a conditional `UPDATE ... WHERE id = ? AND "userId" = ? AND balance >= ?` inside the same `$transaction` as the row write — so the guard *is* the check and concurrent spends from two devices can never push a balance below zero. expense/transfer create and income/transfer-dest delete return `400 "Insufficient balance"` when the guard matches no row. The iOS add wizard should **pre-check client-side** (`amount > source.balance`, or `amount + fee > source.balance` for transfer) and show "Insufficient balance" instantly, matching the web UX.
 
 #### 5.6.2 Transfers
 

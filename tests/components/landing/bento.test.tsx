@@ -12,50 +12,41 @@ describe("Bento", () => {
     stubMatchMedia(false);
     render(<Bento />);
     expect(screen.getByText("Where your money lives.")).toBeInTheDocument();
-    expect(screen.getByText(/Three quiet superpowers/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/One ledger for every account, transaction, and budget/),
+    ).toBeInTheDocument();
   });
 
-  it("renders the three card eyebrows and Notion-style titles", () => {
+  it("renders the ledger panel with its quiet live caption", () => {
     stubMatchMedia(false);
     render(<Bento />);
-    expect(screen.getByText("Capture every rupiah")).toBeInTheDocument();
-    expect(screen.getByText("One system of record for your money.")).toBeInTheDocument();
-    expect(screen.getByText("Find answers")).toBeInTheDocument();
-    expect(screen.getByText("Instantly, with every detail.")).toBeInTheDocument();
-    expect(screen.getByText("Automate busywork")).toBeInTheDocument();
-    expect(screen.getByText("Budgets that keep watch, 24/7.")).toBeInTheDocument();
-  });
-
-  it("uses the 22px bold card-title typography", () => {
-    stubMatchMedia(false);
-    render(<Bento />);
-    const title = screen.getByText("One system of record for your money.");
-    expect(title.className).toContain("text-[22px]");
-    expect(title.className).toContain("font-bold");
-  });
-
-  it("shows the Capture media: a live recent-transactions feed", () => {
-    stubMatchMedia(false);
-    render(<Bento />);
-    expect(screen.getByText("Recent activity")).toBeInTheDocument();
-    expect(screen.getAllByText("Live").length).toBeGreaterThan(0);
-    // also rendered by the Find card's default list — assert presence, not uniqueness
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Updating live")).toBeInTheDocument();
     expect(screen.getAllByText("Monthly Salary").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Groceries").length).toBeGreaterThan(0);
   });
 
-  it("renders the interactive Find search card", () => {
+  it("renders the interactive search panel", () => {
     stubMatchMedia(false);
     render(<Bento />);
     expect(
-      screen.getByRole("searchbox", { name: "Search your transactions" }),
+      screen.getByRole("searchbox", { name: "Search transactions" }),
     ).toBeInTheDocument();
   });
 
-  it("shows the Automate media: a live spending streams chart", () => {
+  it("renders the budget panel", () => {
     stubMatchMedia(false);
     render(<Bento />);
-    expect(screen.getByText("December 2026")).toBeInTheDocument();
+    expect(screen.getByText("Spent in December")).toBeInTheDocument();
     expect(screen.getByText("Food & Drink")).toBeInTheDocument();
+  });
+
+  it("keeps the eyebrow-label chrome out", () => {
+    stubMatchMedia(false);
+    render(<Bento />);
+    expect(screen.queryByText("Capture every rupiah")).not.toBeInTheDocument();
+    expect(screen.queryByText("Find answers")).not.toBeInTheDocument();
+    expect(screen.queryByText("Automate busywork")).not.toBeInTheDocument();
+    expect(screen.queryByText("Recent activity")).not.toBeInTheDocument();
   });
 });

@@ -1,55 +1,47 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
-import { api } from "@/lib/api-client";
+import { getSession } from "@/lib/session";
+import { DEFAULT_TRANSACTION_LIMIT } from "@/lib/limits";
+import { listTransactions } from "@/server/services/transactions";
 import { PageShell } from "@/components/page-shell";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { AccountTab } from "@/components/account-tab";
 import { TransactionsView } from "@/components/transactions-view";
-import type { TransactionRow } from "@/components/transaction-item";
 
-export const dynamic = "force-dynamic";
+export default function TransactionsPage() {
+  return (
+    <PageShell>
+      <Suspense fallback={<PageSkeleton rows={5} />}>
+        <TransactionsContent />
+      </Suspense>
+    </PageShell>
+  );
+}
 
-export default async function TransactionsPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+async function TransactionsContent() {
+  const session = await getSession();
 
   if (!session) {
     redirect("/sign-in");
   }
 
-  const res = await api.transactions.$get(
-    {},
-    { headers: Object.fromEntries(await headers()) },
-  );
-
-  if (res.status === 401) {
-    redirect("/sign-in");
-  }
-
-  let transactions: TransactionRow[] = [];
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    console.error("[transactions] API error", res.status, body);
-  } else {
-    const data = await res.json();
-    transactions = Array.isArray(data) ? (data as TransactionRow[]) : [];
-  }
+  const userId = session.user.id;
+  // First page only — the rest streams in on demand via `?cursor=`.
+  const { items, nextCursor } = await listTransactions(userId, {
+    limit: DEFAULT_TRANSACTION_LIMIT,
+  });
 
   return (
-    <PageShell>
-      <AccountTab userName={session.user.name} />
+    <>
+      <AccountTab userName={session.user.name} userId={userId} />
       <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mt-6 md:mt-8">
         Transactions
       </h1>
-      {!res.ok ? (
-        <p className="text-sm text-black/40 mt-3">
-          Couldn&rsquo;t load transactions (API {res.status}). Check the server
-          logs, then try again.
-        </p>
-      ) : (
-        <TransactionsView transactions={transactions} />
-      )}
-    </PageShell>
+      <TransactionsView
+        transactions={items}
+        nextCursor={nextCursor}
+        pageSize={DEFAULT_TRANSACTION_LIMIT}
+      />
+    </>
   );
 }

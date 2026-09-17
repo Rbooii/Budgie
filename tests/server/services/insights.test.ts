@@ -3,11 +3,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
     balanceAccount: {
-      findMany: vi.fn(),
+      aggregate: vi.fn(),
     },
     transaction: {
       aggregate: vi.fn(),
-      findMany: vi.fn(),
+      groupBy: vi.fn(),
     },
   },
 }));
@@ -26,26 +26,28 @@ beforeEach(() => {
 
 describe("getFinancialInsights", () => {
   it("computes net worth, month totals and top categories", async () => {
-    mockPrisma.balanceAccount.findMany.mockResolvedValue([
-      { id: "acc-1", balance: 1000000 },
-      { id: "acc-2", balance: 500000 },
-    ]);
+    mockPrisma.balanceAccount.aggregate.mockResolvedValue({
+      _sum: { balance: 1500000 },
+    });
     mockPrisma.transaction.aggregate
       .mockResolvedValueOnce({ _sum: { amount: 3000000 } })
       .mockResolvedValueOnce({ _sum: { amount: 1200000 } });
-    mockPrisma.transaction.findMany.mockResolvedValue([
-      { category: "FoodAndDrink", amount: 45000 },
-      { category: "FoodAndDrink", amount: 30000 },
-      { category: "Transportation", amount: 20000 },
-      { category: "Rent", amount: 900000 },
+    mockPrisma.transaction.groupBy.mockResolvedValue([
+      { category: "Rent", _sum: { amount: 900000 } },
+      { category: "FoodAndDrink", _sum: { amount: 75000 } },
+      { category: "Transportation", _sum: { amount: 20000 } },
     ]);
 
     const result = await getFinancialInsights(USER_ID);
 
-    expect(mockPrisma.balanceAccount.findMany).toHaveBeenCalledWith({
+    expect(mockPrisma.balanceAccount.aggregate).toHaveBeenCalledWith({
       where: { userId: USER_ID },
-      select: { id: true, balance: true },
+      _sum: { balance: true },
     });
+    // aggregation + top-5 slicing happens in Postgres, not in JS
+    expect(mockPrisma.transaction.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 5, orderBy: { _sum: { amount: "desc" } } }),
+    );
     expect(result.netWorth).toBe(1500000);
     expect(result.monthIncome).toBe(3000000);
     expect(result.monthExpense).toBe(1200000);
@@ -57,11 +59,11 @@ describe("getFinancialInsights", () => {
   });
 
   it("handles a user with no data", async () => {
-    mockPrisma.balanceAccount.findMany.mockResolvedValue([]);
+    mockPrisma.balanceAccount.aggregate.mockResolvedValue({ _sum: { balance: null } });
     mockPrisma.transaction.aggregate
       .mockResolvedValueOnce({ _sum: { amount: null } })
       .mockResolvedValueOnce({ _sum: { amount: null } });
-    mockPrisma.transaction.findMany.mockResolvedValue([]);
+    mockPrisma.transaction.groupBy.mockResolvedValue([]);
 
     const result = await getFinancialInsights(USER_ID);
 
@@ -74,14 +76,14 @@ describe("getFinancialInsights", () => {
   });
 
   it("caps top categories at five", async () => {
-    mockPrisma.balanceAccount.findMany.mockResolvedValue([]);
+    mockPrisma.balanceAccount.aggregate.mockResolvedValue({ _sum: { balance: null } });
     mockPrisma.transaction.aggregate
       .mockResolvedValueOnce({ _sum: { amount: null } })
       .mockResolvedValueOnce({ _sum: { amount: null } });
-    mockPrisma.transaction.findMany.mockResolvedValue(
-      Array.from({ length: 10 }, (_, i) => ({
+    mockPrisma.transaction.groupBy.mockResolvedValue(
+      Array.from({ length: 5 }, (_, i) => ({
         category: `Cat${i}`,
-        amount: i + 1,
+        _sum: { amount: i + 1 },
       })),
     );
 

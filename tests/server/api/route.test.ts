@@ -52,13 +52,14 @@ describe("catch-all route handler — stripApiPrefix", () => {
     expect(typeof mod.OPTIONS).toBe("function");
   });
 
-  it("sets runtime to nodejs", async () => {
-    const mod = await import("@/app/api/[[...route]]/route");
-    expect(mod.runtime).toBe("nodejs");
-  });
-
-  it("sets dynamic to force-dynamic", async () => {
-    const mod = await import("@/app/api/[[...route]]/route");
-    expect(mod.dynamic).toBe("force-dynamic");
+  it("omits route segment configs (cacheComponents rejects runtime/dynamic)", async () => {
+    const mod = (await import("@/app/api/[[...route]]/route")) as Record<
+      string,
+      unknown
+    >;
+    // With `cacheComponents: true`, Route Handlers are dynamic by default on
+    // the Node.js runtime, and `runtime`/`dynamic` exports fail the build.
+    expect(mod.runtime).toBeUndefined();
+    expect(mod.dynamic).toBeUndefined();
   });
 });

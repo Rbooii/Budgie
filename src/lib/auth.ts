@@ -11,6 +11,18 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  session: {
+    // Session data is signed into a short-lived cookie, so `getSession` (called
+    // by every page and by `requireAuth` on every API request) no longer costs
+    // a database round trip. Revocations/upgrades land within `maxAge`.
+    // (`refreshCache` is intentionally omitted — better-auth disables it for
+    // database-backed setups.)
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+      strategy: "compact",
+    },
+  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",

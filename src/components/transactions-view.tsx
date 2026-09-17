@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Receipt, SearchX } from "lucide-react";
+import { api } from "@/lib/api-client";
 import { Button } from "@/components/button";
 import {
   TransactionItem,
@@ -15,6 +16,10 @@ import { categoryLabel } from "@/lib/categories";
 
 interface TransactionsViewProps {
   transactions: TransactionRow[];
+  /** Row id to resume after — present when the server capped the first page. */
+  nextCursor?: string | null;
+  /** Page size for "Load more" requests (must match the server page size). */
+  pageSize?: number;
 }
 
 const TODAY = new Date();
@@ -23,26 +28,55 @@ YESTERDAY.setDate(TODAY.getDate() - 1);
 const todayKey = todayKeyOf(TODAY);
 const yKey = todayKeyOf(YESTERDAY);
 
-function todayKeyOf(d: Date) {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+function todayKeyOf(d: Date | string) {
+  const date = typeof d === "string" ? new Date(d) : d;
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
-function dayLabel(dateStr: string) {
-  const d = new Date(dateStr);
-  const k = todayKeyOf(d);
+function dayLabel(dateStr: string | Date) {
+  const k = todayKeyOf(dateStr);
   if (k === todayKey) return "Today";
   if (k === yKey) return "Yesterday";
-  return formatDate(d);
+  return formatDate(dateStr);
 }
 
-export function TransactionsView({ transactions }: TransactionsViewProps) {
+export function TransactionsView({
+  transactions,
+  nextCursor = null,
+  pageSize = 100,
+}: TransactionsViewProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<TransactionRow | null>(null);
+  const [older, setOlder] = useState<TransactionRow[]>([]);
+  const [cursor, setCursor] = useState<string | null>(nextCursor);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
-  const list = useMemo(
-    () => (Array.isArray(transactions) ? transactions : []),
-    [transactions],
-  );
+  const loaded = useMemo(() => {
+    const first = Array.isArray(transactions) ? transactions : [];
+    return first.length || older.length ? [...first, ...older] : first;
+  }, [transactions, older]);
+
+  const list = loaded;
+
+  const loadMore = useCallback(async () => {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    setLoadError(false);
+    try {
+      const res = await api.transactions.$get({
+        query: { limit: String(pageSize), cursor },
+      });
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = await res.json();
+      setOlder((prev) => [...prev, ...(Array.isArray(data) ? data : [])]);
+      setCursor(res.headers.get("X-Next-Cursor"));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [cursor, loadingMore, pageSize]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -132,6 +166,26 @@ export function TransactionsView({ transactions }: TransactionsViewProps) {
             ))}
           </div>
         )}
+
+        {cursor && !isSearching ? (
+          <div className="flex flex-col items-center gap-2 pt-1">
+            <Button
+              type="button"
+              variant="soft"
+              size="md"
+              onClick={loadMore}
+              loading={loadingMore}
+              disabled={loadingMore}
+            >
+              Load older transactions
+            </Button>
+            {loadError ? (
+              <p className="text-xs text-[#D8000C]">
+                Couldn&rsquo;t load more. Try again.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {!hasAny ? (

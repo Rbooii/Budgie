@@ -1,8 +1,6 @@
 import { z } from "zod";
-import {
-  BudgetUncheckedCreateInputObjectZodSchema,
-  BudgetUncheckedUpdateInputObjectZodSchema,
-} from "@/server/schemas/generated/schemas/objects";
+import { BudgetUncheckedCreateInputObjectZodSchema } from "@/server/schemas/generated/schemas/objects/BudgetUncheckedCreateInput.schema";
+import { BudgetUncheckedUpdateInputObjectZodSchema } from "@/server/schemas/generated/schemas/objects/BudgetUncheckedUpdateInput.schema";
 import { EXPENSE_CATEGORIES } from "@/lib/categories";
 
 export const CreateBudgetSchema = BudgetUncheckedCreateInputObjectZodSchema.pick({

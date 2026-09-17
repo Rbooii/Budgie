@@ -1,4 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
+import { CopyrightYear, CopyrightYearFallback } from "./copyright-year";
 
 const FOOTER_COLUMNS = [
   {
@@ -30,14 +33,26 @@ export function Footer() {
       <div className="mx-auto max-w-screen-xl px-5 sm:px-8 py-10 md:py-16 flex flex-col gap-10 lg:flex-row lg:gap-8">
         {/* Left block — brand + legal */}
         <div className="flex flex-col gap-4 lg:w-1/4">
-          <Link href="/" className="font-bold text-xl tracking-tight text-black w-fit">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-black w-fit"
+          >
+            <Image
+              src="/android-chrome-192x192.png"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8"
+            />
             Budgie
           </Link>
           <p className="text-sm text-black/45 max-w-xs">
             A calm, minimal personal-finance app built around the rupiah.
           </p>
           <p className="text-sm text-black/45">
-            © {new Date().getFullYear()} Budgie.
+            <Suspense fallback={<CopyrightYearFallback />}>
+              <CopyrightYear />
+            </Suspense>
           </p>
         </div>
 

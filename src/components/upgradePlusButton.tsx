@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { AlertCircle } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { Button } from "./button";
 import { useRouter } from "next/navigation";
-import { PlusPaymentWizard } from "./plus-payment-wizard";
+
+// The QRIS checkout wizard (qrcode.react + polling logic) is only needed once
+// the user starts an upgrade — keep it out of the /profile initial bundle.
+// The chunk is tiny, so no loading placeholder is needed (no layout jump).
+const PlusPaymentWizard = dynamic(() =>
+  import("./plus-payment-wizard").then((mod) => mod.PlusPaymentWizard),
+);
 
 export default function UpgradePlusButton({ plus }: { plus: boolean }) {
   const router = useRouter();

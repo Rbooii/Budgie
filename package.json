@@ -20,6 +20,8 @@
     "@ai-sdk/google": "^4.0.44",
     "@ai-sdk/react": "^4.0.69",
     "@hono/zod-validator": "^0.8.0",
+    "@neondatabase/serverless": "^1.1.0",
+    "@prisma/adapter-neon": "7.8.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "ai": "^7.0.66",

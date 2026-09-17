@@ -1,43 +1,41 @@
+import { Suspense } from "react";
 import { Button } from "@/components/button";
 import { SignOutButton } from "../dashboard/sign-out-button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getInitials } from "@/components/account-tab";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { getSession } from "@/lib/session";
+import { getPlusForUser } from "@/server/queries";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
-import { api } from "@/lib/api-client";
+import { PageSkeleton } from "@/components/page-skeleton";
 import UpgradePlusButton from "@/components/upgradePlusButton";
 import { formatRupiah } from "@/lib/format";
 
 const FIRST_MONTH = 24500;
 const REGULAR = 49000;
 
-export default async function Profile() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+export default function Profile() {
+  return (
+    <PageShell>
+      <Suspense fallback={<PageSkeleton rows={3} />}>
+        <ProfileContent />
+      </Suspense>
+    </PageShell>
+  );
+}
+
+async function ProfileContent() {
+  const session = await getSession();
 
   if (!session) {
     redirect("/sign-in");
   }
 
-  const res = await api.user.$get(
-    {},
-    { headers: Object.fromEntries(await headers()) },
-  );
-
-  if (res.status === 401) redirect("/sign-in");
-
-  let plus = false;
-  if (res.ok) {
-    const data = await res.json();
-    plus = data.plus === true;
-  }
+  const plus = await getPlusForUser(session.user.id);
 
   return (
-    <PageShell>
+    <>
       <div
         className="w-full h-fit flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-[profileReveal_0.2s_ease-out] motion-reduce:animate-none"
         style={{ animationDelay: "0ms" }}
@@ -173,6 +171,6 @@ export default async function Profile() {
           </div>
         </div>
       )}
-    </PageShell>
+    </>
   );
 }

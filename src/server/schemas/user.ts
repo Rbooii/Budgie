@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UserUncheckedUpdateInputObjectZodSchema } from "@/server/schemas/generated/schemas/objects";
+import { UserUncheckedUpdateInputObjectZodSchema } from "@/server/schemas/generated/schemas/objects/UserUncheckedUpdateInput.schema";
 
 export const UpdateUserSchema = UserUncheckedUpdateInputObjectZodSchema.pick({
   plus: true,

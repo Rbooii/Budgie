@@ -38,7 +38,7 @@ controllers/services → typed RPC client for the frontend.
 | API framework      | Hono                                    | 4.12.x     |
 | API↔Next glue      | `hono/vercel` `handle()`                | (in hono)  |
 | ORM                | Prisma                                  | 7.8.x      |
-| DB driver adapter  | `@prisma/adapter-pg` + `pg`             | 7.8.x / 8  |
+| DB driver adapters | `@prisma/adapter-neon` (Neon) + `@prisma/adapter-pg` (fallback) | 7.8.x |
 | Database           | PostgreSQL                              | —          |
 | Validation         | Zod                                     | 4.4.x      |
 | API↔Hono validator | `@hono/zod-validator`                   | 0.8.x      |
@@ -46,13 +46,15 @@ controllers/services → typed RPC client for the frontend.
 | Auth                | better-auth (email/password + Google + GitHub) | 1.6.x |
 | Styling            | Tailwind CSS v4                         | 4.3.x      |
 | PDF generation     | `jspdf` + `jspdf-autotable`             | 4.x / 5.x |
-| Smooth scroll      | `lenis` (landing page only)         | 1.3.x     |
+| Rendering          | Cache Components / PPR (`cacheComponents: true`) | Next 16 |
 | AI chat            | Vercel AI SDK v7 (`ai` + `@ai-sdk/react`) + `@ai-sdk/google` (Gemini 2.5 Flash) | 7.x / 4.x |
 | Lint               | ESLint 9 + `eslint-config-next`         | 9.x       |
 
 > **Note on Prisma 7:** Prisma 7 removed the built-in query engine. A **Driver
-> Adapter is mandatory** for direct DB access. We use `@prisma/adapter-pg`
-> (Postgres). There is no `@prisma/engines` Rust binary needed at runtime.
+> Adapter is mandatory** for direct DB access. The adapter is chosen at runtime
+> by host: `@prisma/adapter-neon` for `*.neon.tech`/`*.neon.build` (serverless
+> WebSocket driver, one multiplexed connection), `@prisma/adapter-pg`
+> otherwise. There is no `@prisma/engines` Rust binary needed at runtime.
 
 ---
 
@@ -859,6 +861,7 @@ export default defineConfig({
 ### Client singleton (`src/lib/prisma.ts`)
 ```ts
 import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
@@ -866,18 +869,40 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefi
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
-  const adapter = new PrismaPg(url);            // Prisma 7 driver adapter
-  return new PrismaClient({ adapter });
+
+  const adapter = isNeonHost(url)
+    ? new PrismaNeon({ connectionString: url, max: poolMax(), ... })
+    : new PrismaPg({ connectionString: url, max: poolMax() });
+
+  return new PrismaClient({
+    adapter,
+    transactionOptions: { maxWait: 3_000, timeout: 10_000 },
+  });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Lazily constructed on first property access — importing this module never
+// requires DATABASE_URL (builds and unit tests stay green without it).
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_t, prop) {
+    globalForPrisma.prisma ??= createPrismaClient();
+    const client = globalForPrisma.prisma;
+    const value = Reflect.get(client, prop, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 ```
 
-- `PrismaPg` accepts `pg.Pool | pg.PoolConfig | string`. Passing the connection
-  string is the common case.
-- The `globalThis` cache prevents exhausting DB connections during Next.js dev
-  hot-reload (which would otherwise instantiate a new client per reload).
+- **Host-aware adapter**: Neon's WebSocket driver only talks to Neon's proxy, so
+  a local/plain Postgres URL must use `PrismaPg`. `isNeonHost()` switches.
+- **`max: 1`** (override with `PRISMA_POOL_MAX`): every function instance keeps a
+  single multiplexed WebSocket connection, so a traffic spike can't exhaust the
+  database's connection limit — the classic serverless failure mode.
+- **`transactionOptions`** caps how long a hung transaction can pin an
+  invocation open.
+- **The lazy `Proxy`** means module import is side-effect free: `next build`
+  prerendering and the Vitest suites import route/service modules without a
+  `DATABASE_URL` present.
+- The `globalThis` cache means one client per process (dev hot-reload friendly).
 
 ---
 
@@ -1123,6 +1148,9 @@ export type CreateTransaction = z.infer<typeof CreateTransactionSchema>;
 # DIRECT_URL   = direct connection, used by `prisma migrate deploy` at build time.
 # On Neon: use the "-pooler" hostname for DATABASE_URL, the direct hostname for DIRECT_URL.
 # Local dev: both can point to the same local Postgres.
+# A *.neon.tech / *.neon.build host selects @prisma/adapter-neon; anything else
+# falls back to @prisma/adapter-pg. PRISMA_POOL_MAX (default 1) caps connections
+# per serverless instance.
 DATABASE_URL="postgresql://user:password@localhost:5432/budgie?schema=public"
 DIRECT_URL="postgresql://user:password@localhost:5432/budgie?schema=public"
 
@@ -1260,7 +1288,9 @@ deploy → serverless functions use DATABASE_URL (pooled) at runtime
 ### Notes & gotchas
 
 - **No `vercel.json` needed.** Vercel auto-detects Next.js and runs `bun run
-  build` (or `npm run build`). The build script handles everything.
+  build` (or `npm run build`). The build script handles everything. **Set the
+  function region to the Neon region in Project Settings → Functions →
+  Region** — the repo intentionally keeps that out of code (see §23.5).
 - **Neon branched DBs:** if you use Neon's database branching for Preview
   deployments, set `DIRECT_URL` and `DATABASE_URL` per-environment in Vercel
   (Preview gets the branch's connection strings).
@@ -1467,6 +1497,18 @@ The orange variant is new and transaction-specific.
 **sibling** model (`BalanceAccount.balance`) atomically. This is done inside a
 Prisma `$transaction` callback so the balance can never drift from the
 transaction history.
+
+> **Atomic, race-free guards (current implementation).** The balance write is a
+> **conditional `updateMany`** — `where: { id, userId, balance: { gte: amount } }`
+> — and its `count` *is* the insufficient-balance check. There is no
+> read-then-write window, so two devices spending the same balance concurrently
+> can never overdraw. Only the failure path re-reads the account to decide
+> between `"Account not found"` and `"Insufficient balance"`. Transfers
+> validate both accounts up front with **one** `findMany({ id: { in: [...] } })`
+> so error precedence (source → destination → balance) is unchanged.
+>
+> This also removed 2–3 reads from every create/delete on the hottest write
+> path — meaningful on Neon, where each statement is a round trip.
 
 ### `createTransaction(userId, input)` — `src/server/services/transactions.ts`
 
@@ -2176,3 +2218,86 @@ multi-step tool calls resume correctly across turns.
 - **`pruneMessages`/`convertToModelMessages` are async** — `await` them.
 - **Tests** mock `@ai-sdk/react`'s `useChat` (`vi.hoisted`) and the service
   modules for tools — no network, no DB.
+
+---
+
+## 23. Performance & Serverless Optimization (Neon/Vercel)
+
+Every item below is load-bearing: regressing any of them puts a round trip back
+on the critical path. Covered end-to-end by `AGENTS.md` → "Performance rules".
+
+### 23.1 Request path — session + data
+
+| Cost | Before | Now |
+| --- | --- | --- |
+| Session validation per page/API call | 1 Postgres query | 0 (signed cookie cache, 5 min) |
+| Duplicate session reads in one render | N | 1 (`React.cache` via `src/lib/session.ts`) |
+| RSC data load | HTTP self-fetch → extra serverless invocation + cookie forward | In-process service call (`src/server/queries.ts`) |
+| Landing page | fully dynamic (session read on `/`) | prerendered static shell; only the nav streams |
+| App pages | blocking blank until data resolves | static shell + `PageSkeleton`, data streams in |
+
+**Rules that keep it that way**
+
+1. RSC reads data in-process — never `api.x.$get()` from a Server Component.
+2. `getSession()` (cached) is the only session entry point.
+3. Anything reading `headers()`/`cookies()` lives in an async child behind
+   `<Suspense>` (required by `cacheComponents`).
+4. `export const runtime`/`dynamic`/`revalidate` are **build errors** under
+   `cacheComponents` — pages *and* route handlers.
+
+### 23.2 Database
+
+- **Indexes matched to the queries** (migration
+  `20260917000000_optimize_hot_query_indexes`):
+  `transaction(userId, date DESC, id DESC)` (list + cursor paging),
+  `transaction(userId, type, date)` (monthly aggregates),
+  `transaction(userId, category, date)` (budget/insight windows),
+  `transaction(balanceAccountId)` / `(toBalanceAccountId)` (FK + delete),
+  `balance_account(userId, createdAt DESC)`. Single-column
+  `userId`/`date`/`type` indexes were dropped as redundant or useless.
+- **Every list is ordered `date DESC, id DESC`** to match the composite index —
+  the trailing `id` is what makes cursor pagination stable on equal dates.
+- **Aggregates happen in Postgres**: budgets use one `groupBy` per distinct
+  `periodDays` (was one `aggregate` per budget); insights uses `groupBy` with
+  `orderBy`/`take: 5`; the dashboard reads a bounded year window.
+- **Writes are conditional `updateMany`s** inside one `$transaction` (§17) —
+  no read-then-write, no negative balances, fewer round trips.
+- **Neon adapter** (§8): one multiplexed WebSocket connection per instance.
+
+### 23.3 API (also the iOS contract)
+
+- **ETag + `Cache-Control: private, no-cache`** on every authenticated GET
+  (`src/server/middleware/cache.ts`) → repeat reads are empty `304`s. `private`
+  guarantees no shared cache can cross users.
+- **Header-based pagination** on `/api/transactions` (`limit` + `cursor`,
+  `X-Has-More` / `X-Next-Cursor`) with the **body shape unchanged** — existing
+  clients keep working and can adopt paging incrementally.
+- `limit` clamped server-side (`src/lib/limits.ts`, max 500).
+- Hono's dev-only `logger()` is compiled out of production; `secureHeaders()`
+  adds the standard hardening headers.
+- Full contract: `API.md`; iOS specifics: `HANDSOFF_IOS.md` §5.
+
+### 23.4 Cold start / bundle graph
+
+- **Never import the generated Zod barrel**
+  (`src/server/schemas/generated/schemas/objects`) — it re-exports 500+ modules
+  (≈3.3 MB of TS). The five app schemas deep-import the single
+  `…/<Model>Unchecked<Create|Update>Input.schema` file they need.
+- `optimizePackageImports` for `lucide-react` / `react-icons`, so icon imports
+  don't drag whole icon sets into the client bundle.
+- Heavy client libraries load on demand: `jspdf` + `jspdf-autotable` via
+  `await import()` inside the PDF handler (~700 KB kept out of
+  `/transactions`), `PlusPaymentWizard` via `next/dynamic`.
+- `compiler.removeConsole` strips stray `console.*` from production client
+  bundles (errors/warnings kept).
+
+### 23.5 Deployment checklist (beyond env vars)
+
+1. `DATABASE_URL` = Neon **pooled**, `DIRECT_URL` = **direct**.
+2. Pin the Vercel **function region** to the Neon region (Project Settings →
+   Functions → Region). A cross-continent link adds 100–300 ms to *every*
+   query. There is deliberately no `vercel.json`, so this is a dashboard
+   setting, not code.
+3. Verify after deploy: `curl -I` a list endpoint twice and confirm the second
+   response is `304` with an `ETag`; check `X-Has-More` on
+   `/api/transactions?limit=1`.

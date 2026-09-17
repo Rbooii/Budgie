@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Wallet, Receipt, Target, RefreshCw, TrendingUp } from "lucide-react";
+import type { ReactNode } from "react";
 import { Reveal } from "./reveal";
+import { BudgieMascot } from "./budgie-mascot";
 import { LandingNav } from "./landing-nav";
 import { HeroHeadline } from "./hero-headline";
 import { HeroMedia } from "./hero-media";
@@ -10,37 +11,39 @@ import { Pricing } from "./pricing";
 import { Faq } from "./faq";
 import { FactsMarquee } from "./facts-marquee";
 import { Footer } from "./footer";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-
-/**
- * The hero icon pile — Notion's avatar-pile anatomy (`pileImage`): a small
- * stack of overlapping round Budgie icon tiles above the headline, each
- * rotating 15° on hover. Honest version of Notion's agent pile: these are
- * the app's own feature tiles, not fake people.
- */
-const PILE = [
-  { icon: <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />, tint: "bg-[#A0FFA8]/40 text-[#1F9B29]", label: "Accounts" },
-  { icon: <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />, tint: "bg-[#FFBABA]/40 text-[#D8000C]", label: "Transactions" },
-  { icon: <Target className="w-4 h-4 sm:w-5 sm:h-5" />, tint: "bg-[#FFD9A0]/40 text-[#B25B00]", label: "Budgets" },
-  { icon: <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />, tint: "bg-[#FFD9A0]/40 text-[#B25B00]", label: "Subscriptions" },
-  { icon: <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />, tint: "bg-[#A0FFA8]/40 text-[#1F9B29]", label: "Insights" },
-] as const;
+import { getSession } from "@/lib/session";
 
 export async function LandingPage() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const session = await getSession();
 
   return <LandingPageView session={Boolean(session)} />;
+}
+
+/**
+ * Session-aware half of the nav. Kept in its own async component so the rest of
+ * the landing page can be prerendered as a static shell and only this small
+ * subtree streams in (Cache Components / PPR).
+ */
+export async function LandingNavLive() {
+  const session = await getSession();
+  return <LandingNav session={Boolean(session)} />;
 }
 
 /**
  * Sync presentational half of the landing page. `LandingPage` (async RSC)
  * fetches the session and delegates here so the full page stays testable in
  * jsdom (same split as `AccountTab`/`AccountTabView`).
+ *
+ * `nav` lets `page.tsx` drop the session-dependent nav behind a `Suspense`
+ * boundary while the rest of the marketing surface stays static.
  */
-export function LandingPageView({ session }: { session: boolean }) {
+export function LandingPageView({
+  session,
+  nav,
+}: {
+  session: boolean;
+  nav?: ReactNode;
+}) {
   return (
     <main className="min-h-screen bg-white text-black font-[family-name:var(--font-inter)]">
       {/* Native smooth scrolling — Lenis-free. Gated by reduced motion. */}
@@ -50,22 +53,14 @@ export function LandingPageView({ session }: { session: boolean }) {
         }
       `}</style>
 
-      <LandingNav session={session} />
+      {nav ?? <LandingNav session={session} />}
 
-      {/* Hero — Notion anatomy: pile, headline + rotating pill, mono deck, CTAs, video */}
+      {/* Hero — Notion anatomy: mascot, headline + rotating pill, deck, CTAs, video */}
       <section className="mx-auto max-w-screen-xl px-5 sm:px-8 pt-10 sm:pt-16 pb-8 sm:pb-12">
         <div className="text-center">
           <Reveal delay={80}>
-            <div className="flex items-center justify-center -ml-3 sm:-ml-4 mt-2">
-              {PILE.map((item) => (
-                <span
-                  key={item.label}
-                  title={item.label}
-                  className={`relative -ml-3 sm:-ml-4 first:ml-0 flex items-center justify-center w-9 h-9 sm:w-12 sm:h-12 rounded-full border border-black/5 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.18)] ${item.tint} transition-transform duration-200 ease-out hover:rotate-[15deg] motion-reduce:transition-none motion-reduce:hover:rotate-0`}
-                >
-                  {item.icon}
-                </span>
-              ))}
+            <div className="flex justify-center mt-2">
+              <BudgieMascot className="h-[104px] w-auto sm:h-[124px]" />
             </div>
           </Reveal>
 
@@ -77,8 +72,8 @@ export function LandingPageView({ session }: { session: boolean }) {
 
           <Reveal delay={160}>
             <p className="text-lg leading-[28px] font-normal  text-black/60 mt-6 max-w-2xl mx-auto">
-              Capture context, find answers, and automate busywork. a calm
-              dashboard built around the rupiah.
+              Capture every rupiah, find any answer, and stay ahead of every
+              budget.
             </p>
           </Reveal>
 

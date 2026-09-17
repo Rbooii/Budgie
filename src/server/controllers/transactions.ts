@@ -5,14 +5,28 @@ import {
   getTransaction,
   listTransactions,
 } from "@/server/services/transactions";
-import type { CreateTransaction } from "@/server/schemas/transaction";
+import { DEFAULT_TRANSACTION_LIMIT } from "@/lib/limits";
+import type {
+  CreateTransaction,
+  ListTransactionsQuery,
+} from "@/server/schemas/transaction";
 import type { AppEnv } from "@/server/middleware/auth";
 
 type ValidatedContext<T> = Context<AppEnv, string, { out: { json: T } }>;
+type ListContext = Context<AppEnv, string, { out: { query: ListTransactionsQuery } }>;
 
-export async function list(c: Context<AppEnv>) {
+export async function list(c: ListContext) {
   const user = c.get("user");
-  const items = await listTransactions(user.id);
+  const { limit, cursor } = c.req.valid("query");
+
+  const { items, nextCursor } = await listTransactions(user.id, {
+    // A bare `cursor` implies the default page size.
+    limit: limit ?? (cursor ? DEFAULT_TRANSACTION_LIMIT : undefined),
+    cursor,
+  });
+
+  c.header("X-Has-More", nextCursor ? "true" : "false");
+  if (nextCursor) c.header("X-Next-Cursor", nextCursor);
   return c.json(items);
 }
 

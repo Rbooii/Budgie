@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 import { Dialog } from "@/components/dialog";
 import { Button } from "@/components/button";
 import { Download, FileDown, Search, CalendarRange } from "lucide-react";
@@ -47,9 +45,15 @@ export function DownloadPdfDialog({
     return safeAll;
   }
 
-  function buildPdf() {
+  async function buildPdf() {
     setGenerating(true);
     try {
+      // jspdf + autotable are ~400 KB — load them only when a PDF is actually
+      // requested instead of shipping them in the /transactions bundle.
+      const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
       const items = resolveTransactions();
       const doc = new jsPDF();
 

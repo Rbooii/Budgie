@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { budgetPeriodStart, budgetPeriodEnd } from "@/lib/budget";
 import type { CreateBudget, UpdateBudget } from "@/server/schemas/budget";
+import type { Category } from "@/generated/prisma/client";
 
 export async function listBudgets(userId: string) {
   return prisma.budget.findMany({
@@ -9,29 +10,56 @@ export async function listBudgets(userId: string) {
   });
 }
 
+/**
+ * Spend per category for the *current* period of each given budget.
+ *
+ * Budgets can have different `periodDays`, so windows differ. Instead of one
+ * aggregate per budget (N+1), we bucket the budgets by `periodDays` and run a
+ * single grouped aggregate per distinct period — typically 1–3 queries total.
+ */
+export async function sumExpenseByBudgetCategory(
+  userId: string,
+  budgets: { category: Category; periodDays: number }[],
+): Promise<Map<Category, number>> {
+  const categoriesByPeriod = new Map<number, Category[]>();
+  for (const budget of budgets) {
+    const list = categoriesByPeriod.get(budget.periodDays);
+    if (list) list.push(budget.category);
+    else categoriesByPeriod.set(budget.periodDays, [budget.category]);
+  }
+
+  const end = budgetPeriodEnd();
+  const spent = new Map<Category, number>();
+  await Promise.all(
+    [...categoriesByPeriod].map(async ([periodDays, categories]) => {
+      const rows = await prisma.transaction.groupBy({
+        by: ["category"],
+        where: {
+          userId,
+          type: "expense",
+          category: { in: categories },
+          date: { gte: budgetPeriodStart(periodDays), lte: end },
+        },
+        _sum: { amount: true },
+      });
+      for (const row of rows) {
+        spent.set(row.category, row._sum.amount ?? 0);
+      }
+    }),
+  );
+  return spent;
+}
+
 export async function listBudgetsWithSpent(userId: string) {
   const budgets = await prisma.budget.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
-  const withSpent = await Promise.all(
-    budgets.map(async (b) => {
-      const agg = await prisma.transaction.aggregate({
-        where: {
-          userId,
-          type: "expense",
-          category: b.category,
-          date: {
-            gte: budgetPeriodStart(b.periodDays),
-            lte: budgetPeriodEnd(),
-          },
-        },
-        _sum: { amount: true },
-      });
-      return { ...b, spent: agg._sum.amount ?? 0 };
-    }),
-  );
-  return withSpent;
+  const spent = await sumExpenseByBudgetCategory(userId, budgets);
+  return budgets.map((budget) => ({
+    ...budget,
+    spent: spent.get(budget.category) ?? 0,
+  }));
 }
 
 export async function getBudget(userId: string, id: string) {

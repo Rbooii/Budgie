@@ -32,14 +32,15 @@ export async function updateBalanceAccount(
 }
 
 export async function deleteBalanceAccount(userId: string, id: string) {
-  const owned = await prisma.balanceAccount.findFirst({
-    where: { id, userId },
+  // One atomic unit: otherwise a failure between the two writes leaves the
+  // account gone while its transactions survive.
+  return prisma.$transaction(async (tx) => {
+    const owned = await tx.balanceAccount.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!owned) throw new Error("Not found");
+    await tx.transaction.deleteMany({ where: { balanceAccountId: id, userId } });
+    return tx.balanceAccount.delete({ where: { id } });
   });
-  if (!owned) throw new Error("Not found");
-  await prisma.transaction.deleteMany({
-    where : {
-      balanceAccountId : id
-    }
-  })
-  return prisma.balanceAccount.delete({ where: { id } });
 }

@@ -13,8 +13,8 @@ import { createChatTools } from "@/server/chat/tools";
 import { buildSystemPrompt } from "@/server/chat/system";
 import { prepareMessagesForApi } from "@/server/chat/prepare";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// `cacheComponents` forbids the `runtime`/`dynamic` segment configs; Route
+// Handlers stay dynamic and on the Node.js runtime by default.
 export const maxDuration = 30;
 
 type ChatRequestBody = { messages?: unknown[]; model?: unknown };

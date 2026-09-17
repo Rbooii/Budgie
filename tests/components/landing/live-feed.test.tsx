@@ -4,20 +4,28 @@ import { stubMatchMedia } from "@/test-utils/browser-mocks";
 import { LiveFeed } from "@/components/landing/live-feed";
 import { LIVE_TICK_MS, MOCK_LIVE_TRANSACTIONS } from "@/components/landing/mock-data";
 
-describe("LiveFeed", () => {
+describe("LiveFeed — the ledger panel", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
-  it("renders the stable first window with the live caption", () => {
+  it("renders the stable first window on the white ledger surface", () => {
     stubMatchMedia(false);
-    render(<LiveFeed />);
-    expect(screen.getByText("Recent activity")).toBeInTheDocument();
-    expect(screen.getByText("Live")).toBeInTheDocument();
+    const { container } = render(<LiveFeed />);
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Updating live")).toBeInTheDocument();
     expect(screen.getByText("Monthly Salary")).toBeInTheDocument();
     expect(screen.getByText("Groceries")).toBeInTheDocument();
     expect(screen.getByText("Move to Savings")).toBeInTheDocument();
+    expect(container.querySelector(".rounded-\\[35px\\]")).not.toBeNull();
+  });
+
+  it("closes the statement with today's net (transfers excluded)", () => {
+    stubMatchMedia(false);
+    render(<LiveFeed />);
+    expect(screen.getByText("Net today")).toBeInTheDocument();
+    expect(screen.getByText("Rp 10.122.510.00")).toBeInTheDocument();
   });
 
   it("slides the window forward after each tick", () => {
@@ -27,7 +35,7 @@ describe("LiveFeed", () => {
     act(() => {
       vi.advanceTimersByTime(LIVE_TICK_MS);
     });
-    expect(screen.getByText("Freelance Payout")).toBeInTheDocument();
+    expect(screen.getByText("Spotify")).toBeInTheDocument();
     expect(screen.queryByText("Monthly Salary")).not.toBeInTheDocument();
   });
 
@@ -48,13 +56,14 @@ describe("LiveFeed", () => {
     act(() => {
       vi.advanceTimersByTime(LIVE_TICK_MS * 5);
     });
-    expect(screen.getByText("Move to Savings")).toBeInTheDocument();
-    expect(screen.queryByText("Freelance Payout")).not.toBeInTheDocument();
+    expect(screen.getByText("Monthly Salary")).toBeInTheDocument();
+    expect(screen.queryByText("Pay Savings")).not.toBeInTheDocument();
   });
 
-  it("hides the chevrons on preview rows", () => {
+  it("renders no chevrons and no uppercase LIVE badge", () => {
     stubMatchMedia(false);
     render(<LiveFeed />);
     expect(document.querySelector(".lucide-chevron-right")).toBeNull();
+    expect(screen.queryByText("Live")).not.toBeInTheDocument();
   });
 });

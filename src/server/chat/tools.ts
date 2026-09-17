@@ -42,27 +42,22 @@ export function createChatTools(userId: string) {
         "Search the user's transactions with optional filters (type, category, keyword, date range). Returns newest first, capped at `limit`.",
       inputSchema: GetTransactionsToolSchema,
       execute: async (input) => {
-        const all = await listTransactions(userId);
         const from = input.from ? new Date(`${input.from}T00:00:00`) : undefined;
         const to = input.to ? new Date(`${input.to}T23:59:59`) : undefined;
-        const q = input.query?.trim().toLowerCase();
+        const limit = input.limit ?? 10;
 
-        const filtered = all.filter((t) => {
-          if (input.type && t.type !== input.type) return false;
-          if (input.category && t.category !== input.category) return false;
-          if (from && new Date(t.date) < from) return false;
-          if (to && new Date(t.date) > to) return false;
-          if (
-            q &&
-            !t.name.toLowerCase().includes(q) &&
-            !categoryLabel(t.category).toLowerCase().includes(q)
-          ) {
-            return false;
-          }
-          return true;
+        // Filtering + limiting happen in Postgres — never load the full
+        // history into the function just to slice 10 rows off the top.
+        const { items: rows } = await listTransactions(userId, {
+          limit,
+          type: input.type,
+          category: input.category,
+          from,
+          to,
+          search: input.query,
         });
 
-        const items = filtered.slice(0, input.limit ?? 10).map((t) => ({
+        const items = rows.map((t) => ({
           name: t.name,
           amount: t.amount,
           type: t.type,
@@ -71,7 +66,7 @@ export function createChatTools(userId: string) {
           account: t.balanceAccount?.name ?? null,
         }));
 
-        return { count: filtered.length, items };
+        return { count: items.length, items };
       },
     }),
 

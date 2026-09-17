@@ -76,22 +76,23 @@ beforeEach(() => {
 });
 
 describe("UpgradePlusButton — plus=false (upgrade flow)", () => {
-  it("renders 'Upgrade to Plus' trigger button", () => {
+  it("renders 'Upgrade to Plus' trigger button", async () => {
     render(<UpgradePlusButton plus={false} />);
-    expect(screen.getByText("Upgrade to Plus")).toBeInTheDocument();
+    // the wizard is a lazy chunk (kept out of the /profile bundle)
+    expect(await screen.findByText("Upgrade to Plus")).toBeInTheDocument();
   });
 
   it("opens the payment wizard dialog on click (step 1)", async () => {
     const user = userEvent.setup();
     render(<UpgradePlusButton plus={false} />);
-    await user.click(screen.getByText("Upgrade to Plus"));
+    await user.click(await screen.findByText("Upgrade to Plus"));
     expect(await screen.findByText("Continue to pay")).toBeInTheDocument();
   });
 
   it("does NOT call api.user.$patch when upgrading (payment wizard handles it)", async () => {
     const user = userEvent.setup();
     render(<UpgradePlusButton plus={false} />);
-    await user.click(screen.getByText("Upgrade to Plus"));
+    await user.click(await screen.findByText("Upgrade to Plus"));
     await screen.findByText("Continue to pay");
     expect(userPatchMock).not.toHaveBeenCalled();
   });

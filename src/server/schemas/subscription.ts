@@ -1,8 +1,6 @@
 import { z } from "zod";
-import {
-  SubscriptionUncheckedCreateInputObjectZodSchema,
-  SubscriptionUncheckedUpdateInputObjectZodSchema,
-} from "@/server/schemas/generated/schemas/objects";
+import { SubscriptionUncheckedCreateInputObjectZodSchema } from "@/server/schemas/generated/schemas/objects/SubscriptionUncheckedCreateInput.schema";
+import { SubscriptionUncheckedUpdateInputObjectZodSchema } from "@/server/schemas/generated/schemas/objects/SubscriptionUncheckedUpdateInput.schema";
 import { EXPENSE_CATEGORIES } from "@/lib/categories";
 
 export const CreateSubscriptionSchema =

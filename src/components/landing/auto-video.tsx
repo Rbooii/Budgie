@@ -107,8 +107,11 @@ export function AutoVideo({
             ready ? "opacity-100" : "opacity-0"
           }`}
         >
-          {webm && <source src={webm} type="video/webm" />}
+          {/* mp4 first: it is the asset that always exists (hosted demo clip).
+              A local `brand.webm` drop-in is optional and, when present, only
+              helps browsers that prefer it — see `public/videos/README.md`. */}
           {mp4 && <source src={mp4} type="video/mp4" />}
+          {webm && <source src={webm} type="video/webm" />}
         </video>
       )}
     </div>

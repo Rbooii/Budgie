@@ -10,7 +10,7 @@ const { mockPrisma } = vi.hoisted(() => ({
       delete: vi.fn(),
     },
     transaction: {
-      aggregate: vi.fn(),
+      groupBy: vi.fn(),
     },
   },
 }));
@@ -59,12 +59,14 @@ describe("listBudgets", () => {
 });
 
 describe("listBudgetsWithSpent", () => {
-  it("aggregates expense transactions within the calendar-aligned window with both bounds", async () => {
+  it("uses ONE grouped aggregate per distinct period instead of an N+1", async () => {
     mockPrisma.budget.findMany.mockResolvedValue([
       { ...mockBudget, id: "bud-1", category: "FoodAndDrink", periodDays: 30 },
       { ...mockBudget, id: "bud-2", category: "Rent", periodDays: 7 },
     ]);
-    mockPrisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: 45000 } });
+    mockPrisma.transaction.groupBy.mockResolvedValue([
+      { category: "FoodAndDrink", _sum: { amount: 45000 } },
+    ]);
 
     const result = await listBudgetsWithSpent(USER_ID);
 
@@ -72,41 +74,44 @@ describe("listBudgetsWithSpent", () => {
       where: { userId: USER_ID },
       orderBy: { createdAt: "desc" },
     });
-    expect(mockPrisma.transaction.aggregate).toHaveBeenCalledTimes(2);
+    // two distinct periodDays (30 and 7) → exactly two grouped queries
+    expect(mockPrisma.transaction.groupBy).toHaveBeenCalledTimes(2);
 
-    const firstAgg = mockPrisma.transaction.aggregate.mock.calls[0][0];
-    expect(firstAgg.where.type).toBe("expense");
-    expect(firstAgg.where.category).toBe("FoodAndDrink");
-    // monthly window is bounded by both a start (gte) and end (lte) so old
-    // transactions from a previous month do not leak into the new period
-    expect(firstAgg.where.date.gte).toBeInstanceOf(Date);
-    expect(firstAgg.where.date.lte).toBeInstanceOf(Date);
-    // the upper bound must be after "now" so a transaction recorded today
-    // (any time of day) still counts toward the budget
-    expect(firstAgg.where.date.lte.getTime()).toBeGreaterThan(Date.now());
+    for (const call of mockPrisma.transaction.groupBy.mock.calls) {
+      const args = call[0];
+      expect(args.by).toEqual(["category"]);
+      expect(args.where.type).toBe("expense");
+      // window bounded by both a start (gte) and an end (lte) so old
+      // transactions from a previous period do not leak in
+      expect(args.where.date.gte).toBeInstanceOf(Date);
+      expect(args.where.date.lte).toBeInstanceOf(Date);
+      // the upper bound must be after "now" so a transaction recorded today
+      // (any time of day) still counts toward the budget
+      expect(args.where.date.lte.getTime()).toBeGreaterThan(Date.now());
+    }
 
     expect(result[0]).toMatchObject({
       id: "bud-1",
       category: "FoodAndDrink",
       spent: 45000,
     });
-    expect(result[1].spent).toBe(45000);
+    expect(result[1].spent).toBe(0);
   });
 
   it("starts the monthly window at the 1st of the current month", async () => {
     mockPrisma.budget.findMany.mockResolvedValue([mockBudget]);
-    mockPrisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
+    mockPrisma.transaction.groupBy.mockResolvedValue([]);
 
     await listBudgetsWithSpent(USER_ID);
 
-    const where = mockPrisma.transaction.aggregate.mock.calls[0][0].where;
+    const where = mockPrisma.transaction.groupBy.mock.calls[0][0].where;
     expect(where.date.gte.getDate()).toBe(1);
     expect(where.date.gte.getHours()).toBe(0);
   });
 
   it("reports spent as 0 when a category has no transactions", async () => {
     mockPrisma.budget.findMany.mockResolvedValue([mockBudget]);
-    mockPrisma.transaction.aggregate.mockResolvedValue({ _sum: { amount: null } });
+    mockPrisma.transaction.groupBy.mockResolvedValue([]);
 
     const result = await listBudgetsWithSpent(USER_ID);
     expect(result[0].spent).toBe(0);

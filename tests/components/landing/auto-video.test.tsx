@@ -63,10 +63,12 @@ describe("AutoVideo", () => {
     expect(video).not.toBeNull();
     const sources = container.querySelectorAll("source");
     expect(sources).toHaveLength(2);
-    expect(sources[0].getAttribute("src")).toBe("/v.webm");
-    expect(sources[0].getAttribute("type")).toBe("video/webm");
-    expect(sources[1].getAttribute("src")).toBe("/v.mp4");
-    expect(sources[1].getAttribute("type")).toBe("video/mp4");
+    // mp4 first: it is the guaranteed asset; the webm drop-in is optional, so
+    // listing it first would fire a 404 on every landing visit.
+    expect(sources[0].getAttribute("src")).toBe("/v.mp4");
+    expect(sources[0].getAttribute("type")).toBe("video/mp4");
+    expect(sources[1].getAttribute("src")).toBe("/v.webm");
+    expect(sources[1].getAttribute("type")).toBe("video/webm");
   });
 
   it("does not mount the video when out of view", () => {

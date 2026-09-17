@@ -21,6 +21,13 @@ describe("LandingNav — anonymous", () => {
     expect(screen.getByRole("link", { name: "Budgie" })).toHaveAttribute("href", "/");
   });
 
+  it("shows the app-icon logo next to the wordmark", () => {
+    const { container } = render(<LandingNav session={false} />);
+    const logo = container.querySelector("img");
+    expect(logo?.getAttribute("src")).toContain("android-chrome-192x192");
+    expect(logo?.getAttribute("alt")).toBe("");
+  });
+
   it("renders all five anchor nav links", () => {
     render(<LandingNav session={false} />);
     for (const [label, href] of NAV_LINKS) {
