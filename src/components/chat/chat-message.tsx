@@ -21,7 +21,7 @@ export function ChatMessage({ message }: { message: UIMessage }) {
 
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-[20px] bg-[#F2F2F2] px-4 py-2.5 text-[15px] leading-relaxed text-black whitespace-pre-wrap">
+        <div className="max-w-[85%] sm:max-w-[300px] rounded-[20px] rounded-br-[6px] bg-[#00C610] px-4 py-2.5 text-base leading-relaxed text-white whitespace-pre-wrap">
           {text}
         </div>
       </div>
@@ -29,13 +29,13 @@ export function ChatMessage({ message }: { message: UIMessage }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 items-start w-full">
+    <div className="flex flex-col gap-2.5 items-start w-full">
       {message.parts.map((part, i) => {
         if (isTextUIPart(part)) {
           return (
             <div
               key={i}
-              className="w-full text-[15px] leading-relaxed text-black whitespace-pre-wrap"
+              className="w-full text-base leading-relaxed text-black whitespace-pre-wrap"
             >
               {part.text}
             </div>
@@ -46,10 +46,7 @@ export function ChatMessage({ message }: { message: UIMessage }) {
         }
         if (isDynamicToolUIPart(part)) {
           return (
-            <ChatToolStatus
-              key={i}
-              running={`Running ${part.toolName}…`}
-            />
+            <ChatToolStatus key={i} running={`Running ${part.toolName}…`} />
           );
         }
         if (isToolUIPart(part)) {

@@ -23,23 +23,19 @@ describe("AssetGrowthCard", () => {
     expect(screen.getByText("2026")).toBeInTheDocument();
   });
 
-  it("renders the hero number (currentTotal)", () => {
+  it("renders an absolute Rupiah YTD pill", () => {
     render(<AssetGrowthCard {...defaultProps} />);
-    expect(screen.getByText(/Rp.*1\.050\.000/)).toBeInTheDocument();
+    expect(screen.getByText("YTD")).toBeInTheDocument();
+    expect(screen.getByText("+Rp 150.000.00")).toBeInTheDocument();
   });
 
-  it("renders a YTD percentage pill", () => {
+  it("shows a positive YTD value in green", () => {
     render(<AssetGrowthCard {...defaultProps} />);
-    expect(screen.getByText(/YTD/)).toBeInTheDocument();
+    const value = screen.getByText("+Rp 150.000.00");
+    expect(value.className).toContain("text-[#00C610]");
   });
 
-  it("shows a positive YTD pill when currentTotal > startingValue", () => {
-    render(<AssetGrowthCard {...defaultProps} />);
-    const pill = screen.getByText(/YTD/);
-    expect(pill.className.includes("text-[#1F9B29]")).true;
-  });
-
-  it("shows a negative YTD pill when currentTotal < startingValue", () => {
+  it("shows a negative YTD value in red", () => {
     render(
       <AssetGrowthCard
         {...defaultProps}
@@ -48,8 +44,37 @@ describe("AssetGrowthCard", () => {
         data={[{ month: 0, value: 1000000 }]}
       />,
     );
-    const pill = screen.getByText(/YTD/);
-    expect(pill.className.includes("text-[#D8000C]")).true;
+    const value = screen.getByText("-Rp 1.000.000.00");
+    expect(value.className).toContain("text-[#D8000C]");
+  });
+
+  it("renders all 12 month slots as single-letter labels", () => {
+    const { container } = render(<AssetGrowthCard {...defaultProps} />);
+    const labels = container.querySelectorAll("text");
+    expect(labels.length).toBe(12);
+    expect(Array.from(labels).map((l) => l.textContent)).toEqual([
+      "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
+    ]);
+  });
+
+  it("renders a 6px placeholder bar for every future month", () => {
+    const { container } = render(<AssetGrowthCard {...defaultProps} />);
+    const rects = Array.from(container.querySelectorAll("rect"));
+    expect(rects.length).toBe(12);
+    const future = rects.filter((r) => r.getAttribute("opacity") === "0.35");
+    expect(future.length).toBe(9);
+    for (const bar of future) {
+      expect(bar.getAttribute("height")).toBe("6");
+      expect(bar.getAttribute("fill")).toBe("#E5E5E5");
+    }
+  });
+
+  it("scales recorded bars from a zero baseline", () => {
+    const { container } = render(<AssetGrowthCard {...defaultProps} />);
+    const rects = Array.from(container.querySelectorAll("rect"));
+    const firstBar = rects[0];
+    const bottom = Number(firstBar.getAttribute("y")) + Number(firstBar.getAttribute("height"));
+    expect(bottom).toBeCloseTo(100, 5);
   });
 
   it("shows an empty-state caption when hasTransactions is false", () => {

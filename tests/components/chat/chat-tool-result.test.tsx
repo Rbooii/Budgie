@@ -19,6 +19,7 @@ describe("ChatToolResult", () => {
     );
 
     expect(screen.getByText("Accounts")).toBeInTheDocument();
+    expect(screen.getByText("Total balance")).toBeInTheDocument();
     expect(screen.getByText("Mandiri")).toBeInTheDocument();
     expect(screen.getByText("Cash")).toBeInTheDocument();
     expect(screen.getAllByText(/^Rp /).length).toBeGreaterThan(0);
@@ -58,11 +59,12 @@ describe("ChatToolResult", () => {
       />,
     );
 
-    expect(screen.getByText("2 transactions")).toBeInTheDocument();
+    expect(screen.getByText("Transactions")).toBeInTheDocument();
     expect(screen.getByText("Lunch")).toBeInTheDocument();
     expect(screen.getByText("Salary")).toBeInTheDocument();
-    expect(screen.getByText("-Rp 45.000.00")).toBeInTheDocument();
-    expect(screen.getByText("+Rp 5.000.000.00")).toBeInTheDocument();
+    expect(screen.getByText("Food & Drink · Mandiri")).toBeInTheDocument();
+    expect(screen.getByText("Rp 45.000.00")).toBeInTheDocument();
+    expect(screen.getByText("Rp 5.000.000.00")).toBeInTheDocument();
 
     rerender(
       <ChatToolResult
@@ -73,7 +75,7 @@ describe("ChatToolResult", () => {
     expect(screen.getByText("No transactions found.")).toBeInTheDocument();
   });
 
-  it("caps the rendered transaction list at eight with a summary", () => {
+  it("caps the rendered transaction list at six with a summary", () => {
     const items = Array.from({ length: 10 }, (_, i) => ({
       id: `t${i}`,
       name: `Txn ${i}`,
@@ -93,8 +95,9 @@ describe("ChatToolResult", () => {
       />,
     );
 
-    expect(screen.getByText("and 2 more")).toBeInTheDocument();
+    expect(screen.getByText("+4 more")).toBeInTheDocument();
     expect(screen.queryByText("Txn 9")).not.toBeInTheDocument();
+    expect(screen.queryByText("Txn 6")).not.toBeInTheDocument();
   });
 
   it("renders budgets with progress and an empty state", () => {
@@ -118,9 +121,7 @@ describe("ChatToolResult", () => {
 
     expect(screen.getByText("Budgets")).toBeInTheDocument();
     expect(screen.getByText("Food & Drink")).toBeInTheDocument();
-    expect(screen.getByText("Monthly")).toBeInTheDocument();
-    expect(screen.getByText("Rp 1.000.000.00")).toBeInTheDocument();
-    expect(screen.getByText("Rp 45.000.00 spent")).toBeInTheDocument();
+    expect(screen.getByText("Rp 45.000.00 / Rp 1.000.000.00")).toBeInTheDocument();
 
     rerender(
       <ChatToolResult toolName="get_budgets" output={{ budgets: [] }} />,
@@ -161,9 +162,9 @@ describe("ChatToolResult", () => {
 
     expect(screen.getByText("Subscriptions")).toBeInTheDocument();
     expect(screen.getByText("Netflix")).toBeInTheDocument();
-    expect(screen.getByText("Entertainment · Monthly")).toBeInTheDocument();
     expect(screen.getAllByText(/Next .*/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Inactive/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Entertainment · Monthly/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Inactive/i)).not.toBeInTheDocument();
   });
 
   it("renders insights with net worth, month totals and top categories", () => {
@@ -180,9 +181,8 @@ describe("ChatToolResult", () => {
     );
 
     expect(screen.getByText("Insights")).toBeInTheDocument();
-    expect(screen.getByText("Income this month")).toBeInTheDocument();
-    expect(screen.getByText("Expenses this month")).toBeInTheDocument();
-    expect(screen.getByText("Top categories")).toBeInTheDocument();
+    expect(screen.getByText("Income")).toBeInTheDocument();
+    expect(screen.getByText("Expense")).toBeInTheDocument();
     expect(screen.getByText("Food & Drink")).toBeInTheDocument();
   });
 
@@ -205,9 +205,9 @@ describe("ChatToolResult", () => {
       />,
     );
 
-    expect(screen.getByText("Transaction added")).toBeInTheDocument();
+    expect(screen.getByText("Transaction")).toBeInTheDocument();
     expect(screen.getByText("Lunch at Warung")).toBeInTheDocument();
-    expect(screen.getByText("-Rp 45.000.00")).toBeInTheDocument();
+    expect(screen.getByText(/Rp 45\.000\.00 · Mandiri/)).toBeInTheDocument();
   });
 
   it("renders a failed create_transaction result with the reason", () => {
@@ -218,8 +218,8 @@ describe("ChatToolResult", () => {
       />,
     );
 
-    expect(screen.getByText("Couldn't add the transaction")).toBeInTheDocument();
     expect(screen.getByText("Insufficient balance")).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't add the transaction")).not.toBeInTheDocument();
   });
 
   it("returns null for unknown tools", () => {

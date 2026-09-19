@@ -1,36 +1,22 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
 import type { ToolUIPart } from "ai";
 import { ChatToolResult } from "@/components/chat/chat-tool-result";
 import { ChatToolStatus } from "@/components/chat/chat-tool-status";
 
-const TOOL_META: Record<string, { label: string; running: string }> = {
-  get_balance_accounts: {
-    label: "Accounts",
-    running: "Looking up your accounts…",
-  },
-  get_transactions: {
-    label: "Transactions",
-    running: "Searching your transactions…",
-  },
-  get_budgets: { label: "Budgets", running: "Checking your budgets…" },
-  get_subscriptions: {
-    label: "Subscriptions",
-    running: "Fetching your subscriptions…",
-  },
-  get_insights: { label: "Insights", running: "Crunching your numbers…" },
-  create_transaction: {
-    label: "Transaction",
-    running: "Adding the transaction…",
-  },
+const TOOL_META: Record<string, { running: string }> = {
+  get_balance_accounts: { running: "Looking up your accounts…" },
+  get_transactions: { running: "Fetching your transactions…" },
+  get_budgets: { running: "Checking your budgets…" },
+  get_subscriptions: { running: "Looking up your subscriptions…" },
+  get_insights: { running: "Analyzing your money…" },
+  create_transaction: { running: "Adding the transaction…" },
 };
 
 export function ChatToolCard({ part }: { part: ToolUIPart }) {
   const toolName = part.type.replace(/^tool-/, "");
-  const meta = TOOL_META[toolName] ?? {
-    label: toolName,
-    running: `Running ${toolName}…`,
-  };
+  const meta = TOOL_META[toolName] ?? { running: "Working…" };
 
   if (part.state === "output-available") {
     return <ChatToolResult toolName={toolName} output={part.output} />;
@@ -38,12 +24,10 @@ export function ChatToolCard({ part }: { part: ToolUIPart }) {
 
   if (part.state === "output-error") {
     return (
-      <div className="max-w-[85%] sm:max-w-[70%] rounded-[20px] border border-[#FFBABA] bg-[#FFBABA]/30 px-4 py-3 animate-[stepReveal_0.2s_ease-out]">
-        <p className="text-xs font-semibold text-[#D8000C]">
-          {meta.label} failed
-        </p>
-        <p className="text-xs text-[#D8000C]/80 mt-0.5">
-          {part.errorText ?? "The tool could not complete."}
+      <div className="max-w-[310px] rounded-[16px] bg-[#D8000C]/10 px-3.5 py-2.5 flex items-start gap-2 text-[#D8000C] animate-[stepReveal_0.2s_ease-out]">
+        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <p className="text-[13px] font-medium">
+          {part.errorText ?? "Something went wrong"}
         </p>
       </div>
     );

@@ -2,143 +2,104 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BudgetSummaryCards, periodBadgeLabel } from "@/components/budget-summary-cards";
 
-function monthlyCard(): HTMLElement {
-  const heading = screen.getByText("Monthly Budget");
-  return heading.closest("div")!.parentElement as HTMLElement;
-}
-
-function dailyCard(): HTMLElement {
-  const heading = screen.getByText("Daily Budget");
-  return heading.closest("div")!.parentElement as HTMLElement;
+function heroCard(title: string): HTMLElement {
+  return screen.getByText(title).parentElement!.parentElement as HTMLElement;
 }
 
 describe("BudgetSummaryCards", () => {
-  it("renders both card labels", () => {
+  it("prefers the monthly group and renders its title and budget count", () => {
     render(
       <BudgetSummaryCards
-        monthly={{ total: 0, spent: 0 }}
-        daily={{ total: 0, spent: 0 }}
+        monthly={{ total: 1000000, spent: 400000, count: 2 }}
+        daily={{ total: 50000, spent: 10000, count: 1 }}
       />,
     );
-    expect(screen.getByText("Monthly Budget")).toBeInTheDocument();
-    expect(screen.getByText("Daily Budget")).toBeInTheDocument();
+    expect(screen.getByText("Monthly budget")).toBeInTheDocument();
+    expect(screen.getByText("2 budgets")).toBeInTheDocument();
+    expect(screen.queryByText("Daily budget")).not.toBeInTheDocument();
   });
 
-  it("renders the current month caption on the monthly card", () => {
+  it("falls back to the daily group when there is no monthly budget", () => {
     render(
       <BudgetSummaryCards
-        monthly={{ total: 0, spent: 0 }}
-        daily={{ total: 0, spent: 0 }}
+        monthly={{ total: 0, spent: 0, count: 0 }}
+        daily={{ total: 100000, spent: 25000, count: 1 }}
       />,
     );
-    expect(screen.getByText(/2026/)).toBeInTheDocument();
+    expect(screen.getByText("Daily budget")).toBeInTheDocument();
+    expect(screen.getByText("1 budget")).toBeInTheDocument();
   });
 
-  it("shows the budget total, remaining and spent when a budget exists", () => {
-    render(
+  it("renders nothing when neither group has a budget", () => {
+    const { container } = render(
       <BudgetSummaryCards
-        monthly={{ total: 1000000, spent: 400000 }}
-        daily={{ total: 0, spent: 0 }}
+        monthly={{ total: 0, spent: 0, count: 0 }}
+        daily={{ total: 0, spent: 0, count: 0 }}
       />,
     );
-    const card = monthlyCard();
-    expect(card).toHaveTextContent("Rp 1.000.000.00");
-    expect(card).toHaveTextContent("Rp 600.000.00 remaining");
-    expect(card).toHaveTextContent("Rp 400.000.00 spent");
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows 'X over budget' when spent exceeds the budget", () => {
+  it("shows the remaining amount, 'Left to spend' and spent-of caption", () => {
     render(
       <BudgetSummaryCards
-        monthly={{ total: 500000, spent: 750000 }}
-        daily={{ total: 0, spent: 0 }}
+        monthly={{ total: 1000000, spent: 400000, count: 3 }}
+        daily={{ total: 0, spent: 0, count: 0 }}
       />,
     );
-    const card = monthlyCard();
-    expect(card).toHaveTextContent("Rp 250.000.00 over budget");
+    const card = heroCard("Monthly budget");
+    expect(card).toHaveTextContent("Rp 600.000.00");
+    expect(card).toHaveTextContent("Left to spend");
+    expect(card).toHaveTextContent("Rp 400.000.00 spent of Rp 1.000.000.00");
   });
 
-  it("shows 'Rp 0.00 remaining' when spent equals the budget (not over)", () => {
+  it("turns red and shows 'Over budget' when spent exceeds the limit", () => {
     render(
       <BudgetSummaryCards
-        monthly={{ total: 500000, spent: 500000 }}
-        daily={{ total: 0, spent: 0 }}
+        monthly={{ total: 500000, spent: 750000, count: 1 }}
+        daily={{ total: 0, spent: 0, count: 0 }}
       />,
     );
-    const card = monthlyCard();
-    expect(card).toHaveTextContent("Rp 0.00 remaining");
-    expect(card).not.toHaveTextContent("over budget");
+    const card = heroCard("Monthly budget");
+    expect(card.className).toContain("bg-[#D8000C]");
+    expect(card).toHaveTextContent("Over budget");
+    expect(card).toHaveTextContent("Rp 250.000.00");
   });
 
-  it("renders an empty state instead of numbers when no budget exists", () => {
+  it("stays green and shows 'Rp 0.00' when spent equals the limit (not over)", () => {
     render(
       <BudgetSummaryCards
-        monthly={{ total: 0, spent: 0 }}
-        daily={{ total: 0, spent: 0 }}
+        monthly={{ total: 500000, spent: 500000, count: 1 }}
+        daily={{ total: 0, spent: 0, count: 0 }}
       />,
     );
-    expect(screen.getByText("No monthly budget yet")).toBeInTheDocument();
-    expect(screen.getByText("No daily budget yet")).toBeInTheDocument();
-    expect(screen.queryByText(/remaining/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/spent/)).not.toBeInTheDocument();
+    const card = heroCard("Monthly budget");
+    expect(card.className).toContain("bg-[#00C610]");
+    expect(card).toHaveTextContent("Left to spend");
+    expect(card).not.toHaveTextContent("Over budget");
   });
 
-  it("treats a negative total as 'no budget'", () => {
+  it("computes the progress bar width from spent/total", () => {
     render(
       <BudgetSummaryCards
-        monthly={{ total: -1, spent: 0 }}
-        daily={{ total: 0, spent: 0 }}
+        monthly={{ total: 200000, spent: 50000, count: 1 }}
+        daily={{ total: 0, spent: 0, count: 0 }}
       />,
     );
-    expect(screen.getByText("No monthly budget yet")).toBeInTheDocument();
+    const bar = heroCard("Monthly budget").querySelector('[style*="width"]') as HTMLElement;
+    expect(bar.style.width).toBe("25%");
+    expect(bar.className).toContain("bg-white");
   });
 
   it("clamps the progress bar to 100% when over budget", () => {
     render(
       <BudgetSummaryCards
-        monthly={{ total: 1000, spent: 99999 }}
-        daily={{ total: 0, spent: 0 }}
+        monthly={{ total: 1000, spent: 99999, count: 1 }}
+        daily={{ total: 0, spent: 0, count: 0 }}
       />,
     );
-    const card = monthlyCard();
-    const bar = card.querySelector('[style*="width"]') as HTMLElement;
+    const bar = heroCard("Monthly budget").querySelector('[style*="width"]') as HTMLElement;
     expect(bar.style.width).toBe("100%");
-    expect(bar.className).toContain("bg-[#D8000C]");
-  });
-
-  it("colors the bar green when under budget", () => {
-    render(
-      <BudgetSummaryCards
-        monthly={{ total: 1000, spent: 500 }}
-        daily={{ total: 0, spent: 0 }}
-      />,
-    );
-    const card = monthlyCard();
-    const bar = card.querySelector('[style*="width"]') as HTMLElement;
-    expect(bar.className).toContain("bg-[#00C610]");
-  });
-
-  it("computes the bar width from spent/total", () => {
-    render(
-      <BudgetSummaryCards
-        monthly={{ total: 200000, spent: 50000 }}
-        daily={{ total: 0, spent: 0 }}
-      />,
-    );
-    const card = monthlyCard();
-    const bar = card.querySelector('[style*="width"]') as HTMLElement;
-    expect(bar.style.width).toBe("25%");
-  });
-
-  it("renders both cards independently (daily over, monthly under)", () => {
-    render(
-      <BudgetSummaryCards
-        monthly={{ total: 100000, spent: 50000 }}
-        daily={{ total: 100000, spent: 150000 }}
-      />,
-    );
-    expect(monthlyCard()).toHaveTextContent("Rp 50.000.00 remaining");
-    expect(dailyCard()).toHaveTextContent("Rp 50.000.00 over budget");
   });
 });
 

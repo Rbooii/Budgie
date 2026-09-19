@@ -21,6 +21,10 @@ vi.mock("@/components/balance-visibility", () => ({
 
 import { BalanceSection } from "@/components/balance-section";
 
+function heroCard(): HTMLElement {
+  return screen.getByText("Balance").parentElement!.parentElement as HTMLElement;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockBalanceVisibility.hidden = true;
@@ -28,9 +32,12 @@ beforeEach(() => {
 });
 
 describe("BalanceSection", () => {
-  it("renders 'Your Net Worth' label", () => {
+  it("renders the 'Balance' label inside a brand-green card", () => {
     render(<BalanceSection value={1000000} deltaPct={5} deltaAbsolute={50000} />);
-    expect(screen.getByText("Your Net Worth")).toBeInTheDocument();
+    expect(screen.getByText("Balance")).toBeInTheDocument();
+    const card = heroCard();
+    expect(card.className).toContain("bg-[#00C610]");
+    expect(card.className).toContain("rounded-[35px]");
   });
 
   it("renders a toggle button with aria-label 'Show balance' when hidden", () => {
@@ -57,18 +64,19 @@ describe("BalanceSection", () => {
     expect(screen.getByText(/this month/)).toBeInTheDocument();
   });
 
-  it("uses green color for positive delta", () => {
+  it("renders the delta in white (readable on the green card)", () => {
     mockBalanceVisibility.hidden = false;
     render(<BalanceSection value={1000000} deltaPct={5} deltaAbsolute={50000} />);
     const deltaEl = screen.getByText(/From last Month/);
-    expect(deltaEl.className.includes("text-[#00C610]")).toBe(true);
+    expect(deltaEl.className).toContain("text-white/95");
   });
 
-  it("uses red color for negative delta", () => {
+  it("renders a negative delta without any green/red text color", () => {
     mockBalanceVisibility.hidden = false;
     render(<BalanceSection value={1000000} deltaPct={-5} deltaAbsolute={-50000} />);
     const deltaEl = screen.getByText(/From last Month/);
-    expect(deltaEl.className.includes("text-[#D8000C]")).toBe(true);
+    expect(deltaEl.className).not.toContain("text-[#00C610]");
+    expect(deltaEl.className).not.toContain("text-[#D8000C]");
   });
 
   it("masks the delta text when hidden", () => {

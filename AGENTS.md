@@ -9,7 +9,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Typecheck: `bun run typecheck`
 - Build: `bun run build`
 - Dev: `bun run dev`
-- Test: `bun run test` (Vitest + jsdom + @testing-library; one-shot) — **989 tests / 88 suites**
+- Test: `bun run test` (Vitest + jsdom + @testing-library; one-shot) — **1016 tests / 89 suites**
 - Test (watch): `bun run test:watch`
 
 ## Performance rules (read before touching data access or routing)

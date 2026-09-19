@@ -31,7 +31,7 @@ async function ChatContent() {
         Chat
       </h1>
 
-      <ChatView userId={session.user.id} userName={session.user.name} />
+      <ChatView userId={session.user.id} />
     </>
   );
 }

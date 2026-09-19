@@ -119,8 +119,8 @@ async function BudgetContent() {
       </h1>
 
       <BudgetSummaryCards
-        monthly={{ total: monthlyTotal, spent: monthlySpent }}
-        daily={{ total: dailyTotal, spent: dailySpent }}
+        monthly={{ total: monthlyTotal, spent: monthlySpent, count: monthlyBudgets.length }}
+        daily={{ total: dailyTotal, spent: dailySpent, count: dailyBudgets.length }}
       />
 
       <div className="mt-6">

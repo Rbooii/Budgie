@@ -19,8 +19,10 @@ import {
   computeGrowthData,
   computeActiveMonths,
   computeAccountNetThisMonth,
+  computeAccountSeries,
   computeStartingAssets,
   computeNetWorthDelta,
+  computeTodayChangePercent,
 } from "@/lib/dashboard";
 
 export default function Dashboard() {
@@ -49,7 +51,7 @@ async function DashboardContent() {
   const yearStart = new Date(new Date().getFullYear(), 0, 1);
   const currentMonth = new Date().getMonth();
 
-  const [incomeAgg, expenseAgg, feeAgg, yearTxns] = await Promise.all([
+  const [incomeAgg, expenseAgg, feeAgg, allTxns] = await Promise.all([
     prisma.transaction.aggregate({
       where: { userId, type: "income", date: { gte: startOfMonth } },
       _sum: { amount: true },
@@ -63,7 +65,7 @@ async function DashboardContent() {
       _sum: { adminFee: true },
     }),
     prisma.transaction.findMany({
-      where: { userId, date: { gte: yearStart } },
+      where: { userId },
       select: {
         type: true,
         amount: true,
@@ -72,8 +74,10 @@ async function DashboardContent() {
         balanceAccountId: true,
         toBalanceAccountId: true,
       },
+      orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
   ]);
+  const yearTxns = allTxns.filter((t) => t.date >= yearStart);
   const monthIncome = incomeAgg._sum.amount ?? 0;
   const monthExpense = (expenseAgg._sum.amount ?? 0) + (feeAgg._sum.adminFee ?? 0);
   const monthLabel = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
@@ -82,6 +86,13 @@ async function DashboardContent() {
   const startingAssets = computeStartingAssets(netWorth, monthlyNet);
 
   const accountNetThisMonth = computeAccountNetThisMonth(yearTxns, currentMonth);
+
+  const accountSeries = Object.fromEntries(
+    accounts.map((a) => [a.id, computeAccountSeries(allTxns, a.id, a.balance)]),
+  );
+  const accountTodayChanges = Object.fromEntries(
+    accounts.map((a) => [a.id, computeTodayChangePercent(allTxns, a.id, a.balance)]),
+  );
 
   const growthData = computeGrowthData(monthlyNet, startingAssets, currentMonth);
 
@@ -111,7 +122,12 @@ async function DashboardContent() {
       ) : (
         <div className="w-full h-fit grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
           {accounts.map((account) => (
-            <AccountCard key={account.id} account={account} />
+            <AccountCard
+              key={account.id}
+              account={account}
+              series={accountSeries[account.id] ?? []}
+              todayChangePct={accountTodayChanges[account.id] ?? null}
+            />
           ))}
         </div>
       )}

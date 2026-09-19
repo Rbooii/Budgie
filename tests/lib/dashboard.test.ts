@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   computeMonthlyNet,
   computeYearNetEffect,
@@ -6,7 +6,10 @@ import {
   computeGrowthData,
   computeActiveMonths,
   computeAccountNetThisMonth,
+  computeAccountSeries,
   computeNetWorthDelta,
+  computeSparklineTrend,
+  computeTodayChangePercent,
   type YearTxn,
 } from "@/lib/dashboard";
 
@@ -241,5 +244,171 @@ describe("computeNetWorthDelta", () => {
     const { absoluteChange, deltaPct } = computeNetWorthDelta(accounts, {}, 1000);
     expect(absoluteChange).toBe(0);
     expect(deltaPct).toBe(0);
+  });
+});
+
+describe("computeAccountSeries", () => {
+  it("returns an empty series when no transaction touches the account", () => {
+    const result = computeAccountSeries(
+      [txn({ balanceAccountId: "other", date: new Date(2026, 0, 1) })],
+      "a1",
+      1000,
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("reconstructs the running balance backwards from the current balance", () => {
+    const result = computeAccountSeries(
+      [
+        txn({ type: "income", amount: 500, balanceAccountId: "a1", date: new Date(2026, 0, 5) }),
+        txn({ type: "expense", amount: 200, balanceAccountId: "a1", date: new Date(2026, 0, 10) }),
+      ],
+      "a1",
+      1300,
+    );
+    expect(result).toEqual([1000, 1500, 1300]);
+  });
+
+  it("sorts transactions by date even when the input is unsorted", () => {
+    const result = computeAccountSeries(
+      [
+        txn({ type: "expense", amount: 200, balanceAccountId: "a1", date: new Date(2026, 0, 10) }),
+        txn({ type: "income", amount: 500, balanceAccountId: "a1", date: new Date(2026, 0, 5) }),
+      ],
+      "a1",
+      1300,
+    );
+    expect(result).toEqual([1000, 1500, 1300]);
+  });
+
+  it("subtracts (amount + adminFee) for an outgoing transfer", () => {
+    const result = computeAccountSeries(
+      [
+        txn({
+          type: "transfer",
+          amount: 1000,
+          adminFee: 100,
+          balanceAccountId: "a1",
+          toBalanceAccountId: "a2",
+          date: new Date(2026, 0, 5),
+        }),
+      ],
+      "a1",
+      900,
+    );
+    expect(result).toEqual([2000, 900]);
+  });
+
+  it("adds the amount for an incoming transfer", () => {
+    const result = computeAccountSeries(
+      [
+        txn({
+          type: "transfer",
+          amount: 1000,
+          adminFee: 100,
+          balanceAccountId: "a1",
+          toBalanceAccountId: "a2",
+          date: new Date(2026, 0, 5),
+        }),
+      ],
+      "a2",
+      1000,
+    );
+    expect(result).toEqual([0, 1000]);
+  });
+
+  it("ignores transactions that only touch other accounts", () => {
+    const result = computeAccountSeries(
+      [
+        txn({ type: "income", amount: 500, balanceAccountId: "a1", date: new Date(2026, 0, 5) }),
+        txn({ type: "expense", amount: 999, balanceAccountId: "a2", date: new Date(2026, 0, 6) }),
+      ],
+      "a1",
+      1500,
+    );
+    expect(result).toEqual([1000, 1500]);
+  });
+
+  it("downsamples long series to 24 points, preserving the endpoints", () => {
+    const txns = Array.from({ length: 30 }, (_, i) =>
+      txn({ type: "income", amount: 10, balanceAccountId: "a1", date: new Date(2026, 0, i + 1) }),
+    );
+    const result = computeAccountSeries(txns, "a1", 1300);
+    expect(result).toHaveLength(24);
+    expect(result[0]).toBe(1000);
+    expect(result[23]).toBe(1300);
+  });
+});
+
+describe("computeSparklineTrend", () => {
+  it("returns flat for an empty series", () => {
+    expect(computeSparklineTrend([])).toBe("flat");
+  });
+
+  it("returns up when the last value is above the first", () => {
+    expect(computeSparklineTrend([100, 150, 200])).toBe("up");
+  });
+
+  it("returns down when the last value is below the first", () => {
+    expect(computeSparklineTrend([200, 150, 100])).toBe("down");
+  });
+
+  it("treats tiny changes as flat (relative threshold)", () => {
+    expect(computeSparklineTrend([100, 100.05])).toBe("flat");
+    expect(computeSparklineTrend([1000, 1000.5])).toBe("flat");
+  });
+});
+
+describe("computeTodayChangePercent", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns null when there is no activity today", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 15, 12));
+    const result = computeTodayChangePercent(
+      [txn({ type: "income", amount: 100, balanceAccountId: "a1", date: new Date(2026, 0, 14) })],
+      "a1",
+      1100,
+    );
+    expect(result).toBeNull();
+  });
+
+  it("computes the percentage change from today's net", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 15, 12));
+    const result = computeTodayChangePercent(
+      [txn({ type: "income", amount: 100, balanceAccountId: "a1", date: new Date(2026, 0, 15, 9) })],
+      "a1",
+      1100,
+    );
+    expect(result).toBeCloseTo(10, 5);
+  });
+
+  it("returns null when the previous balance was not positive", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 15, 12));
+    const result = computeTodayChangePercent(
+      [txn({ type: "income", amount: 100, balanceAccountId: "a1", date: new Date(2026, 0, 15, 9) })],
+      "a1",
+      50,
+    );
+    expect(result).toBeNull();
+  });
+
+  it("accounts for both sides of a transfer", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 15, 12));
+    const transfer = txn({
+      type: "transfer",
+      amount: 500,
+      adminFee: 50,
+      balanceAccountId: "a1",
+      toBalanceAccountId: "a2",
+      date: new Date(2026, 0, 15, 9),
+    });
+    expect(computeTodayChangePercent([transfer], "a1", 1450)).toBeCloseTo(-27.5, 5);
+    expect(computeTodayChangePercent([transfer], "a2", 1500)).toBeCloseTo(50, 5);
   });
 });

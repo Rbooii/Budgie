@@ -8,9 +8,11 @@ import { Dialog } from "@/components/dialog";
 import { Button } from "@/components/button";
 import { AuthInput } from "@/components/auth-input";
 import { MaskedBalance } from "@/components/balance-visibility";
+import { Sparkline } from "@/components/sparkline";
 import { formatRupiah, formatBalanceInput } from "@/lib/format";
 import { dynamicFontSize } from "@/lib/font-size";
-import { Pencil, Trash2, AlertCircle } from "lucide-react";
+import { computeSparklineTrend } from "@/lib/dashboard";
+import { Pencil, Trash2, AlertCircle, ChevronRight } from "lucide-react";
 
 type Account = {
   id: string;
@@ -22,11 +24,17 @@ type Account = {
 
 interface AccountCardProps {
   account: Account;
+  series?: number[];
+  todayChangePct?: number | null;
 }
 
 const TYPES = ["bank", "digital wallet", "cash", "credit", "investment"];
 
-export function AccountCard({ account }: AccountCardProps) {
+export function AccountCard({
+  account,
+  series = [],
+  todayChangePct = null,
+}: AccountCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -41,6 +49,10 @@ export function AccountCard({ account }: AccountCardProps) {
 
   const formattedBalance = formatBalanceInput(balance);
   const balanceFont = dynamicFontSize(formattedBalance);
+
+  const trend = computeSparklineTrend(series);
+  const sparkColor = trend === "up" ? "#00C610" : trend === "down" ? "#D8000C" : "#B0B0B0";
+  const investable = ["investment", "stocks"].includes(account.type.toLowerCase());
 
   function startEdit() {
     setName(account.name);
@@ -121,18 +133,24 @@ export function AccountCard({ account }: AccountCardProps) {
           setEditing(false);
           setOpen(true);
         }}
-        className="w-full h-[180px] sm:h-[200px] bg-white text-black border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_32px_-10px_rgba(0,0,0,0.12)] rounded-[35px] px-5 py-5 sm:px-[22px] sm:py-[20px] flex flex-col justify-between cursor-pointer transition transform duration-200"
+        className="w-full min-h-[180px] bg-white text-black border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_32px_-10px_rgba(0,0,0,0.12)] rounded-[35px] px-5 py-5 sm:px-[22px] sm:py-[20px] flex flex-col gap-3 cursor-pointer transition transform duration-200"
       >
-        <div className="flex items-center justify-between">
-          <p className="text-lg sm:text-xl font-bold">{account.name}</p>
-          <Badge variant="soft">{account.type}</Badge>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-lg sm:text-xl font-bold truncate">{account.name}</p>
+          <ChevronRight className="w-4 h-4 text-black/20 shrink-0" />
         </div>
 
-        <div>
-          <p className="text-xs font-medium text-black/40 mt-1">Available Balance</p>
+        <Sparkline values={series} color={sparkColor} className="w-full h-11 shrink-0" />
+
+        <div className="mt-auto">
           <p className="text-xl sm:text-2xl font-bold tracking-tight">
             <MaskedBalance value={account.balance} mask="short" />
           </p>
+          {investable && todayChangePct != null && (
+            <p className="text-xs font-medium tabular-nums text-black/50 mt-0.5">
+              {todayChangePct <= 0 ? "↓" : "↑"} {Math.abs(todayChangePct).toFixed(1)}% today
+            </p>
+          )}
         </div>
       </div>
 

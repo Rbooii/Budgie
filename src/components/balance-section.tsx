@@ -15,17 +15,21 @@ export function BalanceSection({ value, deltaPct, deltaAbsolute }: BalanceSectio
   const deltaText = deltaPct !== null
     ? `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}% From last Month`
     : `${deltaAbsolute >= 0 ? "+" : "-"}${formatRupiah(Math.abs(deltaAbsolute))} this month`;
-  const deltaColor = deltaAbsolute >= 0 ? "text-[#00C610]" : "text-[#D8000C]";
 
   return (
-    <div className="w-full h-fit mt-8 md:mt-10">
+    <div className="w-full h-fit mt-8 md:mt-10 rounded-[35px] bg-[#00C610] p-6 text-white">
       <div className="flex items-center gap-2">
-        <p className="text-sm text-black/50">Your Net Worth</p>
+        <p className="text-sm font-semibold text-white/95">Balance</p>
+
+        <span className="ml-auto text-xs font-semibold tabular-nums text-white/95 whitespace-nowrap">
+          {hidden ? "•••• From last Month" : deltaText}
+        </span>
+
         <button
           type="button"
           onClick={toggle}
           aria-label={hidden ? "Show balance" : "Hide balance"}
-          className="text-black/40 hover:text-black/70 active:scale-95 transition [perspective:300px]"
+          className="flex items-center justify-center w-7 h-7 shrink-0 rounded-full text-white/90 hover:text-white active:scale-95 transition [perspective:300px]"
         >
           <span
             key={toggleCount}
@@ -36,14 +40,9 @@ export function BalanceSection({ value, deltaPct, deltaAbsolute }: BalanceSectio
         </button>
       </div>
 
-      <div className="flex flex-col items-start gap-1 md:flex-row md:items-baseline md:gap-3 w-fit h-fit mt-1">
-        <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
-          <MaskedBalance value={value} mask="long" />
-        </h1>
-        <p className={`text-sm font-medium tabular-nums ${deltaColor}`}>
-          {hidden ? "•••• From last Month" : deltaText}
-        </p>
-      </div>
+      <h1 className="mt-3 text-3xl md:text-4xl font-bold tracking-tight text-white">
+        <MaskedBalance value={value} mask="long" />
+      </h1>
     </div>
   );
 }

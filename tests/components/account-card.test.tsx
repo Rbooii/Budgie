@@ -68,15 +68,72 @@ afterEach(() => {
 
 describe("AccountCard", () => {
   describe("rendering", () => {
-    it("renders the account name and type badge", () => {
+    it("renders the account name without a type badge on the card face", () => {
       render(<AccountCard account={ACCOUNT} />);
       expect(screen.getByText("BCA Checking")).toBeInTheDocument();
-      expect(screen.getByText("bank")).toBeInTheDocument();
+      expect(screen.queryByText("bank")).not.toBeInTheDocument();
     });
 
     it("shows the masked balance via MaskedBalance", () => {
       render(<AccountCard account={ACCOUNT} />);
       expect(screen.getByTestId("masked-balance")).toHaveTextContent("Rp 1500000");
+    });
+  });
+
+  describe("sparkline & today change", () => {
+    it("renders the sparkline path when a series is provided", () => {
+      const { container } = render(
+        <AccountCard account={ACCOUNT} series={[1000, 1200, 1500]} />,
+      );
+      expect(container.querySelector("path.spark-draw")).not.toBeNull();
+    });
+
+    it("colors the sparkline green when the series trends up", () => {
+      const { container } = render(<AccountCard account={ACCOUNT} series={[1000, 1500]} />);
+      expect(container.querySelector("path.spark-draw")!.getAttribute("stroke")).toBe("#00C610");
+    });
+
+    it("colors the sparkline red when the series trends down", () => {
+      const { container } = render(<AccountCard account={ACCOUNT} series={[1500, 1000]} />);
+      expect(container.querySelector("path.spark-draw")!.getAttribute("stroke")).toBe("#D8000C");
+    });
+
+    it("shows today's change for investment accounts", () => {
+      render(
+        <AccountCard
+          account={{ ...ACCOUNT, type: "investment" }}
+          series={[1000, 1100]}
+          todayChangePct={2.5}
+        />,
+      );
+      expect(screen.getByText(/2\.5% today/)).toBeInTheDocument();
+    });
+
+    it("uses a down arrow for a negative today change", () => {
+      render(
+        <AccountCard
+          account={{ ...ACCOUNT, type: "stocks" }}
+          series={[1100, 1000]}
+          todayChangePct={-1.2}
+        />,
+      );
+      expect(screen.getByText(/↓ 1\.2% today/)).toBeInTheDocument();
+    });
+
+    it("does not show today's change for non-investment accounts", () => {
+      render(<AccountCard account={ACCOUNT} series={[1000, 1100]} todayChangePct={2.5} />);
+      expect(screen.queryByText(/today/)).not.toBeInTheDocument();
+    });
+
+    it("does not show today's change when there is no value", () => {
+      render(
+        <AccountCard
+          account={{ ...ACCOUNT, type: "investment" }}
+          series={[1000, 1100]}
+          todayChangePct={null}
+        />,
+      );
+      expect(screen.queryByText(/today/)).not.toBeInTheDocument();
     });
   });
 

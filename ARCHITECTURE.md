@@ -123,8 +123,9 @@ budgie/
     │  │  ├─ chat-tool-card.tsx     # tool part dispatcher (status pill / result card / error)
     │  │  ├─ chat-tool-status.tsx   # running pill (Loader2 + label)
     │  │  ├─ chat-tool-result.tsx   # per-tool result cards (accounts/transactions/budgets/subscriptions/insights/create)
-    │  │  ├─ chat-input.tsx         # rounded-full textarea + send/stop button
-    │  │  ├─ chat-empty-state.tsx   # greeting + suggestion chips
+    │  │  ├─ chat-input.tsx         # iOS-style composer card (textarea + dark send/stop circle)
+    │  │  ├─ chat-model-menu.tsx    # header model dropdown (MODEL_CHAIN + Check on active)
+    │  │  ├─ chat-empty-state.tsx   # serif time-of-day greeting + 3 suggestion capsules
     │  │  └─ types.ts               # typed tool-result payloads
     │  └─ download-pdf-dialog.tsx   # jsPDF export (all / filtered / date range)
     ├─ lib/
@@ -136,6 +137,7 @@ budgie/
     │  ├─ categories.ts               # premade per-type category lists (income/expense/transfer)
     │  ├─ category-icon.tsx           # categoryIcon(category, className) → ReactElement (lucide icon per category)
     │  ├─ budget.ts                   # periodLabel / periodStartDate / nextBillingDate / startOfToday / startOfMonth
+    │  ├─ dashboard.ts                # pure chart math: monthly net, growth data, account sparkline series, today change
     │  └─ format.ts                   # formatRupiah / formatBalanceInput / formatDate / formatTime / formatDateTimeLocalValue
    ├─ server/                        # ALL backend logic lives here
    │  ├─ index.ts                    # Hono app (NO basePath), mounts routers; exports type App
@@ -1602,25 +1604,35 @@ with cookie forwarding).
 
 ### Data flow
 
-1. **Accounts + net worth**: `api["balance-accounts"].$get` (cookie-forwarded) →
-   `accounts[]`, `netWorth = sum(account.balance)`.
+1. **Accounts + net worth**: `getAccountsForUser(userId)` (React-cached
+   in-process service call) → `accounts[]`, `netWorth = sum(account.balance)`.
 2. **Current month cashflow**: three `prisma.transaction.aggregate` calls
    (income `_sum.amount`, expense `_sum.amount`, transfer `_sum.adminFee`) →
    `monthIncome`, `monthExpense` (expense + fees), `monthLabel`.
-3. **Asset growth trajectory**: `prisma.transaction.findMany` for this year
-   (`select: type, amount, adminFee, date, balanceAccountId, toBalanceAccountId`)
-   → JS computation: `monthlyNet[12]` (income `+amount`, expense `−amount`,
-   transfer `−adminFee`), `startingAssets = netWorth − yearNetEffect`,
-   cumulative asset value per month → `growthData[]`.
-4. **Net worth delta**: per-account net effect for current month
+3. **Transactions (all-time)**: one `prisma.transaction.findMany({ where: {
+   userId } })` with a minimal select (`type, amount, adminFee, date,
+   balanceAccountId, toBalanceAccountId`) ordered `date ASC, id ASC` →
+   `allTxns`. `yearTxns = allTxns.filter(date ≥ yearStart)` feeds the
+   year-scoped chart math below; `allTxns` feeds the per-account sparklines.
+4. **Asset growth trajectory**: JS computation over `yearTxns`:
+   `monthlyNet[12]` (income `+amount`, expense `−amount`, transfer
+   `−adminFee`), `startingAssets = netWorth − yearNetEffect`, cumulative asset
+   value per month → `growthData[]`.
+5. **Net worth delta**: per-account net effect for current month
    (`accountNetThisMonth`), `lastMonthEndNetWorth = sum(a.balance −
    accountNetThisMonth[a.id])` for **all** accounts (back-dated transactions on
    a new account reconstruct a last-month baseline). `deltaPct` = percentage
    change (null when base ≤ 0 → display absolute instead).
-5. **Active months**: `activeMonths[12]` — `true` if that month had ≥1
+6. **Active months**: `activeMonths[12]` — `true` if that month had ≥1
    transaction this year (computed from `yearTxns`). Passed to
    `AssetGrowthCard` to distinguish "no activity" (grey placeholder bars) from
    "active flat" (brown Stable bars).
+7. **Account sparklines + today change**: per account,
+   `computeAccountSeries(allTxns, id, balance)` reconstructs the running
+   balance backwards from the current balance and downsamples to 24 points;
+   `computeTodayChangePercent(allTxns, id, balance)` yields the day's % change
+   (null when no activity today or the previous balance ≤ 0). Passed to
+   `AccountCard` as `series` / `todayChangePct`.
 
 ### Layout
 
@@ -1644,9 +1656,11 @@ else:
 
 | File | Role |
 | ---- | ---- |
-| `src/components/balance-section.tsx` | Net worth hero. Shows "Your Net Worth" + eye-toggle + masked balance. Delta line: `deltaPct` as `+X.X% From last Month` (green/red by sign), or `+Rp … this month` (absolute, when last month's base was 0). `tabular-nums` on all numbers. |
+| `src/components/balance-section.tsx` | Net worth hero **card** (iOS-parity). `rounded-[35px] bg-[#00C610] p-6 text-white`. Header: "Balance" label + delta (white `text-xs font-semibold tabular-nums`) + eye-toggle (28px white circle, `eyeFlip` animation). Delta: `deltaPct` as `+X.X% From last Month`, or `+Rp … this month` (absolute fallback when last month's base was 0) — always white on the green fill, no green/red text. Amount: `text-3xl md:text-4xl font-bold tracking-tight` + `<MaskedBalance mask="long" />`. |
+| `src/components/account-card.tsx` | **`"use client"`**. iOS-parity account card (`rounded-[35px]` white card, `min-h-[180px] flex flex-col gap-3`, hover shadow, whole card opens the edit dialog). Face: name + `ChevronRight`, then the account sparkline (`h-11`), then `MaskedBalance mask="short"` + "↑/↓ x.x% today" (`text-xs text-black/50`) for `investment`/`stocks` only. No type Badge / "Available Balance" label on the face (the Badge still appears inside the dialog). |
+| `src/components/sparkline.tsx` | Pure SVG sparkline (`viewBox 0 0 100 44`, `preserveAspectRatio="none"`, `vectorEffect="non-scaling-stroke"`, 2.5px round stroke, `aria-hidden`). >1 point → a line through `values`; 0–1 points → a dashed flat line at 60% height, 30% opacity. Draw-in via the `.spark-draw` class (`pathLength=1`, 0.9s ease-out, reduced-motion gated). The color is chosen by the caller (`computeSparklineTrend` → `#00C610` up / `#D8000C` down / `#B0B0B0` flat). |
 | `src/components/cashflow-card.tsx` | Donut chart (pure SVG, no library). `title` prop (default "Today's Cashflow"). Two arcs (income green gradient, expense red gradient) with 20° gap, `radius=64`, rendered `w-56 h-56`. Center: `+/- N mil` (color by sign) + rupiah. Breakdown rows: `bg-[#F2F2F2] rounded-[20px]` tiles. |
-| `src/components/asset-growth-card.tsx` | Apple-style bar chart (pure SVG). **`"use client"`** (hover state). 12 slots (Jan–Dec), `barW=16px`, gap ≈8px. Recorded months: growth-colored bars (green up / orange flat / red down vs previous month); no-activity months (`activeMonths[m]===false`) → grey `#E5E5E5` placeholder bars (~12px min). `rx` capped at `renderedH/2` (no oval short bars). **Hover tooltip**: HTML overlay (month+year + `formatRupiah`), tap toggles on mobile. Future months: no bar, faint label. YTD pill. Legend (Growth/Stable/Decline). Empty state: no bars + "No transactions yet" caption. |
+| `src/components/asset-growth-card.tsx` | iOS-parity bar chart (pure SVG). **`"use client"`** (hover state). Always 12 slots with single-letter labels (`J F M A M J J A S O N D`), `barW=16px`, gap ≈8px. **Zero-baseline scale**: `height = value / max(starting, all growth) * chartH`; recorded active bars min 12px, inactive min 6px, future months a 6px `#E5E5E5` bar at 35% opacity. Colors: `#00C610` up / `#B25B00` flat / `#D8000C` down (vs previous month); inactive `#E5E5E5`. `rx` capped at `renderedH/2`. **YTD pill**: `Sparkles` + "YTD" + signed **absolute Rupiah** (`+Rp …`) on a `#F2F2F2` capsule, green/red by sign. Hover/click tooltip (`rounded-[12px]`, month-year + `formatRupiah`), tap toggles on mobile; future months ignore hover. Bars animate in via the `.bar-grow` class (0.6s ease-out, reduced-motion gated). No hero total — net worth lives in the balance card. Legend (Growth/Stable/Decline, 7px dots). Empty state: "No transactions yet" caption. |
 | `src/components/quick-insight-empty-state.tsx` | `"use client"`. §7.5 "Nothing exists yet" empty state shown when the user has no transactions. `Sparkles` icon + "No insight yet" + helper desc + `success` "Add transaction" CTA → `/transactions/add`. |
 | `src/components/sidebar.tsx` | Desktop: `md:sticky md:top-0 self-start` — pins to viewport top while content scrolls (stays in flex flow, no layout break). Mobile: fixed bottom tab bar (unchanged). |
 
@@ -1655,7 +1669,8 @@ else:
 ## 19. Budgets UI (frontend)
 
 The budgets feature (`src/app/budget/page.tsx`, RSC, `force-dynamic`) covers
-**monthly + daily budget summary cards**, a **spending streams bar chart**
+a **single iOS-style budget summary hero** (monthly group preferred, daily
+fallback), a **spending streams bar chart**
 (per-category expense this month with budget markers), a **budgets list** with
 a 3-step **add-budget wizard**, and a **subscriptions list** with an
 **add-subscription dialog**. Each list row opens a bottom-sheet detail with a
@@ -1677,9 +1692,10 @@ confirm-dialog-gated delete.
    This is what the budget list rows + summary cards use for progress.
 4. **Derived figures**:
    - `monthlyBudgets = budgets.filter(b => b.periodDays === 30)` →
-     `monthlyTotal`/`monthlySpent` for the Monthly summary card.
+     `monthlyTotal`/`monthlySpent`/`count` for the summary hero.
    - `dailyBudgets = budgets.filter(b => b.periodDays === 1)` →
-     `dailyTotal`/`dailySpent` for the Daily summary card.
+     `dailyTotal`/`dailySpent`/`count` — the hero falls back to daily when
+     there is no monthly budget.
    - `usedCategories = budgets.map(b => b.category)` → passed to
      `AddBudgetDialog` so the category select hides already-budgeted categories
      (the unique `(userId, category)` constraint means duplicates would 409).
@@ -1691,7 +1707,7 @@ confirm-dialog-gated delete.
   <AccountTab userName={...} />
   <h1 "Budgets" />
 
-  <BudgetSummaryCards monthly={...} daily={...} />   // grid 1 col mobile / 2 sm
+  <BudgetSummaryCards monthly={...} daily={...} />   // one hero: monthly, else daily, else null
 
   <SpendingStreamsChart data={streamsData} budgets={streamsBudgets} monthLabel={...} />
 
@@ -1711,9 +1727,9 @@ confirm-dialog-gated delete.
 
 | File | Role |
 | ---- | ---- |
-| `src/components/budget-summary-cards.tsx` | RSC-presentational. Two `rounded-[35px]` cards in a `grid grid-cols-1 sm:grid-cols-2 gap-3`. Each card: label + month/date caption + hero `formatRupiah(total)` (`text-2xl font-bold tracking-tight tabular-nums`) + "remaining"/"over budget" caption + progress track (`h-2 bg-black/[0.06]` with green `#00C610` fill under budget / red `#D8000C` fill over, `rounded-full`, `transition-all duration-300`). Empty state when `total === 0`: "No monthly/daily budget yet" + helper text. |
+| `src/components/budget-summary-cards.tsx` | RSC-presentational. Renders **one iOS-style summary hero** for the preferred group — monthly when `monthly.total > 0`, else daily, else `null`. Hero: `rounded-[35px] p-6` filled `#00C610` (or `#D8000C` when over), white text — title ("Monthly budget"/"Daily budget") + `{count} budgets` (singular-aware), `formatRupiah(abs(remaining))` (`text-3xl font-bold tracking-tight tabular-nums`), "Left to spend"/"Over budget", progress track (`h-1.5 bg-white/25`, white fill clamped 0–100%, `transition-all duration-300`), and "{spent} spent of {limit}" caption. Props: `monthly`/`daily` as `{ total, spent, count }`. Also exports `periodBadgeLabel`. |
 | `src/components/spending-streams-chart.tsx` | **`"use client"`** (hover state). Pure-HTML horizontal bar chart — one row per expense category with spend this month, sorted desc. Each row: 24-char category label + `h-3 bg-black/[0.04] rounded-full` track + `#FFBABA` (under) / `#D8000C` (over) fill + right-aligned `formatRupiah(spent)`. Budget limit marked with a vertical `w-0.5 h-4 bg-black/40` tick at the category's budget `amount` position (if a budget exists). Hover/tap tooltip (`bg-white rounded-[20px] shadow border px-3 py-2`): category + spent + budget + remaining/over. Legend (Spent / Over budget / Budget limit). Empty state: `TrendingUp` icon + "No spending this month yet". Container `rounded-[35px] border border-black/10 shadow p-6`. |
-| `src/components/budgets-list.tsx` | **`"use client"`**. §7.2 rounded list rows (`rounded-2xl px-3.5 py-3.5 hover:bg-[#FAFAFA] active:scale-[0.98]`). Each row: 40px round tinted icon (expense red `bg-[#FFBABA]/40 text-[#D8000C]`, icon from `categoryIcon(b.category, "w-5 h-5")`) + category label + period pill (`periodLabel(b.periodDays)`) + mini progress bar + amount (`formatRupiah(b.amount)`) + "spent" caption + chevron (`hidden sm:block`). Tap → `BudgetDetailSheet`. Exports `BudgetRow` type. Empty state (§7.5) with `Wallet` icon + `success` CTA (the `addTrigger` prop renders the `AddBudgetDialog` inline). |
+| `src/components/budgets-list.tsx` | **`"use client"`**. iOS-style white cards (`rounded-[35px] bg-white border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-4`, hover shadow, `active:scale-[0.98]`, no chevron). Each card: 40px round red-tinted icon (`bg-[#FFBABA]/40 text-[#D8000C]`, icon from `categoryIcon(b.category, "w-5 h-5")`) + category `text-base font-semibold` + period (`periodLabel(b.periodDays)`, `text-xs text-black/50`); right side limit + "`Rp X left`" / "`Over Rp X`" (red when over); full-width `h-1.5` progress track below (`bg-black/[0.06]`, green `#00C610` / red `#D8000C` fill clamped 0–100%). Tap → `BudgetDetailSheet`. Exports `BudgetRow` type. Empty state is the same white card with a brand-tinted `Wallet` tile + `success` CTA (the `addTrigger` prop renders the `AddBudgetDialog` inline). |
 | `src/components/add-budget-dialog.tsx` | **`"use client"`**. 3-step wizard inside `Dialog` (model on `AddTransactionWizard`'s step pattern but compact). **Step 1**: period cards (Daily=1 / Weekly=7 / Monthly=30 / Custom → days input) — active card uses `border-[#A0FFA8] bg-[#A0FFA8]/15` ring + trailing `<Check>`. **Step 2**: category `<select>` (only `EXPENSE_CATEGORIES` not in `usedCategories`) + hero amount (`dynamicFontSize` + `formatBalanceInput`, currency prefix `IDR`). **Step 3**: review rows (Category / Period / Limit) + "Confirm and Add" → `api.budgets.$post({ json: { category, amount, periodDays } })`. Slim 2px progress track (`bg-[#00C610]` fill, `transition-all duration-300 ease-out`, width = `(step/3)*100%`). 409 "Budget for this category already exists" rendered as error pill. On success → close dialog + `router.refresh()`. Trigger is `success`/`md` Button. |
 | `src/components/budget-detail-sheet.tsx` | **`"use client"`**. Bottom sheet (mobile `rounded-t-[28px]` + drag handle) / centered (desktop `sm:rounded-[28px]`). Sections: category pill (`bg-[#FFBABA] text-[#D8000C]` + `categoryIcon`) + `✕` close → hero "Budget limit" + `formatRupiah(amount)` + spent caption + progress bar (green/red by over) → inset detail card (`rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]`) with DetailRows (Period / Limit / Spent / Remaining) → full-width delete trigger (`h-11 rounded-[35px] bg-[#FFBABA] text-[#D8000C]`) → confirm `Dialog` (sibling fragment, `softred` Delete + `outline` Cancel, `loading`-gated `onOpenChange`) → `api.budgets[":id"].$delete` → `router.refresh()`. `sheetIn` animation (12px slide-up + fade, 200ms). |
 | `src/components/subscription-list.tsx` | **`"use client"`**. Same §7.2 row pattern as `budgets-list`. Each row: 40px round icon (transfer orange `bg-[#FFD9A0]/40 text-[#B25B00]`, since subscriptions are recurring outflows) + name + `categoryLabel(category) · periodLabel(periodDays)` subtitle + "Next {date}" caption (via `nextBillingDate`) + amount + "Inactive" tag when `!active` + chevron. Tap → `SubscriptionDetailSheet`. Exports `SubscriptionRow` type. Empty state with `Repeat` icon + `success` CTA. |
@@ -2137,10 +2153,10 @@ to a cheaper model on a quota error:
 - `thinkingConfigFor(model)` — primary keeps streaming reasoning for the
   Thinking UI (budget capped at 256); the lite model disables it entirely
   (saves reasoning tokens).
-- The composer shows the **active model** at all times: `modelLabel(model)`
+- The header shows the **active model** at all times: `modelLabel(model)`
   (`MODEL_LABELS` in `src/lib/chat-models.ts` → "Gemini 2.5 Flash" /
-  "Gemini 3.5 Flash Lite") renders as a static chip inside `ChatInput` (see
-  UI_DESIGN §17).
+  "Gemini 3.5 Flash Lite") renders in the centered `ChatModelMenu`, which also
+  lets the user switch manually (see UI_DESIGN §17).
 
 ### "AI call optimized" measures
 
@@ -2259,7 +2275,9 @@ on the critical path. Covered end-to-end by `AGENTS.md` → "Performance rules".
   the trailing `id` is what makes cursor pagination stable on equal dates.
 - **Aggregates happen in Postgres**: budgets use one `groupBy` per distinct
   `periodDays` (was one `aggregate` per budget); insights uses `groupBy` with
-  `orderBy`/`take: 5`; the dashboard reads a bounded year window.
+  `orderBy`/`take: 5`; the dashboard reads all-time transactions in one
+  minimal-select query and derives the year window in JS (asset growth +
+  per-account sparklines).
 - **Writes are conditional `updateMany`s** inside one `$transaction` (§17) —
   no read-then-write, no negative balances, fewer round trips.
 - **Neon adapter** (§8): one multiplexed WebSocket connection per instance.

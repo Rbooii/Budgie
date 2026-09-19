@@ -45,7 +45,7 @@ function mockChat(overrides: Record<string, unknown> = {}) {
 
 function renderChat(overrides: Record<string, unknown> = {}) {
   const mock = mockChat(overrides);
-  render(<ChatView userId={USER_ID} userName="Raka" />);
+  render(<ChatView userId={USER_ID} />);
   return mock;
 }
 
@@ -96,21 +96,20 @@ afterEach(() => {
 });
 
 describe("ChatView", () => {
-  it("shows the empty state with a greeting and suggestions", () => {
+  it("shows the empty state with a greeting and the first three suggestions", () => {
     renderChat();
-    expect(screen.getByText(/hi raka/i)).toBeInTheDocument();
-    expect(screen.getByText(/net worth right now/i)).toBeInTheDocument();
-    expect(screen.getByText(/add a rp 45.000 lunch expense/i)).toBeInTheDocument();
+    expect(screen.getByText(/how can i help you/i)).toBeInTheDocument();
+    expect(screen.getByText(/how much did i spend this month/i)).toBeInTheDocument();
+    expect(screen.getByText(/what's my net worth/i)).toBeInTheDocument();
+    expect(screen.getByText(/show my budgets/i)).toBeInTheDocument();
+    expect(screen.queryByText(/record that i bought coffee/i)).not.toBeInTheDocument();
   });
 
-  it("shows the active model in the composer chip and the disclaimer caption", () => {
+  it("shows the active model in the header menu", () => {
     renderChat();
     expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
       "Gemini 2.5 Flash",
     );
-    expect(
-      screen.getByText(/budgie can make mistakes/i),
-    ).toBeInTheDocument();
   });
 
   it("manually switches the model and persists it", async () => {
@@ -125,7 +124,7 @@ describe("ChatView", () => {
     ).toBe(LITE_MODEL);
     expect(screen.queryByText(/switched to a lighter model/i)).toBeNull();
 
-    const input = screen.getByPlaceholderText(/write a message/i);
+    const input = screen.getByPlaceholderText(/message budgie/i);
     await userEvent.type(input, "hello{enter}");
     expect(defaultChat.sendMessage).toHaveBeenCalledWith(
       { text: "hello" },
@@ -135,9 +134,9 @@ describe("ChatView", () => {
 
   it("sends the suggestion text with the current model when a chip is clicked", async () => {
     renderChat();
-    await userEvent.click(screen.getByText(/net worth right now/i));
+    await userEvent.click(screen.getByText(/what's my net worth/i));
     expect(defaultChat.sendMessage).toHaveBeenCalledWith(
-      { text: "What's my net worth right now?" },
+      { text: "What's my net worth?" },
       { body: { model: PRIMARY_MODEL } },
     );
   });
@@ -198,7 +197,7 @@ describe("ChatView", () => {
 
   it("sends a typed message on Enter with the current model and clears the input", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/write a message/i);
+    const input = screen.getByPlaceholderText(/message budgie/i);
 
     await userEvent.type(input, "hello budgie{enter}");
 
@@ -211,7 +210,7 @@ describe("ChatView", () => {
 
   it("does not send empty input", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/write a message/i);
+    const input = screen.getByPlaceholderText(/message budgie/i);
     await userEvent.type(input, "   {enter}");
     expect(defaultChat.sendMessage).not.toHaveBeenCalled();
   });
@@ -266,13 +265,12 @@ describe("ChatView", () => {
     renderChat({ messages });
 
     expect(screen.getByText("Insights")).toBeInTheDocument();
-    expect(screen.getByText("Couldn't add the transaction")).toBeInTheDocument();
     expect(screen.getByText("Insufficient balance")).toBeInTheDocument();
   });
 
   it("disables the input while the chat is in error state", () => {
     renderChat({ error: new Error("boom"), status: "error" });
-    expect(screen.getByPlaceholderText(/write a message/i)).toBeDisabled();
+    expect(screen.getByPlaceholderText(/message budgie/i)).toBeDisabled();
   });
 
   it("restores saved messages and draft from localStorage on mount", async () => {
@@ -285,7 +283,7 @@ describe("ChatView", () => {
 
     const { setMessages } = renderChat();
     await waitFor(() => expect(setMessages).toHaveBeenCalledWith(saved));
-    expect(screen.getByPlaceholderText(/write a message/i)).toHaveValue(
+    expect(screen.getByPlaceholderText(/message budgie/i)).toHaveValue(
       "half typed",
     );
   });
@@ -306,7 +304,7 @@ describe("ChatView", () => {
 
   it("persists the input draft as the user types", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/write a message/i);
+    const input = screen.getByPlaceholderText(/message budgie/i);
 
     await userEvent.type(input, "spending");
     await waitFor(() => {
@@ -334,6 +332,7 @@ describe("ChatView", () => {
   it("hides the clear button when there are no messages", () => {
     renderChat();
     expect(screen.queryByRole("button", { name: /clear chat/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /new chat/i })).toBeInTheDocument();
   });
 
   it("auto-downgrades to the lite model and regenerates on a quota error", async () => {
@@ -381,7 +380,7 @@ describe("ChatView", () => {
       "Gemini 3.5 Flash Lite",
     );
 
-    const input = screen.getByPlaceholderText(/write a message/i);
+    const input = screen.getByPlaceholderText(/message budgie/i);
     await userEvent.type(input, "hello{enter}");
     expect(defaultChat.sendMessage).toHaveBeenCalledWith(
       { text: "hello" },

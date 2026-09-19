@@ -65,7 +65,7 @@ describe("BudgetsList — empty state", () => {
 });
 
 describe("BudgetsList — rows", () => {
-  it("renders category label, period label, limit and spent", () => {
+  it("renders category label, period label, limit and remaining", () => {
     render(
       <BudgetsList
         budgets={[budget]}
@@ -76,17 +76,30 @@ describe("BudgetsList — rows", () => {
     expect(screen.getByText("Food & Drink")).toBeInTheDocument();
     expect(screen.getByText("Monthly")).toBeInTheDocument();
     expect(screen.getByText("Rp 500.000.00")).toBeInTheDocument();
-    expect(screen.getByText("Rp 120.000.00 spent")).toBeInTheDocument();
+    expect(screen.getByText("Rp 380.000.00 left")).toBeInTheDocument();
+  });
+
+  it("renders the row as a white card", () => {
+    render(
+      <BudgetsList
+        budgets={[budget]}
+        spentByCategory={{ FoodAndDrink: 120000 }}
+        addTrigger={null}
+      />,
+    );
+    const card = screen.getByRole("button", { name: /food & drink/i });
+    expect(card.className).toContain("bg-white");
+    expect(card.className).toContain("rounded-[35px]");
   });
 
   it("treats a missing spentByCategory entry as 0 spent", () => {
     render(
       <BudgetsList budgets={[budget]} spentByCategory={{}} addTrigger={null} />,
     );
-    expect(screen.getByText("Rp 0.00 spent")).toBeInTheDocument();
+    expect(screen.getByText("Rp 500.000.00 left")).toBeInTheDocument();
   });
 
-  it("colors the progress bar red when over budget", () => {
+  it("colors the progress bar red and shows the over amount when over budget", () => {
     render(
       <BudgetsList
         budgets={[overBudget]}
@@ -97,6 +110,7 @@ describe("BudgetsList — rows", () => {
     const bar = document.querySelector('[style*="width"]') as HTMLElement;
     expect(bar).not.toBeNull();
     expect(bar.className).toContain("bg-[#D8000C]");
+    expect(screen.getByText("Over Rp 50.000.00")).toBeInTheDocument();
   });
 
   it("clamps the progress bar width to 100%", () => {

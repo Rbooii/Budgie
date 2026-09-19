@@ -1,35 +1,41 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+
+function timeOfDayPhrase(hour: number): string {
+  if (hour >= 5 && hour < 12) return "this morning";
+  if (hour >= 12 && hour < 17) return "this afternoon";
+  if (hour >= 17 && hour < 22) return "this evening";
+  return "this late night";
+}
 
 export function ChatEmptyState({
-  userName,
   suggestions,
   onPick,
 }: {
-  userName: string;
   suggestions: string[];
   onPick: (text: string) => void;
 }) {
+  const [phrase, setPhrase] = useState("");
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    Promise.resolve().then(() => setPhrase(timeOfDayPhrase(hour)));
+  }, []);
+
   return (
-    <div className="flex flex-col items-center text-center pt-12 pb-6 px-4">
-      <div className="w-12 h-12 rounded-full bg-[#F2F2F2] flex items-center justify-center text-black/30 mb-4">
-        <MessageCircle className="w-6 h-6" />
-      </div>
-      <p className="text-lg font-semibold tracking-tight">
-        Hi {userName}, ask me anything about your money
+    <div className="flex flex-col items-center text-center px-4 pt-16 pb-6">
+      <p className="font-serif text-[34px] leading-tight text-black max-w-md">
+        How can I help you{phrase ? ` ${phrase}` : ""}?
       </p>
-      <p className="text-sm text-black/40 mt-1 max-w-sm">
-        I can summarize your accounts, transactions, budgets, and
-        subscriptions — or record a transaction for you.
-      </p>
-      <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-md">
-        {suggestions.map((s) => (
+
+      <div className="mt-7 flex flex-col items-center gap-2.5">
+        {suggestions.slice(0, 3).map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => onPick(s)}
-            className="text-sm text-black/70 bg-[#F2F2F2] hover:bg-[#E9E9E9] rounded-full px-4 py-2 transition active:scale-[0.98]"
+            className="h-10 rounded-full border border-black/10 bg-white px-[18px] text-sm font-medium text-black/60 transition hover:bg-[#FAFAFA] active:scale-[0.98]"
           >
             {s}
           </button>
