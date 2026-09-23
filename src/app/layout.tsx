@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -19,6 +19,14 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
 });
+
+// `viewport-fit=cover` is what makes `env(safe-area-inset-*)` non-zero on iOS,
+// so the fixed mobile tab bar can clear the home indicator.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),

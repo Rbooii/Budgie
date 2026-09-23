@@ -191,68 +191,83 @@ facts, and every footer/nav link resolves to a real page or section.
 
 ## 17. Chat UI (auth-gated `/chat`)
 
-`src/components/chat/` is the Budgie AI assistant surface (`ChatView` in
-`src/app/chat/page.tsx` via `PageShell`). The visual language mirrors the iOS
-app's chat (iMessage + Cash App register): iMessage tails, a serif greeting,
-circle header buttons, and compact tool-result cards. The web palette stays in
-force — brand green `#00C610` (user bubble, progress), `#F2F2F2` surfaces, the
-3 semantic tints (`#1F9B29` income / `#D8000C` expense / `#B25B00` transfer),
-`tabular-nums`, `formatRupiah`, motion ≤200ms `ease-out` (`stepReveal`),
-`motion-reduce` respected.
+`src/components/chat/` is the Budgie AI assistant surface. The register is
+**ChatGPT/Claude-calmed on Budgie tokens**: full-bleed column, quiet header,
+functional prompt cards, assistant prose with hover actions, and a model-aware
+composer. The web palette stays in force — brand green `#00C610` (user bubble,
+send, streaming caret), `#F2F2F2` surfaces, the 3 semantic tints (`#1F9B29`
+income / `#D8000C` expense / `#B25B00` transfer), `tabular-nums`,
+`formatRupiah`, motion ≤200ms `ease-out`, `motion-reduce` respected.
 
-### Layout
+### Layout — full-bleed (`PageShell flush`)
+
+`/chat` renders `<PageShell flush>` (no page padding, `h-[100dvh]
+overflow-hidden`, mobile tab-bar clearance via `--app-tabbar-h`) directly into
+`<ChatView>`. There is **no `AccountTab` and no page `<h1>`** on this route —
+the chat owns the viewport, like Claude/ChatGPT. `ChatView` is
+`mx-auto flex h-full w-full max-w-3xl flex-col`:
 
 ```
-mx-auto w-full max-w-3xl flex-col (viewport-fitted height)
-├─ header: [New chat ○] [centered model menu] [Clear ○ when messages]
-├─ scroll thread (flex-1 min-h-0 overflow-y-auto, chat-scroll scrollbar)
-│   └─ feed: gap-3.5 — empty state / bubbles / thinking / tool cards / typing
-├─ error surface (only in the error state)
-└─ composer: lighter-model notice + white rounded-[26px] card + send button
+├─ header (shrink-0): app-icon tile + "Budgie Assistant" + subtitle + [New chat ○]
+├─ thread (relative flex-1 min-h-0)
+│   ├─ .chat-scroll overflow-y-auto — the only scroll area
+│   │   └─ role="log" aria-live="polite" feed: gap-4 — empty state / bubbles /
+│   │      thinking / tool cards / typing
+│   └─ "Latest" pill (absolute bottom-4 center) when scrolled >56px from bottom
+└─ composer (shrink-0): error callout / lighter-model notice + ChatInput +
+   "Budgie can make mistakes…" caption
 ```
 
-The column height is measured at runtime (`ChatView` reads its
-`getBoundingClientRect().top` and sets `height: calc(100dvh - top - bottomPad)`,
-re-measuring on resize) — the page never scrolls, the thread is the only scroll
-area. The composer is **fixed at the bottom of the column** (outside the scroll
-area), exactly like iOS.
+The old runtime `getBoundingClientRect` height measuring is gone — the shell
+owns the height, so the page never scrolls.
 
 ### Header
 
-`grid grid-cols-[40px_1fr_40px]`:
-- **New chat** — 40px white circle (`border-black/[0.06]` + soft shadow),
-  `SquarePen` icon; clears the conversation.
-- **Model menu** (`ChatModelMenu`) — centered label + `ChevronDown`; opens a
-  `w-44 rounded-2xl border bg-white shadow-xl` panel listing `MODEL_CHAIN`
-  with a `Check` on the active model. `aria-label="Select model. Current: …"`.
-- **Clear chat** — the same circle with `Trash2`, only when messages exist.
+App-icon mark (`/android-chrome-192x192.png`, 30px `rounded-[9px]`) + 14px
+semibold "Budgie Assistant" + 11px `text-black/40` subtitle ("Ask about your
+money or log a transaction"). Right: a single 36px circle button —
+`SquarePen` **New chat** (`aria-label="New chat"`). The old duplicate Clear
+button was removed — both actions cleared the same conversation.
 
 ### Empty state (`ChatEmptyState`)
 
-Serif (`font-serif`) 34px "How can I help you this morning/afternoon/evening/
-late night?" (computed post-mount so SSR never mismatches), then the first
-**three** iOS suggestions as white capsule chips (`h-10 rounded-full
-border-black/10 text-sm font-medium text-black/60`). Tapping a chip sends
-immediately.
+Centered (`min-h-full justify-center`): 44px `bg-[#00C610]/10` brand tile with
+`Sparkles`, then `text-2xl font-semibold tracking-tight`
+**"Hi {firstName}, how can I help you this morning/afternoon/evening/late
+night?"** (time-of-day computed post-mount; `userName` comes from the RSC).
+Subtitle: "Ask about your balances, spending and budgets — or record a
+transaction in plain words."
+
+Below, the four suggestions become **functional prompt cards**
+(`grid sm:grid-cols-2 gap-2.5 max-w-xl`): `rounded-[20px] border
+border-black/[0.07] bg-white p-3.5 text-left`, 36px tinted icon tile + the
+prompt itself as a 14px semibold title + a 12px `text-black/40` hint
+(TrendingUp/red "See where your money went", Wallet/green "Accounts and
+totals", PiggyBank/brown "How much is left to spend", Plus "Log an expense in
+plain words"). No serif greeting, no stacked capsules.
 
 ### Bubbles & states
 
 | Element | Style |
 | ------- | ----- |
-| User bubble | right-aligned, `max-w-[85%] sm:max-w-[300px]`, `rounded-[20px] rounded-br-[6px] bg-[#00C610] px-4 py-2.5 text-base text-white` (iMessage tail) |
-| Assistant text | full width, no bubble, `text-base leading-relaxed`, `whitespace-pre-wrap` |
-| Message gap | `gap-3.5` |
-| Typing | white bubble with tail (`rounded-[20px] rounded-tl-[6px]`, soft shadow), three 7px `bg-black/30` dots on the `typingPulse` keyframe, `role="status"` |
-| Thinking (`ChatThinking`) | streaming: `Loader2` + "Thinking…" 13px; done: chevron + "Thought for a moment" toggle → plain `font-mono text-[13px] text-black/45` reasoning text (no box) |
-| Tool running (`ChatToolStatus`) | `rounded-full bg-[#F2F2F2] px-3.5 py-2.5 text-[13px] text-black/45` + brand spinner; per-tool labels ("Looking up your accounts…", "Fetching your transactions…", "Analyzing your money…", …) |
-| Tool error | `rounded-[16px] bg-[#D8000C]/10 text-[#D8000C]` + `AlertTriangle` + message |
-| Error surface | `rounded-[16px] bg-[#D8000C]/10 px-3.5 py-2.5` above the composer: `AlertTriangle` + "Something went wrong" + capsule "Retry" → `regenerate()` |
+| User bubble | right-aligned `max-w-[85%] sm:max-w-[340px] rounded-[20px] rounded-br-[6px] bg-[#00C610] px-4 py-2.5 text-[15px] text-white` (iMessage tail kept) |
+| Assistant | 24px `bg-[#00C610]/10` tile with `Sparkles` + full-width `text-[15px] leading-relaxed` prose, no bubble |
+| Message gap | `gap-4`; every message enters with `stepReveal` 180ms, `motion-reduce` off |
+| Actions | under an assistant message: **Copy** (clipboard → "Copied" for 1.5s) and **Regenerate** (last assistant message only, `aria-label="Regenerate response"`) — 11px ghost pills, `-ml-2` |
+| Streaming caret | 2px `bg-[#00C610]` pill appended to the last text part while `status === "streaming"` (`.chat-caret`, 1s blink, `motion-reduce` off) |
+| Typing | 24px brand tile + white bubble with tail, three 7px `bg-black/30` dots on `typingPulse`, `role="status" aria-label="Budgie is typing"` |
+| Thinking (`ChatThinking`) | streaming: `Loader2` + "Thinking…" 13px; done: a `bg-black/[0.03]` pill with chevron + "Thought for a moment" → plain `font-mono text-[13px]` reasoning |
+| Tool running (`ChatToolStatus`) | white `rounded-[16px]` card (`border-black/[0.06]`, soft shadow) + brand spinner + per-tool label |
+| Tool error | `rounded-[16px] bg-[#D8000C]/10 text-[#D8000C]` + `AlertTriangle` |
+| Error surface | `role="alert"` red callout above the composer: `AlertTriangle` + "Something went wrong" + capsule "Retry" → `regenerate()` |
+| Jump to latest | white capsule + `ArrowDown` + "Latest", `absolute bottom-4`, appears only when the user scrolls away (`scrollHeight - scrollTop - clientHeight >= 56`) |
 
 ### Tool result cards (`ChatToolResult`)
 
-Compact iOS-style card: `max-w-[310px] rounded-[16px] border border-black/[0.06]
-bg-white p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]`, header = 12px tool icon +
-13px semibold title, `stepReveal` in. Contents (small type, `tabular-nums`):
+`max-w-[440px] rounded-[20px] border border-black/[0.06] bg-white p-4
+shadow-[0_2px_8px_rgba(0,0,0,0.04)]`, header = 24px `rounded-[8px]`
+`bg-[#F2F2F2]` icon tile + 13px semibold title, `stepReveal` in. Contents
+(small type, `tabular-nums`) unchanged from the iOS port:
 - **Accounts** — "Total balance" 11px + 18px bold total, then name/balance rows.
 - **Transactions** — up to **6** rows (name 13px + "Category · Account" 11px,
   unsigned amount 13px semibold in the type tint), "+N more" caption; empty →
@@ -270,22 +285,26 @@ Cards are static (no navigation/sheets) and unknown tools render nothing.
 
 ### Composer (`ChatInput`)
 
-White `rounded-[26px] shadow-[0_6px_16px_rgba(0,0,0,0.06)]` card (no border):
-- Textarea `placeholder="Message Budgie…"`, `text-base`, auto-grows 1–5 lines
-  (`max-h-[120px]`), `px-[18px] pt-3.5`; `Enter` sends, `Shift+Enter` newline.
-- Bottom-right circular button (38px): dark `#171717` `ArrowUp` when there is
-  text, 20% opacity when empty, swaps to a `Square` stop while streaming;
-  disabled in the error state.
-- No voice input, no model selector, no disclaimer caption (iOS parity).
-- The lighter-model notice sits just above the card: `Info` 11px +
-  "Switched to a lighter model to stay within free limits."
+Bordered card (`rounded-[24px] border-black/10 bg-white`, deep soft shadow;
+focus deepens the hairline + a 4px `ring-black/[0.04]`):
+- Textarea `placeholder="Ask about your money…"`, `text-[15px]`, auto-grows
+  1–6 lines (`max-h-[160px]`), `px-4 pt-3.5`; `Enter` sends, `Shift+Enter`
+  newline.
+- Bottom row: **left = `ChatModelMenu`** — a 28px chip (`Sparkles` + model
+  label + `ChevronDown`, `aria-label="Select model. Current: …"`) whose panel
+  opens **upward** (`bottom-full mb-2`) listing `MODEL_CHAIN` with a `Check` on
+  the active model. **right = send**: 36px circle, `bg-[#00C610] text-white`
+  when sendable, `bg-black/[0.06] text-black/30` when empty, swaps to a dark
+  `Square` stop while streaming; disabled in the error state.
+- Caption below the card: 11px `text-black/35` "Budgie can make mistakes.
+  Double-check the important numbers."
 
 ### Persistence & Clear chat
 
 - Messages + draft persist in `localStorage`
   (`budgie.chat.{userId}.messages` / `.draft`); restored post-hydration.
-- Both header circle buttons clear the conversation, storage, and the model
-  choice; the model persists separately in `budgie.chat.{userId}.model` (12h).
+- **New chat** clears the conversation, storage, and the model choice; the
+  model persists separately in `budgie.chat.{userId}.model` (12h).
 - **Auto-downgrade** — on a rate-limit error the client regenerates with
   `gemini-3.5-flash-lite` and shows the notice (see ARCHITECTURE.md §22).
 
@@ -295,3 +314,46 @@ White `rounded-[26px] shadow-[0_6px_16px_rgba(0,0,0,0.06)]` card (no border):
 - Icons only from `lucide-react`; no new colors beyond the tokens above.
 - The time-of-day greeting must not be computed during SSR; compute it in an
   effect.
+- Never re-introduce a second clear button, a serif greeting, or a page
+  `AccountTab`/`h1` on `/chat`.
+
+## 18. App Shell — Mobile Tab Bar, Graph Draw-in, Skeletons
+
+### Mobile bottom tab bar (`Sidebar`)
+
+The mobile tab bar is `fixed bottom-0` with height
+`--app-tabbar-h: calc(3.5rem + env(safe-area-inset-bottom, 0px))`
+(`globals.css`), `pb-[env(safe-area-inset-bottom,0px)]`, frosted
+`bg-white/90 backdrop-blur-xl` and a `border-black/[0.06]` hairline. The active
+tab is a `bg-[#00C610]/10` pill behind a green icon + green label
+(`aria-current="page"`); inactive tabs are `text-black/45`. `viewportFit:
+"cover"` is set in `src/app/layout.tsx` — without it `env(safe-area-inset-*)`
+is always `0` on iOS and the bar collides with the home indicator.
+
+Pages clear the bar with the same token:
+`pb-[calc(var(--app-tabbar-h)_+_1.5rem)] md:pb-10` (`PageShell` non-flush) or
+`PageShell flush` for `h-[100dvh]` surfaces (`/chat`). Never hardcode a bottom
+padding for the bar — use the token.
+
+### Chart draw-in (no dash-based draws)
+
+Reveal animations on SVG must not use `stroke-dasharray` + `pathLength` while
+the path also sets `vector-effect="non-scaling-stroke"`: dash lengths resolve
+in host space under that vector effect, so `stroke-dasharray: 1` renders the
+line **dotted** (the old account-sparkline bug).
+
+- `Sparkline` (`sparkline.tsx`) — iOS `Sparkline.swift` parity: measures its
+  container, draws in real pixel geometry (`viewBox 0 0 w 44`, 2.5px stroke),
+  and reveals via the `.spark-reveal` `clip-path` wipe (0.7s ease-out,
+  `motion-reduce` off).
+- `AssetGrowthCard` bars use the `.bar-grow` `scaleY` transform instead.
+
+### Skeletons (`PageSkeleton`)
+
+`src/components/page-skeleton.tsx` takes a `variant`
+(`dashboard | transactions | budget | profile | chat | add-transaction`) and
+mirrors that route's real geometry — the AccountTab row, the green balance
+card, account-card grid, list rows, the chat header/thread/composer. Blocks are
+`bg-[#F2F2F2] animate-pulse motion-reduce:animate-none` with white inner bars
+on cards, entire tree `aria-hidden`. Add a variant when a new route appears —
+never reuse the generic rows shape.

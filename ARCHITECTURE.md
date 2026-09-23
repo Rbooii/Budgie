@@ -1658,11 +1658,12 @@ else:
 | ---- | ---- |
 | `src/components/balance-section.tsx` | Net worth hero **card** (iOS-parity). `rounded-[35px] bg-[#00C610] p-6 text-white`. Header: "Balance" label + delta (white `text-xs font-semibold tabular-nums`) + eye-toggle (28px white circle, `eyeFlip` animation). Delta: `deltaPct` as `+X.X% From last Month`, or `+Rp … this month` (absolute fallback when last month's base was 0) — always white on the green fill, no green/red text. Amount: `text-3xl md:text-4xl font-bold tracking-tight` + `<MaskedBalance mask="long" />`. |
 | `src/components/account-card.tsx` | **`"use client"`**. iOS-parity account card (`rounded-[35px]` white card, `min-h-[180px] flex flex-col gap-3`, hover shadow, whole card opens the edit dialog). Face: name + `ChevronRight`, then the account sparkline (`h-11`), then `MaskedBalance mask="short"` + "↑/↓ x.x% today" (`text-xs text-black/50`) for `investment`/`stocks` only. No type Badge / "Available Balance" label on the face (the Badge still appears inside the dialog). |
-| `src/components/sparkline.tsx` | Pure SVG sparkline (`viewBox 0 0 100 44`, `preserveAspectRatio="none"`, `vectorEffect="non-scaling-stroke"`, 2.5px round stroke, `aria-hidden`). >1 point → a line through `values`; 0–1 points → a dashed flat line at 60% height, 30% opacity. Draw-in via the `.spark-draw` class (`pathLength=1`, 0.9s ease-out, reduced-motion gated). The color is chosen by the caller (`computeSparklineTrend` → `#00C610` up / `#D8000C` down / `#B0B0B0` flat). |
+| `src/components/sparkline.tsx` | **`"use client"`** (measures its container). iOS `Sparkline.swift` parity: a `ResizeObserver` measures the wrapper and the path is drawn in **real pixel geometry** (`viewBox 0 0 w 44`, `inset = 2.5`, `width` defaults to 100 for SSR/jsdom), 2.5px round stroke, `aria-hidden`. >1 point → a line through `values`; 0–1 points → a dashed flat line at 60% height, 30% opacity. Draw-in via the `.spark-reveal` **`clip-path` wipe** on the `<svg>` (0.7s ease-out, reduced-motion gated) — never `stroke-dasharray`/`pathLength` here (host-space dashes under `non-scaling-stroke` rendered it dotted). The color is chosen by the caller (`computeSparklineTrend` → `#00C610` up / `#D8000C` down / `#B0B0B0` flat). |
 | `src/components/cashflow-card.tsx` | Donut chart (pure SVG, no library). `title` prop (default "Today's Cashflow"). Two arcs (income green gradient, expense red gradient) with 20° gap, `radius=64`, rendered `w-56 h-56`. Center: `+/- N mil` (color by sign) + rupiah. Breakdown rows: `bg-[#F2F2F2] rounded-[20px]` tiles. |
 | `src/components/asset-growth-card.tsx` | iOS-parity bar chart (pure SVG). **`"use client"`** (hover state). Always 12 slots with single-letter labels (`J F M A M J J A S O N D`), `barW=16px`, gap ≈8px. **Zero-baseline scale**: `height = value / max(starting, all growth) * chartH`; recorded active bars min 12px, inactive min 6px, future months a 6px `#E5E5E5` bar at 35% opacity. Colors: `#00C610` up / `#B25B00` flat / `#D8000C` down (vs previous month); inactive `#E5E5E5`. `rx` capped at `renderedH/2`. **YTD pill**: `Sparkles` + "YTD" + signed **absolute Rupiah** (`+Rp …`) on a `#F2F2F2` capsule, green/red by sign. Hover/click tooltip (`rounded-[12px]`, month-year + `formatRupiah`), tap toggles on mobile; future months ignore hover. Bars animate in via the `.bar-grow` class (0.6s ease-out, reduced-motion gated). No hero total — net worth lives in the balance card. Legend (Growth/Stable/Decline, 7px dots). Empty state: "No transactions yet" caption. |
 | `src/components/quick-insight-empty-state.tsx` | `"use client"`. §7.5 "Nothing exists yet" empty state shown when the user has no transactions. `Sparkles` icon + "No insight yet" + helper desc + `success` "Add transaction" CTA → `/transactions/add`. |
-| `src/components/sidebar.tsx` | Desktop: `md:sticky md:top-0 self-start` — pins to viewport top while content scrolls (stays in flex flow, no layout break). Mobile: fixed bottom tab bar (unchanged). |
+| `src/components/sidebar.tsx` | Desktop: `md:sticky md:top-0 self-start` — pins to viewport top while content scrolls (stays in flex flow, no layout break). Mobile: fixed bottom tab bar at `h-[var(--app-tabbar-h)]` (`calc(3.5rem + env(safe-area-inset-bottom, 0px))`, frosted `bg-white/90 backdrop-blur-xl`, `data-mobile-tabbar`) with a `bg-[#00C610]/10` pill + green icon/label for the active tab and `aria-current="page"`. `viewportFit: "cover"` in `src/app/layout.tsx` is what makes the `env()` inset non-zero on iOS; pages clear the bar with the shared token (never a hardcoded padding). |
+| `src/components/page-skeleton.tsx` | Per-route `Suspense` fallback with a `variant` prop (`dashboard` / `transactions` / `budget` / `profile` / `chat` / `add-transaction`) that mirrors that page's real geometry (AccountTab row, green balance card, account-card grid, list rows, chat header/thread/composer). `bg-[#F2F2F2] animate-pulse motion-reduce:animate-none`, whole tree `aria-hidden`. |
 
 ---
 
@@ -2090,10 +2091,24 @@ HTTP shape** than the REST resources: a dedicated Next.js Route Handler
   `ValidatedContext`. It's a thin HTTP glue: better-auth session check →
   `streamText` → streamed Response.
 
+### Layout (full-bleed)
+
+`/chat` is the only route using `<PageShell flush>`: the shell drops all
+vertical padding and pins the content to `h-[100dvh] overflow-hidden` with the
+`--app-tabbar-h` clearance, so `ChatView` becomes a three-part flex column
+(header / `flex-1 min-h-0` scroll thread / composer) and the **page never
+scrolls** — the message list is the only scroll area. `AccountTab` and the
+`<h1>` were removed from this route (Claude/ChatGPT anatomy); `userName` is
+passed from the RSC for the empty-state greeting. The former runtime
+`getBoundingClientRect` height measuring is gone. The composer's model chip
+(`ChatModelMenu`, opens upward) replaces the old centered header menu, and
+"New chat" is the single header action.
+
 ### Architecture
 
 ```
-src/app/chat/page.tsx            # RSC: auth gate + <PageShell><ChatView/></PageShell>
+src/app/chat/page.tsx            # RSC: auth gate + <PageShell flush><ChatView userId userName/></PageShell>
+                                 #   no AccountTab / page h1 — the chat owns the viewport
 src/components/chat/             # "use client" chat UI (see §17 UI_DESIGN.md)
 src/app/api/chat/route.ts        # POST handler: session → streamText → toUIMessageStreamResponse
 src/lib/chat-models.ts           # MODEL_CHAIN / resolveModel / isRateLimitError / thinkingConfigFor (client + server)
@@ -2153,10 +2168,11 @@ to a cheaper model on a quota error:
 - `thinkingConfigFor(model)` — primary keeps streaming reasoning for the
   Thinking UI (budget capped at 256); the lite model disables it entirely
   (saves reasoning tokens).
-- The header shows the **active model** at all times: `modelLabel(model)`
+- The composer shows the **active model** at all times: `modelLabel(model)`
   (`MODEL_LABELS` in `src/lib/chat-models.ts` → "Gemini 2.5 Flash" /
-  "Gemini 3.5 Flash Lite") renders in the centered `ChatModelMenu`, which also
-  lets the user switch manually (see UI_DESIGN §17).
+  "Gemini 3.5 Flash Lite") renders in the `ChatModelMenu` chip (bottom-left of
+  the composer card, panel opens upward), which also lets the user switch
+  manually (see UI_DESIGN §17).
 
 ### "AI call optimized" measures
 

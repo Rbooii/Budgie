@@ -11,7 +11,7 @@ export function ChatThinking({ part }: { part: ReasoningUIPart }) {
   if (streaming) {
     return (
       <div className="flex items-center gap-2 text-[13px] font-medium text-black/45">
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#1F9B29]" />
         <span>Thinking…</span>
       </div>
     );
@@ -22,7 +22,7 @@ export function ChatThinking({ part }: { part: ReasoningUIPart }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-[13px] font-medium text-black/45 transition hover:text-black/70"
+        className="flex items-center gap-1.5 rounded-full bg-black/[0.03] px-2.5 py-1 text-[12px] font-medium text-black/45 transition hover:bg-black/[0.06] hover:text-black/70"
       >
         {open ? (
           <ChevronDown className="w-3 h-3" />

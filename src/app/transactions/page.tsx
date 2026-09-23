@@ -11,7 +11,7 @@ import { TransactionsView } from "@/components/transactions-view";
 export default function TransactionsPage() {
   return (
     <PageShell>
-      <Suspense fallback={<PageSkeleton rows={5} />}>
+      <Suspense fallback={<PageSkeleton variant="transactions" />}>
         <TransactionsContent />
       </Suspense>
     </PageShell>

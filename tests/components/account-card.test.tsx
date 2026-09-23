@@ -85,17 +85,17 @@ describe("AccountCard", () => {
       const { container } = render(
         <AccountCard account={ACCOUNT} series={[1000, 1200, 1500]} />,
       );
-      expect(container.querySelector("path.spark-draw")).not.toBeNull();
+      expect(container.querySelector("svg.spark-reveal path")).not.toBeNull();
     });
 
     it("colors the sparkline green when the series trends up", () => {
       const { container } = render(<AccountCard account={ACCOUNT} series={[1000, 1500]} />);
-      expect(container.querySelector("path.spark-draw")!.getAttribute("stroke")).toBe("#00C610");
+      expect(container.querySelector("svg.spark-reveal path")!.getAttribute("stroke")).toBe("#00C610");
     });
 
     it("colors the sparkline red when the series trends down", () => {
       const { container } = render(<AccountCard account={ACCOUNT} series={[1500, 1000]} />);
-      expect(container.querySelector("path.spark-draw")!.getAttribute("stroke")).toBe("#D8000C");
+      expect(container.querySelector("svg.spark-reveal path")!.getAttribute("stroke")).toBe("#D8000C");
     });
 
     it("shows today's change for investment accounts", () => {

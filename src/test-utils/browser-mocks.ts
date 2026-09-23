@@ -59,6 +59,54 @@ export function stubIntersectionObserver(): IOController {
   };
 }
 
+export interface MockROInstance {
+  callback: ResizeObserverCallback;
+  observed: Element[];
+  disconnect: ReturnType<typeof vi.fn>;
+}
+
+export function stubResizeObserver(): {
+  instances: MockROInstance[];
+  trigger: (target: Element) => void;
+} {
+  const instances: MockROInstance[] = [];
+
+  class MockResizeObserver {
+    callback: ResizeObserverCallback;
+    observed: Element[] = [];
+    disconnect = vi.fn();
+
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback;
+      instances.push(this as unknown as MockROInstance);
+    }
+
+    observe(el: Element) {
+      this.observed.push(el);
+    }
+
+    unobserve(el: Element) {
+      this.observed = this.observed.filter((e) => e !== el);
+    }
+  }
+
+  vi.stubGlobal("ResizeObserver", MockResizeObserver);
+
+  return {
+    get instances() {
+      return instances;
+    },
+    trigger(target: Element) {
+      for (const inst of instances) {
+        inst.callback(
+          [{ target } as ResizeObserverEntry],
+          inst as unknown as ResizeObserver,
+        );
+      }
+    },
+  };
+}
+
 export interface MockMediaQueryList {
   matches: boolean;
   media: string;

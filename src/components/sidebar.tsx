@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRightLeft, House, MessageCircle, PiggyBank } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 type SidebarItem = {
   icon: React.ReactNode;
@@ -62,20 +63,35 @@ export function Sidebar() {
         </nav>
       </aside>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-black/5 flex">
+      {/* Mobile bottom tab bar — height is the shared `--app-tabbar-h` token
+          (includes `env(safe-area-inset-bottom)`), so pages clear it exactly. */}
+      <nav
+        data-mobile-tabbar
+        className="md:hidden fixed bottom-0 inset-x-0 z-30 h-[var(--app-tabbar-h)] pb-[env(safe-area-inset-bottom,0px)] bg-white/90 backdrop-blur-xl border-t border-black/[0.06] flex items-stretch"
+      >
         {sidebarData.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex-1 flex flex-col items-center gap-1 py-2.5 transition active:scale-95 ${
-                isActive ? "text-[#00C610]" : "text-black/50"
-              }`}
+              aria-current={isActive ? "page" : undefined}
+              className="flex-1 flex flex-col items-center justify-center gap-1 pt-1.5 pb-1 transition active:scale-95"
             >
-              {item.icon}
-              <span className={`text-[10px] leading-none ${isActive ? "font-semibold" : ""}`}>
+              <span
+                className={cn(
+                  "flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-200",
+                  isActive ? "bg-[#00C610]/10 text-[#00C610]" : "text-black/45",
+                )}
+              >
+                {item.icon}
+              </span>
+              <span
+                className={cn(
+                  "text-[10px] leading-none transition-colors duration-200",
+                  isActive ? "font-semibold text-[#00C610]" : "text-black/45",
+                )}
+              >
                 {item.label}
               </span>
             </Link>

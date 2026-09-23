@@ -20,7 +20,7 @@ import { startOfMonth } from "@/lib/budget";
 export default function BudgetPage() {
   return (
     <PageShell>
-      <Suspense fallback={<PageSkeleton rows={4} />}>
+      <Suspense fallback={<PageSkeleton variant="budget" />}>
         <BudgetContent />
       </Suspense>
     </PageShell>

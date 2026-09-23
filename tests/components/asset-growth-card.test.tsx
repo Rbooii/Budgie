@@ -77,6 +77,30 @@ describe("AssetGrowthCard", () => {
     expect(bottom).toBeCloseTo(100, 5);
   });
 
+  it("treats sub-cent month-over-month moves as stable (iOS parity)", () => {
+    const { container } = render(
+      <AssetGrowthCard
+        {...defaultProps}
+        data={[
+          { month: 0, value: 1000000 },
+          { month: 1, value: 1000000.004 },
+        ]}
+        currentMonth={1}
+        activeMonths={[true, true, false, false, false, false, false, false, false, false, false, false]}
+      />,
+    );
+    const rects = Array.from(container.querySelectorAll("rect"));
+    expect(rects[1].getAttribute("fill")).toBe("#B25B00");
+  });
+
+  it("ignores hover on future months", () => {
+    const { container } = render(<AssetGrowthCard {...defaultProps} />);
+    const groups = Array.from(container.querySelectorAll("g"));
+    const future = groups[11];
+    future.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    expect(container.querySelector(".absolute")).toBeNull();
+  });
+
   it("shows an empty-state caption when hasTransactions is false", () => {
     render(
       <AssetGrowthCard

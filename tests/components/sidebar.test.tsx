@@ -57,4 +57,25 @@ describe("Sidebar", () => {
     expect(desktopAside).not.toBeNull();
     expect(mobileNav).not.toBeNull();
   });
+
+  it("clears the iOS safe area on the mobile tab bar", () => {
+    const { container } = render(<Sidebar />);
+    const mobileNav = container.querySelector("nav.md\\:hidden")!;
+    expect(mobileNav.hasAttribute("data-mobile-tabbar")).toBe(true);
+    expect(mobileNav.className).toContain("h-[var(--app-tabbar-h)]");
+    expect(mobileNav.className).toContain("pb-[env(safe-area-inset-bottom,0px)]");
+  });
+
+  it("marks the active mobile tab and leaves the others quiet", () => {
+    const { container } = render(<Sidebar />);
+    const mobileNav = container.querySelector("nav.md\\:hidden")!;
+    const links = Array.from(mobileNav.querySelectorAll("a"));
+    const active = links.find((l) => l.getAttribute("href") === "/transactions")!;
+    const inactive = links.find((l) => l.getAttribute("href") === "/dashboard")!;
+    expect(active.getAttribute("aria-current")).toBe("page");
+    expect(active.textContent).toContain("Transactions");
+    expect(active.querySelector("span")!.className).toContain("bg-[#00C610]/10");
+    expect(inactive.getAttribute("aria-current")).toBeNull();
+    expect(inactive.querySelector("span")!.className).not.toContain("bg-[#00C610]/10");
+  });
 });

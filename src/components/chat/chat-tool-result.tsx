@@ -50,9 +50,11 @@ function ToolCard({
 }) {
   const Icon = TOOL_ICONS[toolName] ?? Plus;
   return (
-    <div className="w-full max-w-[310px] rounded-[16px] border border-black/[0.06] bg-white p-3.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex flex-col gap-2.5 animate-[stepReveal_0.2s_ease-out]">
-      <div className="flex items-center gap-1.5">
-        <Icon className="w-3 h-3 text-black/45" />
+    <div className="flex w-full max-w-[440px] flex-col gap-3 rounded-[20px] border border-black/[0.06] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] animate-[stepReveal_0.2s_ease-out]">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-[8px] bg-[#F2F2F2]">
+          <Icon className="w-3.5 h-3.5 text-black/50" />
+        </span>
         <p className="text-[13px] font-semibold text-black">
           {TOOL_TITLES[toolName] ?? toolName}
         </p>

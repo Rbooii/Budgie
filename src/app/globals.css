@@ -4,6 +4,9 @@
   --background: #ffffff;
   --foreground: #171717;
   color-scheme: light;
+  /* Mobile bottom tab bar height incl. the iOS home-indicator inset.
+     Keep in sync with the `h-[var(--app-tabbar-h)]` in sidebar.tsx. */
+  --app-tabbar-h: calc(3.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 html {
@@ -146,19 +149,31 @@ body {
   animation: barGrow 0.6s ease-out 0.1s both;
 }
 
-@keyframes sparkDraw {
-  from {
-    stroke-dashoffset: 1;
+@keyframes caretBlink {
+  0%,
+  100% {
+    opacity: 1;
   }
-  to {
-    stroke-dashoffset: 0;
+  50% {
+    opacity: 0;
   }
 }
 
-.spark-draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: sparkDraw 0.9s ease-out both;
+.chat-caret {
+  animation: caretBlink 1s steps(1, end) infinite;
+}
+
+@keyframes sparkReveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.spark-reveal {
+  animation: sparkReveal 0.7s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -166,8 +181,11 @@ body {
     animation: none;
   }
 
-  .spark-draw {
+  .spark-reveal {
     animation: none;
-    stroke-dashoffset: 0;
+  }
+
+  .chat-caret {
+    animation: none;
   }
 }

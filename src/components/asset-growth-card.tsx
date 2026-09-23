@@ -56,9 +56,9 @@ export default function AssetGrowthCard({
 
   function barColor(month: number, value: number) {
     const prev = month === 0 ? startingValue : valueByMonth.get(month - 1) ?? startingValue;
-    if (value > prev) return GROWTH_COLORS.up;
-    if (value < prev) return GROWTH_COLORS.down;
-    return GROWTH_COLORS.flat;
+    const delta = value - prev;
+    if (Math.abs(delta) < 0.005) return GROWTH_COLORS.flat;
+    return delta > 0 ? GROWTH_COLORS.up : GROWTH_COLORS.down;
   }
 
   const hoveredValue = hovered !== null ? valueByMonth.get(hovered) : undefined;
@@ -90,24 +90,25 @@ export default function AssetGrowthCard({
           {Array.from({ length: 12 }, (_, m) => m).map((m) => {
             const x = padX + slot * m + (slot - barW) / 2;
             const value = valueByMonth.get(m);
-            const isRecorded = hasTransactions && value !== undefined;
-            const isActive = isRecorded && activeMonths[m];
+            const isFuture = m > currentMonth;
+            const isRecorded = !isFuture && value !== undefined;
+            const isActive = hasTransactions && isRecorded && activeMonths[m];
             const isHovered = hovered === m;
 
             let barH: number;
             let color: string;
             let opacity: number;
-            if (!isRecorded) {
+            if (isFuture) {
               barH = 6;
               color = PLACEHOLDER_COLOR;
               opacity = 0.35;
             } else if (!isActive) {
-              barH = Math.max((value / maxValue) * chartH, 6);
+              barH = Math.max(((value ?? 0) / maxValue) * chartH, 6);
               color = PLACEHOLDER_COLOR;
               opacity = isHovered ? 1 : 0.85;
             } else {
-              barH = Math.max((value / maxValue) * chartH, 12);
-              color = barColor(m, value);
+              barH = Math.max((value! / maxValue) * chartH, 12);
+              color = barColor(m, value!);
               opacity = isHovered ? 1 : 0.85;
             }
 

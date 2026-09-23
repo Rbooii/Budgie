@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { ChatStatus } from "ai";
 import { ArrowUp, Square } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -11,9 +11,18 @@ type Props = {
   onSend: (text: string) => void;
   status: ChatStatus;
   stop: () => void;
+  /** Model picker rendered in the composer's bottom row. */
+  modelMenu?: ReactNode;
 };
 
-export function ChatInput({ input, setInput, onSend, status, stop }: Props) {
+export function ChatInput({
+  input,
+  setInput,
+  onSend,
+  status,
+  stop,
+  modelMenu,
+}: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const busy = status === "submitted" || status === "streaming";
@@ -24,7 +33,7 @@ export function ChatInput({ input, setInput, onSend, status, stop }: Props) {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "0px";
-    const next = Math.min(Math.max(el.scrollHeight, 24), 120);
+    const next = Math.min(Math.max(el.scrollHeight, 24), 160);
     el.style.height = `${next}px`;
   }, [input]);
 
@@ -35,7 +44,7 @@ export function ChatInput({ input, setInput, onSend, status, stop }: Props) {
   };
 
   return (
-    <div className="rounded-[26px] bg-white shadow-[0_6px_16px_rgba(0,0,0,0.06)]">
+    <div className="rounded-[24px] border border-black/10 bg-white shadow-[0_10px_30px_-16px_rgba(0,0,0,0.25)] transition focus-within:border-black/20 focus-within:ring-4 focus-within:ring-black/[0.04]">
       <textarea
         ref={textareaRef}
         value={input}
@@ -46,27 +55,32 @@ export function ChatInput({ input, setInput, onSend, status, stop }: Props) {
             submit();
           }
         }}
-        placeholder="Message Budgie…"
+        placeholder="Ask about your money…"
         aria-label="Prompt"
         rows={1}
         disabled={status === "error"}
-        className="w-full max-h-[120px] resize-none overflow-y-auto bg-transparent px-[18px] pt-3.5 text-base leading-6 text-black outline-none placeholder:text-black/40 disabled:opacity-60"
+        className="w-full max-h-[160px] resize-none overflow-y-auto bg-transparent px-4 pt-3.5 text-[15px] leading-6 text-black outline-none placeholder:text-black/35 disabled:opacity-60"
       />
-      <div className="flex justify-end px-3 pb-3 pt-1">
+      <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1">
+        {modelMenu ?? <span />}
         <button
           type="button"
           onClick={() => (busy ? stop() : submit())}
           disabled={status === "error" || !canSend}
           aria-label={busy ? "Stop generating" : "Send message"}
           className={cn(
-            "flex h-[38px] w-[38px] items-center justify-center rounded-full text-white transition active:scale-95",
-            canSend ? "bg-[#171717] hover:opacity-90" : "bg-[#171717]/20",
+            "flex h-9 w-9 items-center justify-center rounded-full transition active:scale-95",
+            busy
+              ? "bg-[#171717] text-white hover:opacity-90"
+              : canSend
+                ? "bg-[#00C610] text-white hover:opacity-90"
+                : "bg-black/[0.06] text-black/30",
           )}
         >
           {busy ? (
-            <Square className="w-[15px] h-[15px] fill-current" />
+            <Square className="w-[13px] h-[13px] fill-current" />
           ) : (
-            <ArrowUp className="w-[15px] h-[15px]" strokeWidth={2.5} />
+            <ArrowUp className="w-[16px] h-[16px]" strokeWidth={2.5} />
           )}
         </button>
       </div>

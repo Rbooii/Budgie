@@ -24,7 +24,7 @@ export function ChatToolCard({ part }: { part: ToolUIPart }) {
 
   if (part.state === "output-error") {
     return (
-      <div className="max-w-[310px] rounded-[16px] bg-[#D8000C]/10 px-3.5 py-2.5 flex items-start gap-2 text-[#D8000C] animate-[stepReveal_0.2s_ease-out]">
+      <div className="flex max-w-[440px] items-start gap-2 rounded-[16px] bg-[#D8000C]/10 px-3.5 py-2.5 text-[#D8000C] animate-[stepReveal_0.2s_ease-out]">
         <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
         <p className="text-[13px] font-medium">
           {part.errorText ?? "Something went wrong"}

@@ -28,7 +28,7 @@ import {
 export default function Dashboard() {
   return (
     <PageShell>
-      <Suspense fallback={<PageSkeleton rows={3} />}>
+      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
         <DashboardContent />
       </Suspense>
     </PageShell>

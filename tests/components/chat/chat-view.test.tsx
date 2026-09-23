@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const { mockUseChat } = vi.hoisted(() => ({
@@ -45,8 +45,8 @@ function mockChat(overrides: Record<string, unknown> = {}) {
 
 function renderChat(overrides: Record<string, unknown> = {}) {
   const mock = mockChat(overrides);
-  render(<ChatView userId={USER_ID} />);
-  return mock;
+  const view = render(<ChatView userId={USER_ID} userName="Arco Kurniawan" />);
+  return { ...mock, ...view };
 }
 
 const accountsOutput = {
@@ -93,22 +93,41 @@ beforeEach(() => {
 
 afterEach(() => {
   window.localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 describe("ChatView", () => {
-  it("shows the empty state with a greeting and the first three suggestions", () => {
+  it("shows the empty state with a greeting and all four prompt cards", () => {
     renderChat();
-    expect(screen.getByText(/how can i help you/i)).toBeInTheDocument();
-    expect(screen.getByText(/how much did i spend this month/i)).toBeInTheDocument();
+    expect(screen.getByText(/hi arco, how can i help/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/how much did i spend this month/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/what's my net worth/i)).toBeInTheDocument();
     expect(screen.getByText(/show my budgets/i)).toBeInTheDocument();
-    expect(screen.queryByText(/record that i bought coffee/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/record that i bought coffee/i)).toBeInTheDocument();
+    expect(screen.getByText(/see where your money went/i)).toBeInTheDocument();
   });
 
-  it("shows the active model in the header menu", () => {
+  it("renders a single New chat action and no redundant clear button", () => {
+    renderChat({ messages: assistantMessages() });
+    expect(screen.getAllByRole("button", { name: /new chat/i })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /clear chat/i })).toBeNull();
+  });
+
+  it("shows the active model in the composer menu", () => {
     renderChat();
     expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
       "Gemini 2.5 Flash",
+    );
+  });
+
+  it("sends the prompt text with the current model when a prompt card is clicked", async () => {
+    renderChat();
+    await userEvent.click(screen.getByText(/what's my net worth/i));
+    expect(defaultChat.sendMessage).toHaveBeenCalledWith(
+      { text: "What's my net worth?" },
+      { body: { model: PRIMARY_MODEL } },
     );
   });
 
@@ -124,20 +143,11 @@ describe("ChatView", () => {
     ).toBe(LITE_MODEL);
     expect(screen.queryByText(/switched to a lighter model/i)).toBeNull();
 
-    const input = screen.getByPlaceholderText(/message budgie/i);
+    const input = screen.getByPlaceholderText(/ask about your money/i);
     await userEvent.type(input, "hello{enter}");
     expect(defaultChat.sendMessage).toHaveBeenCalledWith(
       { text: "hello" },
       { body: { model: LITE_MODEL } },
-    );
-  });
-
-  it("sends the suggestion text with the current model when a chip is clicked", async () => {
-    renderChat();
-    await userEvent.click(screen.getByText(/what's my net worth/i));
-    expect(defaultChat.sendMessage).toHaveBeenCalledWith(
-      { text: "What's my net worth?" },
-      { body: { model: PRIMARY_MODEL } },
     );
   });
 
@@ -150,6 +160,53 @@ describe("ChatView", () => {
     expect(screen.getByText("Mandiri")).toBeInTheDocument();
     expect(screen.getAllByText("Rp 1.500.000.00").length).toBeGreaterThan(0);
     expect(screen.getByText("You have Rp 1.500.000.00 in total.")).toBeInTheDocument();
+  });
+
+  it("copies the assistant message to the clipboard", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    renderChat({ messages: assistantMessages() });
+    await userEvent.click(screen.getByRole("button", { name: /copy message/i }));
+
+    expect(writeText).toHaveBeenCalledWith(
+      "You have Rp 1.500.000.00 in total.",
+    );
+    expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument();
+  });
+
+  it("regenerates the last assistant message", async () => {
+    renderChat({ messages: assistantMessages() });
+    await userEvent.click(
+      screen.getByRole("button", { name: /regenerate response/i }),
+    );
+    expect(defaultChat.regenerate).toHaveBeenCalledWith({
+      body: { model: PRIMARY_MODEL },
+    });
+  });
+
+  it("does not offer regenerate while streaming", () => {
+    renderChat({ messages: assistantMessages(), status: "streaming" });
+    expect(
+      screen.queryByRole("button", { name: /regenerate response/i }),
+    ).toBeNull();
+  });
+
+  it("shows a streaming caret on the last text part", () => {
+    const { container } = renderChat({
+      messages: [
+        {
+          id: "a1",
+          role: "assistant",
+          parts: [{ type: "text", text: "Thinking out loud" }],
+        },
+      ],
+      status: "streaming",
+    });
+    expect(container.querySelector(".chat-caret")).not.toBeNull();
   });
 
   it("expands the reasoning text when the thinking toggle is clicked", async () => {
@@ -197,7 +254,7 @@ describe("ChatView", () => {
 
   it("sends a typed message on Enter with the current model and clears the input", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/message budgie/i);
+    const input = screen.getByPlaceholderText(/ask about your money/i);
 
     await userEvent.type(input, "hello budgie{enter}");
 
@@ -210,7 +267,7 @@ describe("ChatView", () => {
 
   it("does not send empty input", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/message budgie/i);
+    const input = screen.getByPlaceholderText(/ask about your money/i);
     await userEvent.type(input, "   {enter}");
     expect(defaultChat.sendMessage).not.toHaveBeenCalled();
   });
@@ -270,7 +327,33 @@ describe("ChatView", () => {
 
   it("disables the input while the chat is in error state", () => {
     renderChat({ error: new Error("boom"), status: "error" });
-    expect(screen.getByPlaceholderText(/message budgie/i)).toBeDisabled();
+    expect(screen.getByPlaceholderText(/ask about your money/i)).toBeDisabled();
+  });
+
+  it("shows a jump-to-latest pill when the user scrolls away and hides it on click", async () => {
+    const { container } = renderChat({ messages: assistantMessages() });
+    const scroller = container.querySelector(".chat-scroll") as HTMLElement;
+    Object.defineProperty(scroller, "scrollHeight", {
+      configurable: true,
+      value: 1000,
+    });
+    Object.defineProperty(scroller, "clientHeight", {
+      configurable: true,
+      value: 400,
+    });
+    scroller.scrollTop = 100;
+
+    fireEvent.scroll(scroller);
+    const pill = await screen.findByRole("button", { name: /latest/i });
+    expect(pill).toBeInTheDocument();
+
+    // jsdom has no smooth scrolling — simulate reaching the bottom.
+    await userEvent.click(pill);
+    scroller.scrollTop = 600;
+    fireEvent.scroll(scroller);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /latest/i })).toBeNull(),
+    );
   });
 
   it("restores saved messages and draft from localStorage on mount", async () => {
@@ -283,7 +366,7 @@ describe("ChatView", () => {
 
     const { setMessages } = renderChat();
     await waitFor(() => expect(setMessages).toHaveBeenCalledWith(saved));
-    expect(screen.getByPlaceholderText(/message budgie/i)).toHaveValue(
+    expect(screen.getByPlaceholderText(/ask about your money/i)).toHaveValue(
       "half typed",
     );
   });
@@ -304,7 +387,7 @@ describe("ChatView", () => {
 
   it("persists the input draft as the user types", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/message budgie/i);
+    const input = screen.getByPlaceholderText(/ask about your money/i);
 
     await userEvent.type(input, "spending");
     await waitFor(() => {
@@ -314,25 +397,19 @@ describe("ChatView", () => {
     });
   });
 
-  it("clears messages and storage when the clear button is clicked", async () => {
+  it("clears messages and storage when New chat is clicked", async () => {
     const { setMessages } = renderChat({ messages: assistantMessages() });
     window.localStorage.setItem(
       `budgie.chat.${USER_ID}.draft`,
       "typed draft",
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /clear chat/i }));
+    await userEvent.click(screen.getByRole("button", { name: /new chat/i }));
 
     expect(setMessages).toHaveBeenCalledWith([]);
     expect(window.localStorage.getItem(`budgie.chat.${USER_ID}.messages`)).toBeNull();
     expect(loadChatDraft(USER_ID)).toBe("");
     expect(loadChatMessages(USER_ID)).toEqual([]);
-  });
-
-  it("hides the clear button when there are no messages", () => {
-    renderChat();
-    expect(screen.queryByRole("button", { name: /clear chat/i })).toBeNull();
-    expect(screen.getByRole("button", { name: /new chat/i })).toBeInTheDocument();
   });
 
   it("auto-downgrades to the lite model and regenerates on a quota error", async () => {
@@ -380,7 +457,7 @@ describe("ChatView", () => {
       "Gemini 3.5 Flash Lite",
     );
 
-    const input = screen.getByPlaceholderText(/message budgie/i);
+    const input = screen.getByPlaceholderText(/ask about your money/i);
     await userEvent.type(input, "hello{enter}");
     expect(defaultChat.sendMessage).toHaveBeenCalledWith(
       { text: "hello" },

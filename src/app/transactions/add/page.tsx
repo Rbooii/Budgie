@@ -12,8 +12,8 @@ import { Button } from "@/components/button";
 export default function AddTransactionPage() {
   return (
     <main className="w-full min-h-screen flex items-center justify-center bg-white text-black">
-      <div className="w-full flex flex-col items-center justify-center min-h-screen py-8 md:py-10 px-4 sm:px-6 pb-20 md:pb-10">
-        <Suspense fallback={<PageSkeleton rows={2} />}>
+      <div className="w-full flex flex-col items-center justify-center min-h-screen py-8 md:py-10 px-4 sm:px-6 pb-[calc(var(--app-tabbar-h)_+_2rem)] md:pb-10">
+        <Suspense fallback={<PageSkeleton variant="add-transaction" />}>
           <AddTransactionContent />
         </Suspense>
       </div>

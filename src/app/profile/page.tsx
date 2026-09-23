@@ -18,7 +18,7 @@ const REGULAR = 49000;
 export default function Profile() {
   return (
     <PageShell>
-      <Suspense fallback={<PageSkeleton rows={3} />}>
+      <Suspense fallback={<PageSkeleton variant="profile" />}>
         <ProfileContent />
       </Suspense>
     </PageShell>
