@@ -23,6 +23,7 @@ import { dynamicFontSize } from "@/lib/font-size";
 import { CATEGORIES_BY_TYPE, categoryLabel } from "@/lib/categories";
 
 type TxType = "income" | "expense" | "transfer";
+type FeeBearer = "source" | "destination";
 type Step = 1 | 2 | 3;
 
 type Account = {
@@ -92,6 +93,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [adminFee, setAdminFee] = useState("");
+  const [adminFeeBearer, setAdminFeeBearer] = useState<FeeBearer>("source");
   const [category, setCategory] = useState("");
   const [date, setDate] = useState(formatDateTimeLocalValue(new Date()));
   const [loading, setLoading] = useState(false);
@@ -112,6 +114,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
       setName("");
       setAmount("");
       setAdminFee("");
+      setAdminFeeBearer("source");
       setCategory("");
       setDate(formatDateTimeLocalValue(new Date()));
       setError(null);
@@ -126,6 +129,9 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
   const dest = accounts.find((a) => a.id === destId) ?? null;
   const amountNum = Number(amount.replace(/[^0-9-]/g, "") || 0);
   const feeNum = Number(adminFee.replace(/[^0-9-]/g, "") || 0);
+  const feeToDestination = isTransfer && adminFeeBearer === "destination";
+  const feeExceedsAmount = feeToDestination && feeNum > amountNum;
+  const feePayer = adminFeeBearer === "destination" ? dest : source;
 
   const step2Valid =
     !!type &&
@@ -134,6 +140,8 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
     amountNum > 0 &&
     !!category &&
     !!date &&
+    !!feePayer &&
+    !feeExceedsAmount &&
     (!isTransfer || (!!destId && destId !== sourceId));
 
   function selectType(t: TxType) {
@@ -167,7 +175,8 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
         setLoading(false);
         return;
       }
-      if (type === "transfer" && amountNum + feeNum > source.balance) {
+      const sourceDebit = feeToDestination ? amountNum : amountNum + feeNum;
+      if (type === "transfer" && sourceDebit > source.balance) {
         setError("Insufficient balance");
         setLoading(false);
         return;
@@ -182,6 +191,8 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
           category: category.trim(),
           date: new Date(date).toISOString(),
           adminFee: isTransfer ? feeNum : 0,
+          adminFeeBearer:
+            isTransfer && feeNum > 0 ? adminFeeBearer : "source",
           balanceAccountId: sourceId,
           toBalanceAccountId: isTransfer ? destId : null,
         },
@@ -339,6 +350,31 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
                     />
                   </CardRow>
                 )}
+                {isTransfer && feeNum > 0 && (
+                  <CardRow label="Fee charged to">
+                    <div className="flex flex-col gap-1">
+                      <select
+                        value={adminFeeBearer}
+                        onChange={(e) =>
+                          setAdminFeeBearer(e.target.value as FeeBearer)
+                        }
+                        className="w-full bg-transparent text-sm text-ink focus:outline-none appearance-none cursor-pointer"
+                      >
+                        <option value="source">
+                          {source ? source.name : "Source account"}
+                        </option>
+                        <option value="destination">
+                          {dest ? dest.name : "Destination account"}
+                        </option>
+                      </select>
+                      {feeExceedsAmount && (
+                        <p className="text-xs text-expense">
+                          Fee cannot exceed the transfer amount
+                        </p>
+                      )}
+                    </div>
+                  </CardRow>
+                )}
                 <CardRow label="Date & time" last>
                   <input
                     type="datetime-local"
@@ -367,6 +403,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
                 {isTransfer && feeNum > 0 && (
                   <p className="text-xs text-ink/40 tabular-nums">
                     Admin fee {formatRupiah(feeNum)}
+                    {feePayer ? ` · from ${feePayer.name}` : ""}
                   </p>
                 )}
               </div>

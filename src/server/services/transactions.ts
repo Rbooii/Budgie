@@ -139,6 +139,7 @@ export async function createTransaction(
     type,
     amount,
     adminFee,
+    adminFeeBearer,
     balanceAccountId,
     toBalanceAccountId,
     ...rest
@@ -160,17 +161,24 @@ export async function createTransaction(
         throw new Error("Destination account not found");
       }
 
-      const moved = amount + adminFee;
+      // The bearer only changes where the fee lands: charged to the source it
+      // moves `amount + fee` out and the destination receives `amount`; charged
+      // to the destination the source sends `amount` and the destination nets
+      // `amount - fee` (the schema guarantees `fee <= amount`).
+      const feeFromSource = adminFeeBearer !== "destination";
+      const sourceDebit = feeFromSource ? amount + adminFee : amount;
+      const destCredit = feeFromSource ? amount : amount - adminFee;
+
       const source = await tx.balanceAccount.updateMany({
-        where: { id: balanceAccountId, userId, balance: { gte: moved } },
-        data: { balance: { decrement: moved } },
+        where: { id: balanceAccountId, userId, balance: { gte: sourceDebit } },
+        data: { balance: { decrement: sourceDebit } },
       });
       if (source.count === 0) {
         throw await describeBalanceFailure(tx, userId, balanceAccountId);
       }
       await tx.balanceAccount.updateMany({
         where: { id: toBalanceAccountId, userId },
-        data: { balance: { increment: amount } },
+        data: { balance: { increment: destCredit } },
       });
     } else if (type === "expense") {
       const debited = await tx.balanceAccount.updateMany({
@@ -194,6 +202,7 @@ export async function createTransaction(
         type,
         amount,
         adminFee,
+        adminFeeBearer,
         balanceAccountId,
         toBalanceAccountId: toBalanceAccountId ?? null,
         userId,
@@ -234,17 +243,27 @@ export async function deleteTransaction(userId: string, id: string) {
           data: { balance: { increment: txn.amount } },
         });
       } else if (txn.type === "transfer" && txn.toBalanceAccountId) {
+        // Mirror the create math: restore the source by what it paid out and
+        // reclaim from the destination what it received (net of its fee).
+        const feeFromSource = txn.adminFeeBearer !== "destination";
+        const sourceRefund = feeFromSource
+          ? txn.amount + txn.adminFee
+          : txn.amount;
+        const destReclaim = feeFromSource
+          ? txn.amount
+          : txn.amount - txn.adminFee;
+
         await tx.balanceAccount.updateMany({
           where: { id: txn.balanceAccountId, userId },
-          data: { balance: { increment: txn.amount + txn.adminFee } },
+          data: { balance: { increment: sourceRefund } },
         });
         const reverted = await tx.balanceAccount.updateMany({
           where: {
             id: txn.toBalanceAccountId,
             userId,
-            balance: { gte: txn.amount },
+            balance: { gte: destReclaim },
           },
-          data: { balance: { decrement: txn.amount } },
+          data: { balance: { decrement: destReclaim } },
         });
         if (reverted.count === 0) {
           const exists = await tx.balanceAccount.findFirst({

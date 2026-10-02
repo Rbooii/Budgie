@@ -154,6 +154,7 @@ describe("createTransaction", () => {
     category: "Salary",
     date: new Date("2026-07-15"),
     adminFee: 0,
+    adminFeeBearer: "source",
     balanceAccountId: SOURCE_ID,
     toBalanceAccountId: null,
   };
@@ -201,6 +202,7 @@ describe("createTransaction", () => {
         category: "Salary",
         date: expect.any(Date),
         adminFee: 0,
+        adminFeeBearer: "source",
         balanceAccountId: SOURCE_ID,
         toBalanceAccountId: null,
         userId: USER_ID,
@@ -361,6 +363,57 @@ describe("createTransaction", () => {
     expect(mockPrisma.transaction.create).toHaveBeenCalled();
   });
 
+  it("charges the fee to the destination: source -amount, dest +(amount - adminFee)", async () => {
+    mockPrisma.balanceAccount.findMany.mockResolvedValue([
+      { id: SOURCE_ID },
+      { id: DEST_ID },
+    ]);
+    mockPrisma.transaction.create.mockResolvedValue({ ...mockTxn, type: "transfer" });
+
+    await createTransaction(USER_ID, {
+      ...incomeInput,
+      type: "transfer",
+      category: "AccountTransfer",
+      amount: 300000,
+      adminFee: 5000,
+      adminFeeBearer: "destination",
+      toBalanceAccountId: DEST_ID,
+    });
+
+    expect(mockPrisma.balanceAccount.updateMany).toHaveBeenNthCalledWith(1, {
+      where: { id: SOURCE_ID, userId: USER_ID, balance: { gte: 300000 } },
+      data: { balance: { decrement: 300000 } },
+    });
+    expect(mockPrisma.balanceAccount.updateMany).toHaveBeenNthCalledWith(2, {
+      where: { id: DEST_ID, userId: USER_ID },
+      data: { balance: { increment: 295000 } },
+    });
+  });
+
+  it("stores adminFeeBearer on the created row", async () => {
+    mockPrisma.balanceAccount.findMany.mockResolvedValue([
+      { id: SOURCE_ID },
+      { id: DEST_ID },
+    ]);
+    mockPrisma.transaction.create.mockResolvedValue({ ...mockTxn, type: "transfer" });
+
+    await createTransaction(USER_ID, {
+      ...incomeInput,
+      type: "transfer",
+      category: "AccountTransfer",
+      amount: 300000,
+      adminFee: 5000,
+      adminFeeBearer: "destination",
+      toBalanceAccountId: DEST_ID,
+    });
+
+    expect(mockPrisma.transaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ adminFeeBearer: "destination" }),
+      }),
+    );
+  });
+
   it("scopes both account lookups by id and userId in a single query", async () => {
     mockPrisma.balanceAccount.findMany.mockResolvedValue([
       { id: SOURCE_ID },
@@ -478,6 +531,29 @@ describe("deleteTransaction", () => {
     mockPrisma.balanceAccount.findFirst.mockResolvedValue({ id: DEST_ID });
 
     await expect(deleteTransaction(USER_ID, TXN_ID)).rejects.toThrow("Insufficient balance");
+  });
+
+  it("deletes a destination-bearer transfer: source +amount, dest -(amount - adminFee)", async () => {
+    mockPrisma.transaction.findFirst.mockResolvedValue({
+      ...mockTxn,
+      type: "transfer",
+      amount: 300000,
+      adminFee: 5000,
+      adminFeeBearer: "destination",
+      toBalanceAccountId: DEST_ID,
+    });
+    mockPrisma.transaction.delete.mockResolvedValue(mockTxn);
+
+    await deleteTransaction(USER_ID, TXN_ID);
+
+    expect(mockPrisma.balanceAccount.updateMany).toHaveBeenNthCalledWith(1, {
+      where: { id: SOURCE_ID, userId: USER_ID },
+      data: { balance: { increment: 300000 } },
+    });
+    expect(mockPrisma.balanceAccount.updateMany).toHaveBeenNthCalledWith(2, {
+      where: { id: DEST_ID, userId: USER_ID, balance: { gte: 295000 } },
+      data: { balance: { decrement: 295000 } },
+    });
   });
 
   it("still deletes a transfer whose destination account is gone (no dest balance check)", async () => {

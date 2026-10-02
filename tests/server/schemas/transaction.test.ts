@@ -188,6 +188,70 @@ describe("CreateTransactionSchema — adminFee", () => {
   });
 });
 
+describe("CreateTransactionSchema — adminFeeBearer", () => {
+  it("defaults adminFeeBearer to 'source' when omitted", () => {
+    const parsed = CreateTransactionSchema.parse({ ...validBase });
+    expect(parsed.adminFeeBearer).toBe("source");
+  });
+
+  it("accepts 'destination' on a transfer", () => {
+    const parsed = CreateTransactionSchema.parse({
+      ...validBase,
+      type: "transfer",
+      category: "AccountTransfer",
+      toBalanceAccountId: "acc-2",
+      adminFee: 2500,
+      adminFeeBearer: "destination",
+    });
+    expect(parsed.adminFeeBearer).toBe("destination");
+  });
+
+  it("rejects 'destination' on a non-transfer", () => {
+    expect(() =>
+      CreateTransactionSchema.parse({
+        ...validBase,
+        adminFeeBearer: "destination",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a destination-bearer fee larger than the amount", () => {
+    expect(() =>
+      CreateTransactionSchema.parse({
+        ...validBase,
+        type: "transfer",
+        category: "AccountTransfer",
+        toBalanceAccountId: "acc-2",
+        amount: 1000,
+        adminFee: 2500,
+        adminFeeBearer: "destination",
+      }),
+    ).toThrow();
+  });
+
+  it("accepts a destination-bearer fee exactly equal to the amount", () => {
+    const parsed = CreateTransactionSchema.parse({
+      ...validBase,
+      type: "transfer",
+      category: "AccountTransfer",
+      toBalanceAccountId: "acc-2",
+      amount: 2500,
+      adminFee: 2500,
+      adminFeeBearer: "destination",
+    });
+    expect(parsed.adminFeeBearer).toBe("destination");
+  });
+
+  it("rejects an unknown bearer", () => {
+    expect(() =>
+      CreateTransactionSchema.parse({
+        ...validBase,
+        adminFeeBearer: "bank",
+      }),
+    ).toThrow();
+  });
+});
+
 describe("CreateTransactionSchema — balanceAccountId", () => {
   it("rejects an empty balanceAccountId", () => {
     expect(() =>

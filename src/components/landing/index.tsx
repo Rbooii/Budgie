@@ -109,7 +109,7 @@ export function LandingPageView({
       <FactsMarquee />
 
       {/* Final CTA — Notion's neutral endcap (quiet gray surface, one primary CTA) */}
-      <section className="bg-surface mt-20 sm:mt-28">
+      <section className="bg-surface dark:bg-surface/40 mt-20 sm:mt-28">
         <div className="mx-auto max-w-screen-xl px-5 sm:px-8 py-24 sm:py-36 text-center">
           <Reveal>
             <h2 className="text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.1] tracking-[-0.5px] text-ink">

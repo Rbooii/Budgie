@@ -1,6 +1,6 @@
 import { Activity } from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const postMock = vi.fn();
@@ -193,6 +193,100 @@ describe("AddTransactionWizard — empty accounts", () => {
     render(<AddTransactionWizard accounts={[]} />);
     const transferBtn = screen.getByText("Transfer").closest("button");
     expect(transferBtn).toBeDisabled();
+  });
+});
+
+describe("AddTransactionWizard — transfer admin fee bearer", () => {
+  async function fillTransfer({
+    amount = "100000",
+    fee = "2500",
+    bearer = "source",
+  }: {
+    amount?: string;
+    fee?: string;
+    bearer?: "source" | "destination";
+  } = {}) {
+    const user = userEvent.setup();
+    render(<AddTransactionWizard accounts={accounts} />);
+
+    await user.click(screen.getByText("Transfer"));
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    await user.type(screen.getAllByPlaceholderText("0")[0], amount);
+    await user.selectOptions(screen.getAllByRole("combobox")[0], "acc-1");
+    await user.selectOptions(screen.getAllByRole("combobox")[1], "acc-2");
+
+    const nameInput = screen
+      .getAllByRole("textbox")
+      .find(
+        (el) => el.getAttribute("placeholder") === "e.g. Grocery shopping",
+      );
+    await user.type(nameInput!, "Move to savings");
+    await user.selectOptions(screen.getAllByRole("combobox")[2], "AccountTransfer");
+
+    await user.type(screen.getAllByPlaceholderText("0")[1], fee);
+    if (bearer === "destination") {
+      await user.selectOptions(screen.getAllByRole("combobox")[3], "destination");
+    }
+
+    return { user };
+  }
+
+  it("reveals the fee payer picker only after an admin fee is entered", async () => {
+    const user = userEvent.setup();
+    render(<AddTransactionWizard accounts={accounts} />);
+    await user.click(screen.getByText("Transfer"));
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(screen.queryByText("Fee charged to")).not.toBeInTheDocument();
+    await user.type(screen.getAllByPlaceholderText("0")[1], "2500");
+    expect(screen.getByText("Fee charged to")).toBeInTheDocument();
+  });
+
+  it("defaults the bearer to the source account", async () => {
+    await fillTransfer();
+    const bearerSelect = screen.getAllByRole("combobox")[3];
+    expect(bearerSelect).toHaveValue("source");
+    const options = within(bearerSelect).getAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual(["BCA", "GoPay"]);
+  });
+
+  it("posts adminFeeBearer 'source' by default", async () => {
+    const { user } = await fillTransfer();
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    expect(screen.getByText(/· from BCA/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /confirm and add/i }));
+    await waitFor(() => expect(postMock).toHaveBeenCalled());
+    expect(postMock.mock.calls[0][0].json).toMatchObject({
+      type: "transfer",
+      adminFee: 2500,
+      adminFeeBearer: "source",
+    });
+  });
+
+  it("posts adminFeeBearer 'destination' when the destination pays", async () => {
+    const { user } = await fillTransfer({ bearer: "destination" });
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    expect(screen.getByText(/· from GoPay/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /confirm and add/i }));
+    await waitFor(() => expect(postMock).toHaveBeenCalled());
+    expect(postMock.mock.calls[0][0].json).toMatchObject({
+      adminFeeBearer: "destination",
+    });
+  });
+
+  it("blocks a destination fee larger than the amount", async () => {
+    await fillTransfer({
+      amount: "1000",
+      fee: "2500",
+      bearer: "destination",
+    });
+    expect(
+      screen.getByText("Fee cannot exceed the transfer amount"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
   });
 });
 

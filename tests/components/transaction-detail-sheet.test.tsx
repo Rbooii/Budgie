@@ -111,6 +111,41 @@ describe("TransactionDetailSheet", () => {
     expect(screen.getByText(/Admin fee/)).toBeInTheDocument();
   });
 
+  it("shows the source account as the fee payer by default", () => {
+    render(
+      <TransactionDetailSheet
+        transaction={{
+          ...incomeTxn,
+          type: "transfer",
+          amount: 100000,
+          adminFee: 5000,
+          toBalanceAccountId: "acc-2",
+          toBalanceAccount: { id: "acc-2", name: "GoPay", currency: "IDR" },
+        }}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByText(/from BCA/)).toBeInTheDocument();
+  });
+
+  it("shows the destination account as the fee payer when adminFeeBearer is destination", () => {
+    render(
+      <TransactionDetailSheet
+        transaction={{
+          ...incomeTxn,
+          type: "transfer",
+          amount: 100000,
+          adminFee: 5000,
+          adminFeeBearer: "destination",
+          toBalanceAccountId: "acc-2",
+          toBalanceAccount: { id: "acc-2", name: "GoPay", currency: "IDR" },
+        }}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByText(/from GoPay/)).toBeInTheDocument();
+  });
+
   it("does not show admin fee for transfers with adminFee = 0", () => {
     render(
       <TransactionDetailSheet

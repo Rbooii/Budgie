@@ -62,7 +62,7 @@ export function LiveSpending() {
             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-hairline-track">
               <span
                 className={`block h-full rounded-full transition-[width] duration-200 ease-out motion-reduce:transition-none ${
-                  row.over ? "bg-expense" : "bg-expense-tint"
+                  row.over ? "bg-expense" : "bg-expense-tint dark:bg-expense/40"
                 }`}
                 style={{ width: `${row.pct}%` }}
               />

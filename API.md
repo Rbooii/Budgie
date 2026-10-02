@@ -166,6 +166,7 @@ There is deliberately no `PATCH`/`PUT` — edit by deleting and re-creating.
   "category": "FoodAndDrink",
   "date": "2026-09-17T12:30:00.000Z",
   "adminFee": 0,
+  "adminFeeBearer": "source",
   "balanceAccountId": "acc-id",
   "toBalanceAccountId": null
 }
@@ -176,6 +177,10 @@ Rules enforced server-side:
 - `type` ∈ `income | expense | transfer`; `category` must belong to that type's
   list (`src/lib/categories.ts`) → otherwise `400`.
 - `transfer` requires `toBalanceAccountId`, distinct from `balanceAccountId`.
+- `adminFeeBearer` ∈ `source | destination` (default `"source"`), transfers
+  only. `destination` moves the fee to the receiving side: source
+  `-(amount)`, destination `+(amount − adminFee)` — so `adminFee` must be
+  `<= amount` (`400` otherwise).
 - The balance update happens **in the same transaction** as the row write,
   using a conditional `updateMany` guard (`balance >= amount`), so concurrent
   spends can never push a balance negative.
@@ -193,6 +198,7 @@ Rules enforced server-side:
   "category": "FoodAndDrink",
   "date": "2026-09-17T12:30:00.000Z",
   "adminFee": 0,
+  "adminFeeBearer": "source",
   "balanceAccountId": "acc-id",
   "toBalanceAccountId": null,
   "userId": "user-id",

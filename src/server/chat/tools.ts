@@ -142,6 +142,7 @@ export function createChatTools(userId: string) {
           category: parsed.data.category,
           date: parsed.data.date ? new Date(parsed.data.date) : new Date(),
           adminFee: parsed.data.adminFee ?? 0,
+          adminFeeBearer: parsed.data.adminFeeBearer ?? "source",
           balanceAccountId: parsed.data.balanceAccountId,
           toBalanceAccountId: parsed.data.toBalanceAccountId ?? null,
         };

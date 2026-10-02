@@ -18,6 +18,8 @@ export type TransactionRow = {
   /** `string` when it came over JSON (API), `Date` when read in-process (RSC). */
   date: string | Date;
   adminFee: number;
+  /** Which side of a transfer pays the admin fee; absent on legacy rows. */
+  adminFeeBearer?: string;
   balanceAccountId: string | null;
   toBalanceAccountId: string | null;
   balanceAccount: { id: string; name: string; currency: string } | null;

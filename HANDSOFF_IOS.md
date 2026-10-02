@@ -403,6 +403,7 @@ let next = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "X-Next-Cur
   "category": "FoodAndDrink",     // enum NAME (not the "Food & Drink" display label)
   "date": "2026-08-20T09:30:00.000Z",
   "adminFee": 0,
+  "adminFeeBearer": "source",     // "source" | "destination" (transfers; default "source")
   "balanceAccountId": "cuid",
   "toBalanceAccountId": null,
   "userId": "...",
@@ -422,12 +423,13 @@ let next = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "X-Next-Cur
   "category": "FoodAndDrink",     // must match the type's category list (§5.6.3)
   "date": "2026-08-20T09:30:00.000Z",   // ISO string (z.coerce.date)
   "adminFee": 0,                  // optional, >= 0, defaults 0 (transfers)
+  "adminFeeBearer": "source",     // optional, "source" | "destination" (transfers; default "source")
   "balanceAccountId": "cuid",     // required — source account
   "toBalanceAccountId": null      // optional — required (distinct from source) for transfers
 }
 ```
 
-Errors (service-mapped): `404` `"Account not found"`, `404` `"Destination account not found"`, `400` `"Destination account required"`, `400` `"Insufficient balance"`, `400` transfer-refine / category-type mismatch (ZodError).
+Errors (service-mapped): `404` `"Account not found"`, `404` `"Destination account not found"`, `400` `"Destination account required"`, `400` `"Insufficient balance"`, `400` transfer-refine / category-type mismatch / destination-fee-exceeds-amount (ZodError).
 
 #### 5.6.1 Balance reconciliation (server-side, inside `$transaction`)
 
@@ -435,13 +437,16 @@ Errors (service-mapped): `404` `"Account not found"`, `404` `"Destination accoun
 | --- | --- | --- |
 | income | source `+amount` | source `-amount` (guard: would go negative → 400) |
 | expense | source `-amount` (guard) | source `+amount` |
-| transfer | source `-(amount+adminFee)` (guard), dest `+amount` | source `+(amount+adminFee)`, dest `-amount` (guard) |
+| transfer (`adminFeeBearer: "source"`) | source `-(amount+adminFee)` (guard), dest `+amount` | source `+(amount+adminFee)`, dest `-amount` (guard) |
+| transfer (`adminFeeBearer: "destination"`) | source `-amount` (guard), dest `+(amount-adminFee)` | source `+amount`, dest `-(amount-adminFee)` (guard) |
 
-**Insufficient-balance rules (server):** the balance write itself is a conditional `UPDATE ... WHERE id = ? AND "userId" = ? AND balance >= ?` inside the same `$transaction` as the row write — so the guard *is* the check and concurrent spends from two devices can never push a balance below zero. expense/transfer create and income/transfer-dest delete return `400 "Insufficient balance"` when the guard matches no row. The iOS add wizard should **pre-check client-side** (`amount > source.balance`, or `amount + fee > source.balance` for transfer) and show "Insufficient balance" instantly, matching the web UX.
+**Insufficient-balance rules (server):** the balance write itself is a conditional `UPDATE ... WHERE id = ? AND "userId" = ? AND balance >= ?` inside the same `$transaction` as the row write — so the guard *is* the check and concurrent spends from two devices can never push a balance below zero. expense/transfer create and income/transfer-dest delete return `400 "Insufficient balance"` when the guard matches no row. The iOS add wizard should **pre-check client-side** (`amount > source.balance`, or `amount + fee > source.balance` for a source-bearer transfer) and show "Insufficient balance" instantly, matching the web UX.
 
 #### 5.6.2 Transfers
 
 A transfer needs a distinct `toBalanceAccountId`. If the user has fewer than **2 accounts**, the transfer option is disabled with "Add another account to transfer". On the server the destination must exist and be owned.
+
+When `adminFee > 0` the user picks **who pays the fee** (`adminFeeBearer`): the source account (default) or the destination. With `"destination"` the source only sends `amount` and the receiver nets `amount - adminFee`, so the fee must be `<= amount` (`400` otherwise). Show a picker ("Fee charged to") in the transfer form once a fee is entered, defaulting to the source account.
 
 #### 5.6.3 Categories (21, per-type — users cannot type custom ones)
 
@@ -475,6 +480,7 @@ struct Transaction: Codable, Identifiable {
     var id: String; var name: String; var amount: Double
     var type: TransactionType; var category: String
     var date: Date; var adminFee: Double
+    var adminFeeBearer: String?   // "source" | "destination"; treat nil as "source"
     var balanceAccountId: String?; var toBalanceAccountId: String?
     var userId: String; var createdAt: String; var updatedAt: String
     var balanceAccount: AccountRef?; var toBalanceAccount: AccountRef?
@@ -506,6 +512,7 @@ struct UserStatus: Codable { var plus: Bool }
 struct CreateTransactionBody: Encodable {
     var name: String; var amount: Double; var type: TransactionType; var category: String
     var date: String; var adminFee: Double = 0
+    var adminFeeBearer: String = "source"   // "source" | "destination"
     var balanceAccountId: String; var toBalanceAccountId: String?
 }
 struct CreateBudgetBody: Encodable { var category: String; var amount: Double; var periodDays: Int }
@@ -684,7 +691,8 @@ Output:
 
 ```json
 { "name": "...", "amount": 45000, "type": "expense", "category": "FoodAndDrink",
-  "date"?: "ISO", "adminFee"?: 0, "balanceAccountId": "...", "toBalanceAccountId"?: "..." }
+  "date"?: "ISO", "adminFee"?: 0, "adminFeeBearer"?: "source",
+  "balanceAccountId": "...", "toBalanceAccountId"?: "..." }
 ```
 
 Output:
@@ -862,9 +870,9 @@ Data needed: `GET /api/balance-accounts` (accounts + net worth), `GET /api/trans
 - **Detail sheet:** type chip + hero signed amount (type tint) + inset rows (Bank / Category / Date / Time) + full-width **delete trigger** (`bg-[#FFBABA] text-[#D8000C]`, 35px radius). Delete does **not** fire directly — open a **confirm dialog**: "Delete transaction?" + name + amount + "cannot be undone" + Delete (loading-gated) + Cancel. On success: close sheet, refresh list. If `balanceAccount` is null → show **"Deleted account"** as the bank row.
 - **Add wizard (3-step, full-screen glass sheet):**
   - *Step 1 — Type:* three glass option cards (income / expense / transfer) with the per-type active ring (pastel border + tint). Selecting a type resets the category. **Transfer disabled when `accounts.count < 2`** with "Add another account to transfer".
-  - *Step 2 — Details:* hero editable amount at top (`formatBalanceInput`, `monospacedDigit`) + field list: bank (source), destination (transfers), name, category (picker filtered by type), admin fee (transfers), date (`DatePicker`).
-  - *Step 3 — Review:* hero amount + review rows + "Confirm and Add".
-  - **Client-side pre-check:** expense `amount > source.balance` → "Insufficient balance" instantly; transfer `amount + fee > source.balance` → same. Only then `POST /api/transactions`.
+  - *Step 2 — Details:* hero editable amount at top (`formatBalanceInput`, `monospacedDigit`) + field list: bank (source), destination (transfers), name, category (picker filtered by type), admin fee (transfers), **"Fee charged to" picker** (source/destination account, transfers with `adminFee > 0`; hidden at fee 0), date (`DatePicker`).
+  - *Step 3 — Review:* hero amount + review rows + "Confirm and Add". When a transfer has a fee, show "Admin fee <amount> · from <payer account>".
+  - **Client-side pre-check:** expense `amount > source.balance` → "Insufficient balance" instantly; transfer `amount + fee > source.balance` → same for a source-bearer fee, `amount > source.balance` when the destination bears it. A destination-bearer fee `> amount` is invalid (inline hint, Continue disabled). Only then `POST /api/transactions`.
   - No-accounts guard: if `accounts.isEmpty`, show empty state (Wallet icon + Add Account) instead of the wizard; refresh swaps to the wizard after account creation.
 
 ### 9.3 Budgets (+ Subscriptions on the same screen, like web)

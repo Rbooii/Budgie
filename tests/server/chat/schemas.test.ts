@@ -118,6 +118,40 @@ describe("CreateTransactionToolSchema", () => {
     ).toBe(false);
   });
 
+  it("accepts a destination-bearer transfer fee", () => {
+    const parsed = CreateTransactionToolSchema.safeParse({
+      ...valid,
+      type: "transfer",
+      category: "AccountTransfer",
+      toBalanceAccountId: "acc-2",
+      amount: 100000,
+      adminFee: 4000,
+      adminFeeBearer: "destination",
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects a destination-bearer fee larger than the amount", () => {
+    const parsed = CreateTransactionToolSchema.safeParse({
+      ...valid,
+      type: "transfer",
+      category: "AccountTransfer",
+      toBalanceAccountId: "acc-2",
+      amount: 1000,
+      adminFee: 4000,
+      adminFeeBearer: "destination",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an unknown admin fee bearer", () => {
+    const parsed = CreateTransactionToolSchema.safeParse({
+      ...valid,
+      adminFeeBearer: "bank",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
   it("rejects unknown keys", () => {
     const parsed = CreateTransactionToolSchema.safeParse({
       ...valid,

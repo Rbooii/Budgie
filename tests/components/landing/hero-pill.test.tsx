@@ -34,7 +34,8 @@ describe("HeroPill", () => {
     expect(pill.className).toContain("text-[0.75em]");
     expect(pill.className).toContain("font-medium");
     expect(pill.className).toContain("rounded-[0.22em]");
-    expect(pill.style.backgroundColor).toBe("rgb(208, 244, 216)");
+    expect(pill.className).toContain("bg-[#d0f4d8]");
+    expect(pill.className).toContain("dark:bg-[#1e3a27]");
   });
 
   it("rotates to the next word after the interval", () => {
@@ -70,7 +71,7 @@ describe("HeroPill", () => {
     });
     const label = visibleWord("works");
     const pill = label.parentElement?.parentElement as HTMLElement;
-    expect(pill.style.backgroundColor).toBe("rgb(208, 244, 216)");
+    expect(pill.className).toContain("bg-[#d0f4d8]");
   });
 
   it("measures every word offscreen for the width animation", () => {

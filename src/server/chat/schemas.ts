@@ -44,6 +44,12 @@ export const CreateTransactionToolSchema = z
       .min(0)
       .optional()
       .describe("Transfer admin fee (default 0)"),
+    adminFeeBearer: z
+      .enum(["source", "destination"])
+      .optional()
+      .describe(
+        'Which account bears the transfer admin fee: "source" (default) or "destination"',
+      ),
     balanceAccountId: z
       .string()
       .min(1)
@@ -63,6 +69,16 @@ export const CreateTransactionToolSchema = z
   .refine(
     (v) => CATEGORIES_BY_TYPE[v.type].includes(v.category),
     { message: "Category does not match the transaction type" },
+  )
+  .refine(
+    (v) =>
+      v.type !== "transfer" ||
+      v.adminFeeBearer !== "destination" ||
+      (v.adminFee ?? 0) <= v.amount,
+    {
+      message:
+        "Admin fee cannot exceed the transfer amount when charged to the destination",
+    },
   );
 
 export type CreateTransactionToolInput = z.infer<typeof CreateTransactionToolSchema>;

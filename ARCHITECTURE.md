@@ -810,6 +810,7 @@ model Transaction {
   category          Category
   date              DateTime
   adminFee          Float    @default(0)
+  adminFeeBearer    String   @default("source") // "source" | "destination" (transfers)
   balanceAccountId   String?
   toBalanceAccountId String?
   userId            String
@@ -1030,10 +1031,12 @@ respects Prisma types but the app narrows `type` to a Zod enum and coerces
 
 ```ts
 // src/server/schemas/transaction.ts
+export const ADMIN_FEE_BEARERS = ["source", "destination"] as const;
+
 export const CreateTransactionSchema =
   TransactionUncheckedCreateInputObjectZodSchema.pick({
     name: true, amount: true, type: true, category: true,
-    date: true, adminFee: true,
+    date: true, adminFee: true, adminFeeBearer: true,
     balanceAccountId: true, toBalanceAccountId: true,
   }).extend({
     name: z.string().min(1),
@@ -1042,6 +1045,7 @@ export const CreateTransactionSchema =
     category: z.enum(ALL_CATEGORIES),                   // premade list from src/lib/categories.ts
     date: z.coerce.date(),                            // accept ISO string from JS
     adminFee: z.number().min(0).default(0),
+    adminFeeBearer: z.enum(ADMIN_FEE_BEARERS).default("source"),
     balanceAccountId: z.string().min(1),
     toBalanceAccountId: z.string().nullable().optional(),
   }).refine(
@@ -1054,7 +1058,18 @@ export const CreateTransactionSchema =
   ).refine(
     (v) => CATEGORIES_BY_TYPE[v.type].includes(v.category),
     { message: "Invalid category for this transaction type" },
+  ).refine(
+    (v) => v.type === "transfer" || v.adminFeeBearer === "source",
+    { message: "Admin fee bearer only applies to transfers" },
+  ).refine(
+    (v) =>
+      v.type !== "transfer" ||
+      v.adminFeeBearer !== "destination" ||
+      v.adminFee <= v.amount,
+    { message: "Admin fee cannot exceed the transfer amount when charged to the destination" },
   );
+
+export type CreateTransaction = z.infer<typeof CreateTransactionSchema>;
 export type CreateTransaction = z.infer<typeof CreateTransactionSchema>;
 ```
 
@@ -1489,7 +1504,7 @@ components (all `"use client"` unless noted):
 | `src/components/transactions-view.tsx` | Search bar (client-side filter, debounced via `useMemo`) + Add button → `/transactions/add` + Download PDF button + **date-grouped list** (`Today` / `Yesterday` / `14 Jul 2026` headers). Owns `selected` state → opens detail sheet. Two empty states: "no transactions yet" (with CTA) and "no results" (minimalist). |
 | `src/components/transaction-item.tsx` | Minimalist row (Cash App / Wise style): 36px tinted icon (income green / expense soft-red / transfer orange) + name + `bank • category` subtitle + colored amount + time. Whole row is a `<button>` → opens detail sheet. Hairline divider, hover `bg-[#FAFAFA]`. No borders, no badges, no per-row delete. |
 | `src/components/transaction-detail-sheet.tsx` | Bottom sheet (mobile) / centered dialog (desktop) opened by tapping a row. Shows type chip + hero amount (colored) + detail rows (Bank / Category / Date / Time) + **Delete trigger** button (full-width `bg-[#FFBABA]`). The trigger does NOT delete directly — it opens a confirm `Dialog` (rendered as a **sibling** of the sheet scrim via a `<>` fragment, so scrim clicks don't bubble to the sheet's `onClose`). Confirm dialog: "Delete transaction?" + names the txn + amount + "cannot be undone" + `softred` Delete (`api.transactions[":id"].$delete`, `loading`-gated `onOpenChange`) + `outline` Cancel. On success → `setConfirmOpen(false)` + sheet `onClose()` + `router.refresh()`. |
-| `src/components/add-transaction-wizard.tsx` | 3-step wizard. **Top bar**: back chevron (left) + `1 of 3` (right). **Slim 2px progress track** (replaces chunky numbered stepper). **Step 1**: type cards (income/expense/transfer) — selecting a type resets the category. **Transfer card is disabled when `accounts.length < 2`** (desc swaps to "Add another account to transfer"). **Step 2**: hero amount at top (add-account style: currency prefix + `dynamicFontSize` + `formatBalanceInput`) + hairline-divided field list (bank, dest, name, **CategorySelect** (native `<select>` filtered by type from `src/lib/categories.ts`), admin fee, date). **Step 3**: hero amount + review rows + Confirm and Add. **Insufficient balance pre-check**: before the API call, the wizard checks `source.balance` client-side (expense: `amount > balance`, transfer: `amount + fee > balance`) and shows "Insufficient balance" instantly. **Single full-width CTA per step**. **No sidebar, no card chrome** — flush with background. **No-accounts guard**: the RSC `add/page.tsx` renders a §7.5 empty state (`Wallet` icon + `AddAccountDialog` inline) instead of the wizard when `accounts.length === 0`; on account creation `router.refresh()` swaps in the wizard automatically. |
+| `src/components/add-transaction-wizard.tsx` | 3-step wizard. **Top bar**: back chevron (left) + `1 of 3` (right). **Slim 2px progress track** (replaces chunky numbered stepper). **Step 1**: type cards (income/expense/transfer) — selecting a type resets the category. **Transfer card is disabled when `accounts.length < 2`** (desc swaps to "Add another account to transfer"). **Step 2**: hero amount at top (add-account style: currency prefix + `dynamicFontSize` + `formatBalanceInput`) + hairline-divided field list (bank, dest, name, **CategorySelect** (native `<select>` filtered by type from `src/lib/categories.ts`), admin fee, **"Fee charged to" select** (source/destination account, transfers with `adminFee > 0` only), date). **Step 3**: hero amount + review rows + Confirm and Add (fee line reads "Admin fee Rp 2.500 · from <payer>"). **Insufficient balance pre-check**: before the API call, the wizard checks `source.balance` client-side (expense: `amount > balance`; source-bearer transfer: `amount + fee > balance`; destination-bearer transfer: `amount > balance`) and shows "Insufficient balance" instantly. A destination-bearer fee `> amount` disables Continue with an inline hint. **Single full-width CTA per step**. **No sidebar, no card chrome** — flush with background. **No-accounts guard**: the RSC `add/page.tsx` renders a §7.5 empty state (`Wallet` icon + `AddAccountDialog` inline) instead of the wizard when `accounts.length === 0`; on account creation `router.refresh()` swaps in the wizard automatically. |
 | `src/components/download-pdf-dialog.tsx` | Dialog with 3 scope options (All / Filtered by search / Date range). Generates PDF client-side via `jspdf` + `jspdf-autotable` (table of transactions + income/expense/transfer summary). Downloads `transactions.pdf`. |
 
 ### Color tokens (transactions)
@@ -1554,11 +1569,14 @@ return prisma.$transaction(async (tx) => {
   const txn = await tx.transaction.create({ data: { ... }, include: { balanceAccount: ..., toBalanceAccount: ... } });
 
   // 4. Mutate the balance(s) based on type — all inside the same tx.
+  const feeFromSource = input.adminFeeBearer !== "destination"; // default source
   if (input.type === "income")      tx.balanceAccount.update({ where: { id: input.balanceAccountId },    data: { balance: { increment: input.amount } } });
   if (input.type === "expense")     tx.balanceAccount.update({ where: { id: input.balanceAccountId },    data: { balance: { decrement: input.amount } } });
   if (input.type === "transfer" && dest) {
-    tx.balanceAccount.update({ where: { id: input.balanceAccountId },       data: { balance: { decrement: input.amount + input.adminFee } } }); // source loses amount + fee
-    tx.balanceAccount.update({ where: { id: input.toBalanceAccountId! },    data: { balance: { increment: input.amount } } });                 // dest gains amount (fee stays with source)
+    // source-bearer: source loses amount + fee, dest gains amount (fee stays with source)
+    // dest-bearer:   source loses amount,           dest gains amount − fee (fee stays with dest)
+    tx.balanceAccount.update({ where: { id: input.balanceAccountId },       data: { balance: { decrement: feeFromSource ? input.amount + input.adminFee : input.amount } } });
+    tx.balanceAccount.update({ where: { id: input.toBalanceAccountId! },    data: { balance: { increment: feeFromSource ? input.amount : input.amount - input.adminFee } } });
   }
 
   return txn;
@@ -1575,7 +1593,8 @@ then deletes the row:
 | ---- | ------------- | ----------------------- |
 | income | source `+amount` | source `-amount` |
 | expense | source `-amount` | source `+amount` |
-| transfer | source `-(amount+adminFee)`, dest `+amount` | source `+(amount+adminFee)`, dest `-amount` |
+| transfer (fee on source) | source `-(amount+adminFee)`, dest `+amount` | source `+(amount+adminFee)`, dest `-amount` |
+| transfer (fee on destination) | source `-amount`, dest `+(amount−adminFee)` | source `+amount`, dest `-(amount−adminFee)` |
 
 ### Why this lives in the service (not the controller)
 
@@ -1600,8 +1619,10 @@ reverse — the account was already deleted, taking its balance with it).
 Both `createTransaction` and `deleteTransaction` guard against pushing a
 `BalanceAccount.balance` below 0:
 
-- **Create**: `expense` and `transfer` check `source.balance − (amount [+ adminFee]) < 0`
-  → `throw new Error("Insufficient balance")` → controller maps to 400.
+- **Create**: `expense` and `transfer` check the source debit (`amount` for
+  expense, `amount` or `amount + adminFee` for a transfer depending on the
+  `adminFeeBearer`) against `balance` → `throw new Error("Insufficient
+  balance")` → controller maps to 400.
 - **Delete**: `income` (source decremented) and `transfer` (dest decremented)
   fetch the current account balance first and check if the reverse would go
   negative. Expense refunds and transfer source refunds always increase, so

@@ -72,6 +72,11 @@ export function TransactionDetailSheet({
         : "—"
       : (transaction.balanceAccount?.name ?? "Deleted account");
 
+  const feePayer =
+    transaction.adminFeeBearer === "destination"
+      ? transaction.toBalanceAccount?.name
+      : transaction.balanceAccount?.name;
+
   async function handleDelete() {
     if (!transaction) return;
     setLoading(true);
@@ -136,6 +141,7 @@ export function TransactionDetailSheet({
           {transaction.type === "transfer" && transaction.adminFee > 0 && (
             <p className="text-xs text-ink/40 tabular-nums mt-0.5">
               Admin fee {formatRupiah(transaction.adminFee)}
+              {feePayer ? ` · from ${feePayer}` : ""}
             </p>
           )}
         </div>

@@ -37,10 +37,11 @@ export function BudgieMascot({ className }: { className?: string }) {
           strokeLinejoin="round"
         />
 
-        {/* head — white fill so the neck stays outside the jaw */}
+        {/* head — card fill so the neck stays outside the jaw. Dark mode lifts
+            it to the surface token so the scrim-black hair reads as a shape. */}
         <path
+          className="fill-card dark:fill-surface"
           d="M80 18c21 0 35 14 35 36 0 14-5 30-17 42-5 5-11 8-18 8s-13-3-18-8C50 84 45 68 45 54c0-22 14-36 35-36Z"
-          fill="var(--card)"
           stroke={INK}
           strokeWidth="3"
           strokeLinejoin="round"
@@ -60,10 +61,15 @@ export function BudgieMascot({ className }: { className?: string }) {
           strokeLinecap="round"
         />
 
-        {/* hair — flat ink fill with a wavy fringe */}
+        {/* hair — flat fill with a wavy fringe. In dark mode it flips to the
+            background fill + ink stroke (line-art style): the card-filled face
+            stays one step lighter so the hair still reads as a solid shape. */}
         <path
+          className="fill-ink dark:fill-scrim"
           d="M45 52c-2-18 13-36 35-36s37 18 35 36c-3-6-7-10-13-12-6 7-16 5-22-2-6 7-16 9-22 2-6 2-10 6-13 12Z"
-          fill={INK}
+          stroke={INK}
+          strokeWidth="3"
+          strokeLinejoin="round"
         />
 
         {/* brows */}

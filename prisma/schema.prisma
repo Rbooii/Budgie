@@ -107,6 +107,9 @@ model Transaction {
   category           Category
   date               DateTime
   adminFee           Float           @default(0)
+  /// Which side of a transfer bears the admin fee: "source" (default) or
+  /// "destination". Ignored for income/expense rows.
+  adminFeeBearer     String          @default("source")
   balanceAccountId   String?
   toBalanceAccountId String?
   userId             String

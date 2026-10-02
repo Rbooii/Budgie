@@ -9,16 +9,38 @@ import { useEffect, useRef, useState } from "react";
  * (measured offscreen, exactly like Notion's `--pill-label-inline-size`).
  *
  * Colors are Notion's own pastel pairs (blue/green/orange/yellow/purple/teal
- * 200-bg + 500-dot). Under `prefers-reduced-motion` the first word renders
- * statically — no interval, no keyframes. All sizes are em-based so the pill
- * scales with the hero title's fluid clamp.
+ * 200-bg + 500-dot). The dark palette deepens each pair's background into the
+ * dark card surface (the 500-dot stays saturated) so the capsule never glows
+ * on the near-black hero. Under `prefers-reduced-motion` the first word
+ * renders statically — no interval, no keyframes. All sizes are em-based so
+ * the pill scales with the hero title's fluid clamp.
  */
 const WORDS = [
-  { label: "works", bg: "#d0f4d8", dot: "#1aae39" },
-  { label: "grows", bg: "#bde6e4", dot: "#27918d" },
-  { label: "rests", bg: "#eadbfa", dot: "#9849e8" },
-  { label: "flows", bg: "#e6f3fe", dot: "#097fe8" },
-  { label: "stays", bg: "#ffdec4", dot: "#ff6d00" },
+  {
+    label: "works",
+    pill: "bg-[#d0f4d8] dark:bg-[#1e3a27]",
+    dot: "#1aae39",
+  },
+  {
+    label: "grows",
+    pill: "bg-[#bde6e4] dark:bg-[#1b3735]",
+    dot: "#27918d",
+  },
+  {
+    label: "rests",
+    pill: "bg-[#eadbfa] dark:bg-[#2b2140]",
+    dot: "#9849e8",
+  },
+  {
+    label: "flows",
+    pill: "bg-[#e6f3fe] dark:bg-[#172c3f]",
+    dot: "#097fe8",
+  },
+  {
+    label: "stays",
+    pill: "bg-[#ffdec4] dark:bg-[#3a2a1a]",
+    dot: "#ff6d00",
+  },
 ] as const;
 
 const ROTATE_MS = 2200;
@@ -65,8 +87,7 @@ export function HeroPill() {
 
   return (
     <span
-      className="relative inline-flex items-center gap-[0.18em] align-baseline rounded-[0.22em] px-[0.4em] py-[0.1em] text-[0.75em] font-medium leading-[1.21] tracking-[-0.0278em] text-[#141414] whitespace-nowrap transition-colors duration-200 ease-out motion-reduce:transition-none"
-      style={{ backgroundColor: word.bg }}
+      className={`relative inline-flex items-center gap-[0.18em] align-baseline rounded-[0.22em] px-[0.4em] py-[0.1em] text-[0.75em] font-medium leading-[1.21] tracking-[-0.0278em] text-[#141414] dark:text-[#f2f2f2] whitespace-nowrap transition-colors duration-200 ease-out motion-reduce:transition-none ${word.pill}`}
     >
       <span
         aria-hidden="true"

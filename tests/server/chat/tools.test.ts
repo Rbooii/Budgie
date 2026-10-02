@@ -398,6 +398,34 @@ describe("create_transaction", () => {
     expect(result).toMatchObject({ ok: true });
   });
 
+  it("forwards adminFeeBearer for a transfer fee charged to the destination", async () => {
+    mockServices.createTransaction.mockResolvedValue({
+      id: "tx-transfer",
+      name: "Transfer",
+      amount: 200000,
+      type: "transfer",
+      category: "AccountTransfer",
+      date: new Date("2026-08-02T10:00:00Z"),
+      balanceAccount: { id: "acc-1", name: "Mandiri", currency: "IDR" },
+      toBalanceAccount: { id: "acc-2", name: "BCA", currency: "IDR" },
+    });
+
+    const tools = createChatTools(USER_ID);
+    await run<CreateTransactionResult>(tools.create_transaction, {
+      name: "Transfer",
+      amount: 200000,
+      type: "transfer",
+      category: "AccountTransfer",
+      balanceAccountId: "acc-1",
+      toBalanceAccountId: "acc-2",
+      adminFee: 4000,
+      adminFeeBearer: "destination",
+    });
+
+    const body = mockServices.createTransaction.mock.calls[0][1];
+    expect(body).toMatchObject({ adminFeeBearer: "destination" });
+  });
+
   it("returns ok:false when the service throws (insufficient balance)", async () => {
     mockServices.createTransaction.mockRejectedValue(new Error("Insufficient balance"));
     const tools = createChatTools(USER_ID);

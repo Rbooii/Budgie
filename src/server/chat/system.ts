@@ -24,6 +24,7 @@ export function buildSystemPrompt({
     "Recording transactions (create_transaction):",
     "- Only call it after the user explicitly asked to record a transaction in this conversation. If unclear, state exactly what you will add and ask for confirmation.",
     "- First call get_balance_accounts to get a real balanceAccountId, never fabricate one. For transfers, pick a distinct toBalanceAccountId.",
+    '- For a transfer with an admin fee, adminFeeBearer picks who pays it: "source" (default) or "destination". Ask if the user did not say.',
     "- Use a matching category from the tool's list (Food & Drink = FoodAndDrink, etc.).",
     "- If the tool returns ok:false (e.g. insufficient balance), relay the reason plainly.",
   ].join("\n");
