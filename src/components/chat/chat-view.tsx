@@ -150,7 +150,7 @@ export function ChatView({
   };
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
+    <div className="mx-auto flex h-full w-full max-w-3xl flex-col bg-chat">
       {/* Header — brand + one action (New chat). The model lives in the composer. */}
       <header className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-3 sm:px-6">
         <Image
@@ -161,10 +161,10 @@ export function ChatView({
           className="rounded-[9px]"
         />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold tracking-tight text-black">
+          <p className="truncate text-sm font-semibold tracking-tight text-ink">
             Budgie Assistant
           </p>
-          <p className="truncate text-[11px] text-black/40">
+          <p className="truncate text-[11px] text-ink/40">
             Ask about your money or log a transaction
           </p>
         </div>
@@ -173,7 +173,7 @@ export function ChatView({
           onClick={handleClear}
           aria-label="New chat"
           title="New chat"
-          className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.07] bg-white text-black/70 shadow-[0_2px_8px_rgba(0,0,0,0.05)] transition hover:bg-[#FAFAFA] hover:text-black active:scale-95"
+          className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-hairline bg-card text-ink/70 shadow-[0_2px_8px_rgba(0,0,0,0.05)] transition hover:bg-hover hover:text-ink active:scale-95"
         >
           <SquarePen className="w-[15px] h-[15px]" />
         </button>
@@ -215,28 +215,23 @@ export function ChatView({
                   />
                 ))}
                 {status === "submitted" && (
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#00C610]/10">
-                      <span className="h-2 w-2 rounded-full bg-[#00C610]" />
-                    </span>
-                    <div
-                      role="status"
-                      aria-label="Budgie is typing"
-                      className="flex w-fit items-center gap-1.5 rounded-[20px] rounded-tl-[6px] bg-white px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
-                    >
-                      <span
-                        className="w-[7px] h-[7px] rounded-full bg-black/30 animate-[typingPulse_1s_ease-in-out_infinite]"
-                        style={{ animationDelay: "0ms" }}
-                      />
-                      <span
-                        className="w-[7px] h-[7px] rounded-full bg-black/30 animate-[typingPulse_1s_ease-in-out_infinite]"
-                        style={{ animationDelay: "200ms" }}
-                      />
-                      <span
-                        className="w-[7px] h-[7px] rounded-full bg-black/30 animate-[typingPulse_1s_ease-in-out_infinite]"
-                        style={{ animationDelay: "400ms" }}
-                      />
-                    </div>
+                  <div
+                    role="status"
+                    aria-label="Budgie is typing"
+                    className="flex w-fit items-center gap-1.5 rounded-[20px] rounded-tl-[6px] bg-card px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
+                  >
+                    <span
+                      className="w-[7px] h-[7px] rounded-full bg-ink/30 animate-[typingPulse_1s_ease-in-out_infinite]"
+                      style={{ animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="w-[7px] h-[7px] rounded-full bg-ink/30 animate-[typingPulse_1s_ease-in-out_infinite]"
+                      style={{ animationDelay: "200ms" }}
+                    />
+                    <span
+                      className="w-[7px] h-[7px] rounded-full bg-ink/30 animate-[typingPulse_1s_ease-in-out_infinite]"
+                      style={{ animationDelay: "400ms" }}
+                    />
                   </div>
                 )}
               </>
@@ -248,7 +243,7 @@ export function ChatView({
           <button
             type="button"
             onClick={jumpToLatest}
-            className="absolute bottom-4 left-1/2 z-10 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full border border-black/[0.07] bg-white px-3.5 text-xs font-semibold text-black/70 shadow-[0_6px_20px_-8px_rgba(0,0,0,0.25)] transition hover:text-black active:scale-95 animate-[stepReveal_0.2s_ease-out] motion-reduce:animate-none"
+            className="absolute bottom-4 left-1/2 z-10 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full border border-hairline bg-card px-3.5 text-xs font-semibold text-ink/70 shadow-[0_6px_20px_-8px_rgba(0,0,0,0.25)] transition hover:text-ink active:scale-95 animate-[stepReveal_0.2s_ease-out] motion-reduce:animate-none"
           >
             <ArrowDown className="h-3.5 w-3.5" />
             Latest
@@ -261,14 +256,14 @@ export function ChatView({
         {error && (
           <div
             role="alert"
-            className="mb-2 flex items-center gap-2.5 rounded-[16px] bg-[#D8000C]/10 px-3.5 py-2.5 text-[#D8000C]"
+            className="mb-2 flex items-center gap-2.5 rounded-[16px] bg-expense/10 px-3.5 py-2.5 text-expense"
           >
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <p className="text-[13px] font-medium">Something went wrong</p>
             <button
               type="button"
               onClick={retry}
-              className="ml-auto h-8 shrink-0 rounded-full border border-[#D8000C]/50 px-3.5 text-[13px] font-semibold text-[#D8000C] transition hover:bg-[#D8000C]/10 active:scale-95"
+              className="ml-auto h-8 shrink-0 rounded-full border border-expense/50 px-3.5 text-[13px] font-semibold text-expense transition hover:bg-expense/10 active:scale-95"
             >
               Retry
             </button>
@@ -276,7 +271,7 @@ export function ChatView({
         )}
 
         {autoDowngraded && modelIndex > 0 && (
-          <p className="mb-2 flex items-center gap-1.5 text-[11px] text-black/45">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] text-ink/45">
             <Info className="w-3 h-3" />
             Switched to a lighter model to stay within free limits.
           </p>
@@ -293,7 +288,7 @@ export function ChatView({
           }
         />
 
-        <p className="mt-2 text-center text-[11px] text-black/35">
+        <p className="mt-2 text-center text-[11px] text-ink/35">
           Budgie can make mistakes. Double-check the important numbers.
         </p>
       </div>

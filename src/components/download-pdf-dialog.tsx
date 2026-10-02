@@ -161,7 +161,7 @@ export function DownloadPdfDialog({
         <div className="flex flex-col gap-4">
           <div>
             <h2 className="text-2xl font-bold">Download PDF</h2>
-            <p className="text-sm text-black/50 mt-1">
+            <p className="text-sm text-ink/50 mt-1">
               Choose which transactions to include in the report.
             </p>
           </div>
@@ -174,26 +174,26 @@ export function DownloadPdfDialog({
                 onClick={() => setScope(opt.key)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-[20px] border text-left transition ${
                   scope === opt.key
-                    ? "border-black/30 bg-[#F2F2F2]"
-                    : "border-black/10 hover:bg-[#F8F8F8]"
+                    ? "border-ink/30 bg-surface"
+                    : "border-hairline hover:bg-surface"
                 }`}
               >
-                <span className="w-9 h-9 rounded-full bg-[#F2F2F2] flex items-center justify-center text-black/60 shrink-0">
+                <span className="w-9 h-9 rounded-full bg-surface flex items-center justify-center text-ink/60 shrink-0">
                   {opt.icon}
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-black">
+                  <span className="block text-sm font-semibold text-ink">
                     {opt.label}
                   </span>
-                  <span className="block text-xs text-black/40">
+                  <span className="block text-xs text-ink/40">
                     {opt.desc}
                   </span>
                 </span>
                 <span
                   className={`w-4 h-4 rounded-full border-2 transition ${
                     scope === opt.key
-                      ? "border-black bg-black"
-                      : "border-black/20"
+                      ? "border-ink bg-ink"
+                      : "border-ink/20"
                   }`}
                 />
               </button>
@@ -203,21 +203,21 @@ export function DownloadPdfDialog({
           {scope === "range" && (
             <div className="flex items-center gap-3">
               <label className="flex-1 flex flex-col gap-1">
-                <span className="text-xs font-medium text-black/50">From</span>
+                <span className="text-xs font-medium text-ink/50">From</span>
                 <input
                   type="date"
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
-                  className="w-full h-11 text-sm bg-white text-black px-3 py-2 rounded-[20px] border border-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 transition"
+                  className="w-full h-11 text-sm bg-card text-ink px-3 py-2 rounded-[20px] border border-hairline focus:outline-none focus:ring-2 focus:ring-ink/20 transition"
                 />
               </label>
               <label className="flex-1 flex flex-col gap-1">
-                <span className="text-xs font-medium text-black/50">To</span>
+                <span className="text-xs font-medium text-ink/50">To</span>
                 <input
                   type="date"
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
-                  className="w-full h-11 text-sm bg-white text-black px-3 py-2 rounded-[20px] border border-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 transition"
+                  className="w-full h-11 text-sm bg-card text-ink px-3 py-2 rounded-[20px] border border-hairline focus:outline-none focus:ring-2 focus:ring-ink/20 transition"
                 />
               </label>
             </div>

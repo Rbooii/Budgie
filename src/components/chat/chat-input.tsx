@@ -44,7 +44,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="rounded-[24px] border border-black/10 bg-white shadow-[0_10px_30px_-16px_rgba(0,0,0,0.25)] transition focus-within:border-black/20 focus-within:ring-4 focus-within:ring-black/[0.04]">
+    <div className="rounded-[24px] border border-hairline bg-card shadow-[0_10px_30px_-16px_rgba(0,0,0,0.25)] transition focus-within:border-ink/20 focus-within:ring-4 focus-within:ring-ink/[0.04]">
       <textarea
         ref={textareaRef}
         value={input}
@@ -59,7 +59,7 @@ export function ChatInput({
         aria-label="Prompt"
         rows={1}
         disabled={status === "error"}
-        className="w-full max-h-[160px] resize-none overflow-y-auto bg-transparent px-4 pt-3.5 text-[15px] leading-6 text-black outline-none placeholder:text-black/35 disabled:opacity-60"
+        className="w-full max-h-[160px] resize-none overflow-y-auto bg-transparent px-4 pt-3.5 text-[15px] leading-6 text-ink outline-none placeholder:text-ink/35 disabled:opacity-60"
       />
       <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1">
         {modelMenu ?? <span />}
@@ -71,10 +71,10 @@ export function ChatInput({
           className={cn(
             "flex h-9 w-9 items-center justify-center rounded-full transition active:scale-95",
             busy
-              ? "bg-[#171717] text-white hover:opacity-90"
+              ? "bg-ink-soft text-ink-contrast hover:opacity-90"
               : canSend
-                ? "bg-[#00C610] text-white hover:opacity-90"
-                : "bg-black/[0.06] text-black/30",
+                ? "bg-brand text-white hover:opacity-90"
+                : "bg-hairline-track text-ink/30",
           )}
         >
           {busy ? (

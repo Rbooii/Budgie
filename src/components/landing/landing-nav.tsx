@@ -30,14 +30,14 @@ export function LandingNav({
     <header
       className={`sticky top-0 z-50 transition-colors duration-200 ${
         scrolled
-          ? "bg-white/80 backdrop-blur-sm border-b border-black/[0.06]"
+          ? "bg-screen/80 backdrop-blur-sm border-b border-hairline"
           : "bg-transparent border-b border-transparent"
       }`}
     >
       <nav className="mx-auto max-w-screen-xl flex items-center justify-between px-5 sm:px-8 py-3.5">
         <Link
           href="/"
-          className="flex items-center gap-2 font-bold text-xl tracking-tight text-black"
+          className="flex items-center gap-2 font-bold text-xl tracking-tight text-ink"
         >
           <Image
             src="/android-chrome-192x192.png"
@@ -53,7 +53,7 @@ export function LandingNav({
             <a
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-black/60 hover:text-black transition"
+              className="text-sm font-medium text-ink/60 hover:text-ink transition"
             >
               {item.label}
             </a>
@@ -62,13 +62,13 @@ export function LandingNav({
         {!session && <div className="flex items-center gap-2">
           <Link
             href="/sign-in"
-            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-white text-black border border-black/10 hover:bg-[#F2F2F2] active:scale-[0.98] transition transform duration-150"
+            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-card text-ink border border-hairline hover:bg-surface active:scale-[0.98] transition transform duration-150"
           >
             Sign in
           </Link>
           <Link
             href="/sign-in"
-            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
+            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-brand text-white hover:bg-brand/90 active:scale-[0.98] transition transform duration-150"
           >
             Get started
           </Link>
@@ -76,7 +76,7 @@ export function LandingNav({
         {session && <div className="flex items-center gap-2">
           <Link
             href="/dashboard"
-            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
+            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-brand text-white hover:bg-brand/90 active:scale-[0.98] transition transform duration-150"
           >
             Dashboard
           </Link>

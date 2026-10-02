@@ -63,7 +63,7 @@ describe("LandingNav — anonymous", () => {
     expect(header.className).toContain("bg-transparent");
     setWindowScrollY(50);
     fireEvent.scroll(window);
-    expect(header.className).toContain("bg-white/80");
+    expect(header.className).toContain("bg-screen/80");
   });
 });
 

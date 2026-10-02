@@ -89,7 +89,7 @@ describe("BudgetDetailSheet — display", () => {
       <BudgetDetailSheet budget={budget} spent={2500000} onClose={onCloseMock} />,
     );
     const bar = container.querySelector('[style*="width"]') as HTMLElement;
-    expect(bar.className).toContain("bg-[#D8000C]");
+    expect(bar.className).toContain("bg-expense");
     expect(bar.style.width).toBe("100%");
   });
 });

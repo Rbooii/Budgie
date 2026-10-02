@@ -132,7 +132,7 @@ async function BudgetContent() {
       </div>
 
       <div className="flex items-center justify-between mt-8">
-        <h2 className="text-xl font-bold text-black">Your Budgets</h2>
+        <h2 className="text-xl font-bold text-ink">Your Budgets</h2>
         <AddBudgetDialog usedCategories={usedCategories} />
       </div>
       <BudgetsList
@@ -142,7 +142,7 @@ async function BudgetContent() {
       />
 
       <div className="flex items-center justify-between mt-8">
-        <h2 className="text-xl font-bold text-black">Subscriptions</h2>
+        <h2 className="text-xl font-bold text-ink">Subscriptions</h2>
         <AddSubscriptionDialog />
       </div>
       <SubscriptionList

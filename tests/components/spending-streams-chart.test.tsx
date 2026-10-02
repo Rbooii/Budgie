@@ -145,8 +145,8 @@ describe("SpendingStreamsChart — budget markers", () => {
     );
     const bars = container.querySelectorAll(".h-3 > div.h-full");
     const classes = Array.from(bars).map((b) => b.className);
-    expect(classes.some((c) => c.includes("bg-[#D8000C]"))).toBe(true);
-    expect(classes.some((c) => c.includes("bg-[#FFBABA]"))).toBe(true);
+    expect(classes.some((c) => c.includes("bg-expense"))).toBe(true);
+    expect(classes.some((c) => c.includes("bg-expense-tint"))).toBe(true);
   });
 });
 

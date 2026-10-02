@@ -36,7 +36,7 @@ describe("BalanceSection", () => {
     render(<BalanceSection value={1000000} deltaPct={5} deltaAbsolute={50000} />);
     expect(screen.getByText("Balance")).toBeInTheDocument();
     const card = heroCard();
-    expect(card.className).toContain("bg-[#00C610]");
+    expect(card.className).toContain("bg-brand");
     expect(card.className).toContain("rounded-[35px]");
   });
 
@@ -75,8 +75,8 @@ describe("BalanceSection", () => {
     mockBalanceVisibility.hidden = false;
     render(<BalanceSection value={1000000} deltaPct={-5} deltaAbsolute={-50000} />);
     const deltaEl = screen.getByText(/From last Month/);
-    expect(deltaEl.className).not.toContain("text-[#00C610]");
-    expect(deltaEl.className).not.toContain("text-[#D8000C]");
+    expect(deltaEl.className).not.toContain("text-brand");
+    expect(deltaEl.className).not.toContain("text-expense");
   });
 
   it("masks the delta text when hidden", () => {

@@ -36,13 +36,13 @@ export function SubscriptionList({
     return (
       <>
         <div className="w-full flex flex-col items-center justify-center text-center py-16 px-4">
-          <div className="w-12 h-12 rounded-full bg-[#F2F2F2] flex items-center justify-center text-black/30 mb-4">
+          <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-ink/30 mb-4">
             <Repeat className="w-7 h-7" />
           </div>
-          <p className="text-base font-semibold text-black">
+          <p className="text-base font-semibold text-ink">
             No subscriptions yet
           </p>
-          <p className="text-sm text-black/40 mt-1 max-w-xs">
+          <p className="text-sm text-ink/40 mt-1 max-w-xs">
             Add your recurring charges to see when the next payment is due.
           </p>
           <div className="mt-5">{addTrigger}</div>
@@ -65,34 +65,34 @@ export function SubscriptionList({
               key={s.id}
               type="button"
               onClick={() => setSelected(s)}
-              className="group w-full flex items-center gap-3.5 px-3.5 py-3.5 text-left rounded-2xl hover:bg-[#FAFAFA] transition active:scale-[0.98]"
+              className="group w-full flex items-center gap-3.5 px-3.5 py-3.5 text-left rounded-2xl hover:bg-hover transition active:scale-[0.98]"
             >
-              <span className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-[#FFD9A0]/40 text-[#B25B00]">
+              <span className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-transfer-tint text-transfer">
                 {categoryIcon(s.category, "w-5 h-5")}
               </span>
 
               <div className="flex-1 min-w-0">
-                <p className="text-base font-medium text-black truncate">
+                <p className="text-base font-medium text-ink truncate">
                   {s.name}
                 </p>
-                <p className="text-sm text-black/45 truncate">
+                <p className="text-sm text-ink/45 truncate">
                   {categoryLabel(s.category)} · {periodLabel(s.periodDays)}
                 </p>
-                <p className="text-xs text-black/35 mt-0.5">
+                <p className="text-xs text-ink/35 mt-0.5">
                   Next {formatDate(next)}
                 </p>
               </div>
 
               <div className="flex flex-col items-end shrink-0">
-                <p className="text-lg font-semibold tabular-nums text-black">
+                <p className="text-lg font-semibold tabular-nums text-ink">
                   {formatRupiah(s.amount)}
                 </p>
                 {!s.active && (
-                  <p className="text-[11px] text-black/35">Inactive</p>
+                  <p className="text-[11px] text-ink/35">Inactive</p>
                 )}
               </div>
 
-              <ChevronRight className="w-5 h-5 text-black/15 group-hover:text-black/30 transition shrink-0 hidden sm:block" />
+              <ChevronRight className="w-5 h-5 text-ink/15 group-hover:text-ink/30 transition shrink-0 hidden sm:block" />
             </button>
           );
         })}

@@ -1,3 +1,4 @@
+import { Activity } from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -192,5 +193,88 @@ describe("AddTransactionWizard — empty accounts", () => {
     render(<AddTransactionWizard accounts={[]} />);
     const transferBtn = screen.getByText("Transfer").closest("button");
     expect(transferBtn).toBeDisabled();
+  });
+});
+
+describe("AddTransactionWizard — fresh state after submit (Cache Components Activity)", () => {
+  function renderActivity() {
+    const view = render(
+      <Activity mode="visible">
+        <AddTransactionWizard accounts={accounts} />
+      </Activity>,
+    );
+    return {
+      hide: () =>
+        view.rerender(
+          <Activity mode="hidden">
+            <AddTransactionWizard accounts={accounts} />
+          </Activity>,
+        ),
+      show: () =>
+        view.rerender(
+          <Activity mode="visible">
+            <AddTransactionWizard accounts={accounts} />
+          </Activity>,
+        ),
+    };
+  }
+
+  async function fillExpenseToStep3(
+    user: ReturnType<typeof userEvent.setup>,
+  ) {
+    await user.click(screen.getByText("Expense"));
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    await user.type(screen.getByPlaceholderText("0"), "50000");
+    await user.selectOptions(screen.getAllByRole("combobox")[0], "acc-1");
+
+    const nameInput = screen
+      .getAllByRole("textbox")
+      .find(
+        (el) =>
+          el.getAttribute("placeholder") === "e.g. Grocery shopping",
+      );
+    await user.type(nameInput!, "Groceries");
+    await user.selectOptions(
+      screen.getAllByRole("combobox").pop()!,
+      "FoodAndDrink",
+    );
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+  }
+
+  it("resets to step 1 after a successful submit once the page is hidden and shown again", async () => {
+    const user = userEvent.setup();
+    const activity = renderActivity();
+
+    await fillExpenseToStep3(user);
+    await user.click(screen.getByRole("button", { name: /confirm and add/i }));
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith("/transactions"),
+    );
+
+    activity.hide();
+    activity.show();
+
+    expect(screen.getByText("New transaction")).toBeInTheDocument();
+    expect(screen.getByText("1 of 3")).toBeInTheDocument();
+    expect(screen.queryByText("Groceries")).not.toBeInTheDocument();
+  });
+
+  it("keeps the review data when the submit fails", async () => {
+    postMock.mockResolvedValueOnce(errorResponse("Insufficient balance"));
+    const user = userEvent.setup();
+    const activity = renderActivity();
+
+    await fillExpenseToStep3(user);
+    await user.click(screen.getByRole("button", { name: /confirm and add/i }));
+    await waitFor(() =>
+      expect(screen.getByText("Insufficient balance")).toBeInTheDocument(),
+    );
+
+    activity.hide();
+    activity.show();
+
+    expect(screen.getByText("3 of 3")).toBeInTheDocument();
+    expect(screen.getByText("Groceries")).toBeInTheDocument();
   });
 });

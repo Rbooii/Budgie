@@ -11,7 +11,7 @@ describe("Button", () => {
 
   it("applies the success variant class", () => {
     render(<Button variant="success">Save</Button>);
-    expect(screen.getByRole("button").className.includes("bg-[#00C610]")).toBe(true);
+    expect(screen.getByRole("button").className.includes("bg-brand")).toBe(true);
   });
 
   it("applies the outline variant class", () => {

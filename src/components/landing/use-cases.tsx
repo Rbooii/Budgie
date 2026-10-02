@@ -17,27 +17,27 @@ interface UseCase {
 const USE_CASES: UseCase[] = [
   {
     icon: <TrendingUp className="w-5 h-5" />,
-    tint: "bg-[#A0FFA8]/40 text-[#1F9B29]",
+    tint: "bg-income-tint text-income",
     title: "Tally the month\u2019s income",
   },
   {
     icon: <AlertTriangle className="w-5 h-5" />,
-    tint: "bg-[#FFBABA]/40 text-[#D8000C]",
+    tint: "bg-expense-tint text-expense",
     title: "Catch a spending leak",
   },
   {
     icon: <Target className="w-5 h-5" />,
-    tint: "bg-[#FFD9A0]/40 text-[#B25B00]",
+    tint: "bg-transfer-tint text-transfer",
     title: "Stay under every budget",
   },
   {
     icon: <CalendarClock className="w-5 h-5" />,
-    tint: "bg-[#A0FFA8]/30 text-[#00C610]",
+    tint: "bg-income-tint text-brand",
     title: "Never miss a renewal",
   },
   {
     icon: <FileDown className="w-5 h-5" />,
-    tint: "bg-[#F2F2F2] text-black/70",
+    tint: "bg-surface text-ink/70",
     title: "Export records to PDF",
   },
 ];
@@ -56,7 +56,7 @@ export function UseCases() {
       <Reveal>
         <h2
           id="usecases-title"
-          className="text-sm font-normal text-black/60"
+          className="text-sm font-normal text-ink/60"
         >
           See what Budgie can do
         </h2>
@@ -67,14 +67,14 @@ export function UseCases() {
           <Reveal key={uc.title} delay={(i % 5) * 60} className="h-full">
             <Link
               href="/sign-in"
-              className="group flex items-center gap-4 h-full rounded-[20px] border border-black/[0.06] bg-white p-5 transition-colors duration-200 hover:bg-[#FAFAFA] active:scale-[0.98] motion-reduce:transition-none"
+              className="group flex items-center gap-4 h-full rounded-[20px] border border-hairline bg-card p-5 transition-colors duration-200 hover:bg-hover active:scale-[0.98] motion-reduce:transition-none"
             >
               <span
                 className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:group-hover:scale-100 ${uc.tint}`}
               >
                 {uc.icon}
               </span>
-              <span className="text-base font-bold leading-6 text-black">
+              <span className="text-base font-bold leading-6 text-ink">
                 {uc.title}
               </span>
             </Link>

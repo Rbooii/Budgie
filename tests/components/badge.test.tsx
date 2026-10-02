@@ -15,12 +15,12 @@ describe("Badge", () => {
 
   it("applies the success variant class", () => {
     render(<Badge variant="success">Active</Badge>);
-    expect(screen.getByText("Active").className.includes("bg-[#00C610]"));
+    expect(screen.getByText("Active").className.includes("bg-brand"));
   });
 
   it("applies the soft variant class", () => {
     render(<Badge variant="soft">Soft</Badge>);
-    expect(screen.getByText("Soft").className.includes("bg-[#A0FFA8]"));
+    expect(screen.getByText("Soft").className.includes("bg-income-tint"));
   });
 
   it("applies custom className", () => {

@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
 import { PageSkeleton } from "@/components/page-skeleton";
 import UpgradePlusButton from "@/components/upgradePlusButton";
+import { ThemePicker } from "@/components/theme-picker";
 import { formatRupiah } from "@/lib/format";
 
 const FIRST_MONTH = 24500;
@@ -57,12 +58,12 @@ async function ProfileContent() {
         </div>
       </div>
 
-      {/* Identity card */}
+      {/* Identity card — always-dark surface (mirrors the iOS identity card) */}
       <div
-        className="mt-6 w-full rounded-[35px] bg-black p-8 sm:p-10 flex flex-col items-center text-center shadow-[0_4px_24px_-8px_rgba(0,0,0,0.25)] animate-[profileReveal_0.2s_ease-out] motion-reduce:animate-none"
+        className="mt-6 w-full rounded-[35px] bg-[#1c1c1e] p-8 sm:p-10 flex flex-col items-center text-center shadow-[0_4px_24px_-8px_rgba(0,0,0,0.25)] animate-[profileReveal_0.2s_ease-out] motion-reduce:animate-none"
         style={{ animationDelay: "60ms" }}
       >
-        <div className="w-[80px] h-[80px] font-bold bg-[#F2F2F2] rounded-full flex items-center justify-center text-3xl text-black">
+        <div className="w-[80px] h-[80px] font-bold bg-white/15 rounded-full flex items-center justify-center text-3xl text-white">
           {getInitials(session.user.name || "")}
         </div>
 
@@ -74,9 +75,7 @@ async function ProfileContent() {
         <div className="mt-4">
           <span
             className={`inline-block rounded-[24px] px-3 py-0.5 text-xs font-semibold tabular-nums ${
-              plus
-                ? "bg-[#A0FFA8] text-[#1F9B29]"
-                : "bg-white/10 text-white/60"
+              plus ? "bg-brand text-[#171717]" : "bg-white/10 text-white/90"
             }`}
           >
             {plus ? "Plus" : "Free"}
@@ -96,7 +95,7 @@ async function ProfileContent() {
       {plus ? (
         /* Plus member card — clean white surface */
         <div
-          className="mt-3 w-full rounded-[35px] border border-black/10 bg-white p-8 sm:p-10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] animate-[profileReveal_0.2s_ease-out] motion-reduce:animate-none"
+          className="mt-3 w-full rounded-[35px] border border-hairline bg-card p-8 sm:p-10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] animate-[profileReveal_0.2s_ease-out] motion-reduce:animate-none"
           style={{ animationDelay: "120ms" }}
         >
           <div className="flex items-center justify-between">
@@ -104,25 +103,25 @@ async function ProfileContent() {
               <h3 className="text-xl font-semibold tracking-tight">
                 Budgie Plus
               </h3>
-              <p className="text-sm text-black/40 mt-0.5">
+              <p className="text-sm text-ink/40 mt-0.5">
                 Thank you for supporting Budgie.
               </p>
             </div>
-            <span className="inline-block rounded-[24px] px-3 py-0.5 text-xs font-semibold bg-[#A0FFA8] text-[#1F9B29]">
+            <span className="inline-block rounded-[24px] px-3 py-0.5 text-xs font-semibold bg-income-tint text-income">
               Active
             </span>
           </div>
 
-          <div className="mt-6 rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]">
+          <div className="mt-6 rounded-[20px] bg-surface divide-y divide-hairline">
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-xs text-black/40">Plan</span>
+              <span className="text-xs text-ink/40">Plan</span>
               <span className="text-sm font-medium tabular-nums">
                 {formatRupiah(REGULAR)}
-                <span className="text-xs text-black/40"> /month</span>
+                <span className="text-xs text-ink/40"> /month</span>
               </span>
             </div>
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-xs text-black/40">Payment method</span>
+              <span className="text-xs text-ink/40">Payment method</span>
               <span className="text-sm font-medium">QRIS</span>
             </div>
           </div>
@@ -134,34 +133,34 @@ async function ProfileContent() {
       ) : (
         /* Upgrade card — clean white surface, real pricing, single success CTA */
         <div
-          className="mt-3 w-full rounded-[35px] border border-black/10 bg-white p-8 sm:p-10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] animate-[profileReveal_0.2s_ease-out] motion-reduce:animate-none"
+          className="mt-3 w-full rounded-[35px] border border-hairline bg-card p-8 sm:p-10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] animate-[profileReveal_0.2s_ease-out] motion-reduce:animate-none"
           style={{ animationDelay: "120ms" }}
         >
           <h3 className="text-xl font-semibold tracking-tight">Budgie Plus</h3>
-          <p className="text-sm text-black/40 mt-0.5">
+          <p className="text-sm text-ink/40 mt-0.5">
             50% off your first month
           </p>
 
           <div className="mt-6 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums tracking-tight text-[#1F9B29]">
+            <span className="text-3xl font-bold tabular-nums tracking-tight text-income">
               {formatRupiah(FIRST_MONTH)}
             </span>
-            <span className="text-sm text-black/30 line-through tabular-nums">
+            <span className="text-sm text-ink/30 line-through tabular-nums">
               {formatRupiah(REGULAR)}
             </span>
-            <span className="text-sm text-black/40">/month</span>
+            <span className="text-sm text-ink/40">/month</span>
           </div>
-          <p className="text-xs text-black/40 mt-1.5">
+          <p className="text-xs text-ink/40 mt-1.5">
             Then {formatRupiah(REGULAR)} per month. Cancel anytime.
           </p>
 
-          <div className="mt-6 rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]">
+          <div className="mt-6 rounded-[20px] bg-surface divide-y divide-hairline">
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-xs text-black/40">Payment method</span>
+              <span className="text-xs text-ink/40">Payment method</span>
               <span className="text-sm font-medium">QRIS</span>
             </div>
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-xs text-black/40">Billing cycle</span>
+              <span className="text-xs text-ink/40">Billing cycle</span>
               <span className="text-sm font-medium">Monthly</span>
             </div>
           </div>
@@ -171,6 +170,24 @@ async function ProfileContent() {
           </div>
         </div>
       )}
+
+      {/* Settings — mirrors the iOS ProfileView settings section */}
+      <div
+        className="mt-3 w-full rounded-[35px] border border-hairline bg-card p-8 sm:p-10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] animate-[profileReveal_0.2s_ease-out] motion-reduce:animate-none"
+        style={{ animationDelay: "180ms" }}
+      >
+        <h3 className="text-xl font-semibold tracking-tight">Settings</h3>
+
+        <div className="mt-6 rounded-[20px] bg-surface px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium">Appearance</p>
+            <p className="text-xs text-ink/40 mt-0.5">
+              Follows your device by default
+            </p>
+          </div>
+          <ThemePicker />
+        </div>
+      </div>
     </>
   );
 }

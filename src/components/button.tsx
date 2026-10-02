@@ -17,14 +17,14 @@ const VARIANT_CLASS: Record<Variant, string> = {
   primary:
     "bg-[#000000] text-white hover:bg-black/85 active:scale-[0.98]",
   outline:
-    "bg-[#FFFFFF] text-black border border-black/10 hover:bg-[#F2F2F2] active:scale-[0.98]",
-  icon: "bg-[#FFFFFF] text-black hover:bg-[#F2F2F2] active:scale-95",
+    "bg-card text-ink border border-hairline hover:bg-surface active:scale-[0.98]",
+  icon: "bg-card text-ink hover:bg-surface active:scale-95",
   success:
-    "bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98]",
+    "bg-brand text-white hover:bg-brand/90 active:scale-[0.98]",
   soft:
-    "bg-[#A0FFA8] text-[#1F9B29] hover:bg-[#8EED96] active:scale-[0.98]",
+    "bg-income-tint text-income hover:bg-income/20 active:scale-[0.98]",
   softred:
-    "bg-[#FFBABA] text-[#D8000C] hover:bg-[#FF9A9A] active:scale-[0.98]",
+    "bg-expense-tint text-expense hover:bg-expense/20 active:scale-[0.98]",
 };
 
 const SIZE_CLASS: Record<Size, string> = {

@@ -55,7 +55,7 @@ export default function UpgradePlusButton({ plus }: { plus: boolean }) {
   return (
     <div className="w-full flex flex-col gap-2">
       {error && (
-        <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5">
+        <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </p>

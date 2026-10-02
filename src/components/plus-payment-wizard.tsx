@@ -188,13 +188,13 @@ export function PlusPaymentWizard({
             <>
               <div className="flex items-center justify-between pr-8">
                 <h2 className="text-2xl font-medium">Get Budgie Plus</h2>
-                <span className="text-xs font-medium text-black/40">
+                <span className="text-xs font-medium text-ink/40">
                   {step} of 3
                 </span>
               </div>
-              <div className="h-0.5 w-full bg-black/[0.06] mt-4 mb-5">
+              <div className="h-0.5 w-full bg-hairline-track mt-4 mb-5">
                 <div
-                  className="h-full bg-[#00C610] transition-all duration-300 ease-out"
+                  className="h-full bg-brand transition-all duration-300 ease-out"
                   style={{ width: `${(step / 3) * 100}%` }}
                 />
               </div>
@@ -202,7 +202,7 @@ export function PlusPaymentWizard({
           )}
 
           {error && (
-            <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5 mb-4">
+            <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5 mb-4">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </p>
@@ -214,39 +214,39 @@ export function PlusPaymentWizard({
               className="flex flex-col gap-4 animate-[stepReveal_0.2s_ease-out] motion-reduce:animate-none"
             >
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold tabular-nums tracking-tight text-[#1F9B29]">
+                <span className="text-3xl font-bold tabular-nums tracking-tight text-income">
                   {formatRupiah(FIRST_MONTH)}
                 </span>
-                <span className="text-sm text-black/30 line-through tabular-nums">
+                <span className="text-sm text-ink/30 line-through tabular-nums">
                   {formatRupiah(REGULAR)}
                 </span>
-                <span className="text-sm text-black/40">/month</span>
+                <span className="text-sm text-ink/40">/month</span>
               </div>
-              <p className="text-xs text-black/40 -mt-2">
+              <p className="text-xs text-ink/40 -mt-2">
                 Then {formatRupiah(REGULAR)} per month. Cancel anytime.
               </p>
 
-              <div className="rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]">
+              <div className="rounded-[20px] bg-surface divide-y divide-hairline">
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-black/40">First month</span>
+                  <span className="text-xs text-ink/40">First month</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-black/30 line-through tabular-nums">
+                    <span className="text-xs text-ink/30 line-through tabular-nums">
                       {formatRupiah(REGULAR)}
                     </span>
-                    <span className="text-sm font-semibold text-[#1F9B29] tabular-nums">
+                    <span className="text-sm font-semibold text-income tabular-nums">
                       {formatRupiah(FIRST_MONTH)}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-black/40">Then</span>
+                  <span className="text-xs text-ink/40">Then</span>
                   <span className="text-sm font-medium tabular-nums">
                     {formatRupiah(REGULAR)}
-                    <span className="text-xs text-black/40"> /month</span>
+                    <span className="text-xs text-ink/40"> /month</span>
                   </span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-xs text-black/40">Payment method</span>
+                  <span className="text-xs text-ink/40">Payment method</span>
                   <span className="text-sm font-medium">QRIS</span>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export function PlusPaymentWizard({
               className="flex flex-col items-center gap-4 animate-[stepReveal_0.2s_ease-out] motion-reduce:animate-none"
             >
               <div className="w-full flex items-center justify-center pt-2 pb-1">
-                <div className="w-[200px] h-[200px] bg-white rounded-[20px] border border-black/10 p-3 flex items-center justify-center">
+                <div className="w-[200px] h-[200px] bg-white rounded-[20px] border border-hairline p-3 flex items-center justify-center">
                   <QRCodeSVG
                     value={checkout.qrString}
                     size={176}
@@ -284,12 +284,12 @@ export function PlusPaymentWizard({
                 <p className="text-sm font-semibold">
                   Scan with your e-wallet
                 </p>
-                <p className="text-xs text-black/40 mt-1">
+                <p className="text-xs text-ink/40 mt-1">
                   Open GoPay, OVO, DANA, or ShopeePay and scan the QR code
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-black/40">
+              <div className="flex items-center gap-2 text-xs text-ink/40">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 Waiting for payment…
               </div>
@@ -324,7 +324,7 @@ export function PlusPaymentWizard({
               className="flex flex-col text-center py-4 gap-3 animate-[stepReveal_0.25s_ease-out] motion-reduce:animate-none"
             >
               <h2 className="text-2xl font-medium">Welcome to Budgie Plus</h2>
-              <p className="text-sm text-black/40">
+              <p className="text-sm text-ink/40">
                 Your Plus membership is now active.
               </p>
               <Button

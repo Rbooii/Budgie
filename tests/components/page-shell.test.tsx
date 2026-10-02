@@ -1,5 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { stubMatchMedia } from "@/test-utils/browser-mocks";
+import { ThemeProvider } from "@/components/theme-provider";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
@@ -7,9 +9,22 @@ vi.mock("next/navigation", () => ({
 
 import { PageShell } from "@/components/page-shell";
 
+function renderShell(children: React.ReactNode) {
+  return render(<ThemeProvider>{children}</ThemeProvider>);
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+  stubMatchMedia(false);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("PageShell", () => {
   it("renders the sidebar and the children", () => {
-    render(
+    renderShell(
       <PageShell>
         <h1>Page content</h1>
       </PageShell>,
@@ -19,7 +34,7 @@ describe("PageShell", () => {
   });
 
   it("renders nested children", () => {
-    render(
+    renderShell(
       <PageShell>
         <div>
           <span>nested</span>
@@ -30,7 +45,7 @@ describe("PageShell", () => {
   });
 
   it("renders the sidebar even without children", () => {
-    render(<PageShell>{null}</PageShell>);
+    renderShell(<PageShell>{null}</PageShell>);
     expect(screen.getByText("Budgie")).toBeInTheDocument();
   });
 });

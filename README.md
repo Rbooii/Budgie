@@ -20,7 +20,7 @@ CI/CD, and fast feature shipping with rigorous type-safety and testing.
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![Bun](https://img.shields.io/badge/Bun-1.3-000000?style=flat-square&logo=bun&logoColor=white)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-1034%20passing-00C610?style=flat-square)](./tests/components/account-card.test.tsx)
+[![Tests](https://img.shields.io/badge/tests-1042%20passing-39CD6B?style=flat-square)](./tests/components/account-card.test.tsx)
 
 ### Demo
 
@@ -70,9 +70,10 @@ contribution — human or AI — follows the same structured workflow.
 - **PDF Export** — Client-side PDF generation (all / filtered / date range) via jsPDF + autoTable
 - **Premade categories** — Per-type category lists (income/expense/transfer) — users pick from curated lists, no free-text chaos
 - **Responsive design** — Mobile-first with fixed bottom nav; desktop reveals a persistent sidebar. Calm minimal fintech aesthetic.
+- **Dark mode** — token-based light/dark themes with the exact iOS `Colors.swift` palette (`--brand/--income/--expense/--transfer`, adaptive surfaces/ink). System default with no flash (inline bootstrap script), Profile → Settings → Appearance picker (System/Light/Dark) plus a sidebar quick-toggle. See `UI_DESIGN.md` §19.
 - **Public landing page** — Root `/` (`src/app/page.tsx`) renders `<LandingPage/>` (server component, no auth gate): hero + animated stat counters, marquee, `<video>` "See it in motion" showcase (`AutoVideo` client component — mirrors the README demo, with the same Vercel-Blob mp4 source), feature grid, product vignettes, privacy spotlight, Plus pricing, FAQ, final CTA, footer. Rich SEO metadata + JSON-LD (WebApplication, BreadcrumbList, FAQPage, VideoObject). Video assets drop into `public/videos/` (see `public/videos/README.md`).
-- **Chat (AI financial assistant)** — `/chat` powered by Vercel AI SDK v7 + Google Gemini 2.5 Flash. Natural streaming responses with a collapsible Thinking state, real-time tool-calling feedback cards (accounts, transactions, budgets, subscriptions, insights), and the ability to record transactions from chat. **Free-tier friendly**: auto-downgrades to `gemini-3.5-flash-lite` when the primary model's daily quota runs out (per-model quota buckets) and persists the choice for 12h; token-lean by design (10-message window with old tool/reasoning parts pruned, 640 output tokens, capped thinking, compact tool results). Conversation + input draft survive tab switches via localStorage. Backend: dedicated Route Handler `src/app/api/chat/route.ts` + `src/server/chat/` tools that call the existing services directly (userId-scoped). See `ARCHITECTURE.md` §22.
-- **Testing** — Vitest + jsdom + Testing Library (1034 tests across 90 suites: component + service + controller + schema + mock midtrans + chat + landing layers)
+- **Chat (AI financial assistant)** — `/chat` powered by Vercel AI SDK v7 + Google Gemini 2.5 Flash. Natural streaming responses with a collapsible Thinking state, quiet app-styled tool-calling widgets (accounts, transactions, budgets, subscriptions, insights), and the ability to record transactions from chat. **Free-tier friendly**: auto-downgrades to `gemini-3.5-flash-lite` when the primary model's daily quota runs out (per-model quota buckets) and persists the choice for 12h; token-lean by design (10-message window with old tool/reasoning parts pruned, 640 output tokens, capped thinking, compact tool results). Conversation + input draft survive tab switches via localStorage. Backend: dedicated Route Handler `src/app/api/chat/route.ts` + `src/server/chat/` tools that call the existing services directly (userId-scoped). See `ARCHITECTURE.md` §22.
+- **Testing** — Vitest + jsdom + Testing Library (1042 tests across 91 suites: component + service + controller + schema + mock midtrans + chat + landing layers)
 
 ### In Progress
 
@@ -246,7 +247,7 @@ budgie/
 ## Testing
 
 ```bash
-bun run test          # 1034 tests, 90 suites (one-shot)
+bun run test          # 1042 tests, 91 suites (one-shot)
 bun run test:watch    # watch mode for development
 ```
 
@@ -282,10 +283,11 @@ bun run test:watch    # watch mode for development
 | `tests/server/chat/prepare.test.ts` | Chat prep — 10-message window, tool-part strip beyond last 2, reasoning strip beyond last 1 | 6 |
 | `tests/lib/chat-models.test.ts` | Chat models — resolveModel allowlist, isRateLimitError variants, thinking config per model, display labels | 10 |
 | `tests/lib/chat-storage.test.ts` | Chat storage — messages/draft/model round-trip, corrupt fallback, per-user isolation, 12h model expiry, clear | 11 |
-| `tests/components/chat/chat-view.test.tsx` | Chat UI — prompt-card empty state, bubbles, thinking toggle, tool status + result cards, typing indicator, streaming caret, copy/regenerate, jump-to-latest, stop/retry/send flows, model chip + disclaimer, persistence + clear, auto model-downgrade on quota errors (useChat mocked) | 29 |
-| `tests/components/chat/chat-tool-result.test.tsx` | Chat tool cards — accounts/transactions/budgets/subscriptions/insights/create_transaction (success + failure), 8-row cap, empty states | 9 |
+| `tests/components/chat/chat-view.test.tsx` | Chat UI — suggestion-chip empty state, bubbles, thinking toggle, tool status + result cards, typing indicator, streaming caret, copy/regenerate, jump-to-latest, stop/retry/send flows, model chip + disclaimer, persistence + clear, auto model-downgrade on quota errors (useChat mocked) | 29 |
+| `tests/components/chat/chat-tool-result.test.tsx` | Chat tool cards — accounts/transactions/budgets/subscriptions/insights/create_transaction (success + failure), 6-row cap, empty states | 9 |
 | `tests/components/chat/chat-thinking.test.tsx` + `chat-tool-status.test.tsx` | Chat primitives — thinking expand/collapse + streaming state, tool status pill | 7 |
 | `tests/components/page-skeleton.test.tsx` | Skeletons — per-route geometry variants (dashboard/transactions/budget/profile/chat/add-transaction), reduced-motion gating | 7 |
+| `tests/components/theme.test.tsx` | Theme — provider system sync, stored preference round-trip, ThemePicker persistence, no-flash bootstrap script | 5 |
 
 Tests are fully deterministic — no real database, no HTTP server, no auth
 cookies. All Prisma calls and API clients are mocked at the module level.

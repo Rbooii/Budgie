@@ -8,12 +8,12 @@ const MONTH_LABELS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"
 const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const GROWTH_COLORS = {
-  up: "#00C610",
-  flat: "#B25B00",
-  down: "#D8000C",
+  up: "var(--income)",
+  flat: "var(--stagnant)",
+  down: "var(--expense)",
 } as const;
 
-const PLACEHOLDER_COLOR = "#E5E5E5";
+const PLACEHOLDER_COLOR = "var(--chart-placeholder)";
 
 interface AssetGrowthCardProps {
   year: number;
@@ -41,7 +41,7 @@ export default function AssetGrowthCard({
   const [hovered, setHovered] = useState<number | null>(null);
 
   const ytd = currentTotal - startingValue;
-  const ytdColor = ytd >= 0 ? "text-[#00C610]" : "text-[#D8000C]";
+  const ytdColor = ytd >= 0 ? "text-brand" : "text-expense";
 
   const chartW = 300;
   const chartH = 100;
@@ -68,16 +68,16 @@ export default function AssetGrowthCard({
       : 0;
 
   return (
-    <div className="w-full h-fit bg-white rounded-[35px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] border border-black/10 p-6">
+    <div className="w-full h-fit bg-card rounded-[35px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] border border-hairline p-6">
       {/* Label + YTD pill */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-baseline gap-1.5 min-w-0">
-          <h2 className="text-base font-semibold text-black truncate">Asset Growth</h2>
-          <span className="text-sm text-black/30 tabular-nums">{year}</span>
+          <h2 className="text-base font-semibold text-ink truncate">Asset Growth</h2>
+          <span className="text-sm text-ink/30 tabular-nums">{year}</span>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-[#F2F2F2] px-2.5 py-1 shrink-0">
-          <Sparkles className="w-3 h-3 text-black/60" />
-          <span className="text-[11px] font-semibold text-black/60">YTD</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 shrink-0">
+          <Sparkles className="w-3 h-3 text-ink/60" />
+          <span className="text-[11px] font-semibold text-ink/60">YTD</span>
           <span className={`text-[11px] font-semibold tabular-nums ${ytdColor}`}>
             {signedRupiah(ytd)}
           </span>
@@ -139,10 +139,10 @@ export default function AssetGrowthCard({
                   textAnchor="middle"
                   className={
                     isHovered
-                      ? "fill-black/70"
+                      ? "fill-ink/70"
                       : isActive
-                        ? "fill-black/45"
-                        : "fill-black/25"
+                        ? "fill-ink/45"
+                        : "fill-ink/25"
                   }
                   style={{ fontSize: 9 }}
                 >
@@ -156,17 +156,17 @@ export default function AssetGrowthCard({
         {/* Hover tooltip */}
         {hovered !== null && hoveredValue !== undefined && (
           <div
-            className="absolute pointer-events-none bg-white rounded-[12px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12)] border border-black/5 px-2 py-1.5 whitespace-nowrap z-10"
+            className="absolute pointer-events-none bg-card rounded-[12px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12)] border border-hairline px-2 py-1.5 whitespace-nowrap z-10"
             style={{
               left: `${(((padX + slot * hovered + slot / 2)) / chartW) * 100}%`,
               top: `${((chartH - hoveredBarH) / svgH) * 100}%`,
               transform: "translate(-50%, calc(-100% - 8px))",
             }}
           >
-            <p className="text-[10px] font-semibold text-black/50 leading-none">
+            <p className="text-[10px] font-semibold text-ink/50 leading-none">
               {MONTH_FULL[hovered]} {year}
             </p>
-            <p className="text-[10px] font-bold tabular-nums text-black leading-none mt-1">
+            <p className="text-[10px] font-bold tabular-nums text-ink leading-none mt-1">
               {formatRupiah(hoveredValue)}
             </p>
           </div>
@@ -176,8 +176,8 @@ export default function AssetGrowthCard({
       {/* Empty state caption */}
       {!hasTransactions && (
         <div className="flex items-center gap-2 justify-center mt-3">
-          <TrendingUp className="w-4 h-4 text-black/30" />
-          <p className="text-xs text-black/40">No transactions yet — your growth will appear here</p>
+          <TrendingUp className="w-4 h-4 text-ink/30" />
+          <p className="text-xs text-ink/40">No transactions yet — your growth will appear here</p>
         </div>
       )}
 
@@ -185,16 +185,16 @@ export default function AssetGrowthCard({
       {hasTransactions && (
         <div className="flex items-center gap-3.5 mt-3">
           <span className="flex items-center gap-1.5">
-            <span className="w-[7px] h-[7px] rounded-full bg-[#00C610]" />
-            <span className="text-[11px] text-black/45">Growth</span>
+            <span className="w-[7px] h-[7px] rounded-full bg-brand" />
+            <span className="text-[11px] text-ink/45">Growth</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-[7px] h-[7px] rounded-full bg-[#B25B00]" />
-            <span className="text-[11px] text-black/45">Stable</span>
+            <span className="w-[7px] h-[7px] rounded-full bg-stagnant" />
+            <span className="text-[11px] text-ink/45">Stable</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-[7px] h-[7px] rounded-full bg-[#D8000C]" />
-            <span className="text-[11px] text-black/45">Decline</span>
+            <span className="w-[7px] h-[7px] rounded-full bg-expense" />
+            <span className="text-[11px] text-ink/45">Decline</span>
           </span>
         </div>
       )}

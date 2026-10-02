@@ -27,20 +27,20 @@ interface SpendingStreamsChartProps {
 }
 
 const CARD_CLASS =
-  "w-full bg-white rounded-[35px] border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6";
+  "w-full bg-card rounded-[35px] border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6";
 
 function ChartHeader({ monthLabel, live }: { monthLabel: string; live: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-sm font-semibold text-black/50">Spending Streams</h2>
+      <h2 className="text-sm font-semibold text-ink/50">Spending Streams</h2>
       <span className="flex items-center gap-2.5">
         {live && (
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#1F9B29] uppercase tracking-wide">
-            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-[#00C610]" />
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-income uppercase tracking-wide">
+            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-brand" />
             Live
           </span>
         )}
-        <span className="text-xs text-black/30">{monthLabel}</span>
+        <span className="text-xs text-ink/30">{monthLabel}</span>
       </span>
     </div>
   );
@@ -73,15 +73,15 @@ export function SpendingStreamsChart({
     return (
       <div className={variant === "bare" ? "w-full" : CARD_CLASS}>
         <ChartHeader monthLabel={monthLabel} live={live} />
-        <p className="text-2xl font-bold tracking-tight tabular-nums text-black mt-2">
+        <p className="text-2xl font-bold tracking-tight tabular-nums text-ink mt-2">
           {formatRupiah(0)}
         </p>
         <div className="flex items-center gap-2 justify-center py-10">
-          <div className="w-12 h-12 rounded-full bg-[#F2F2F2] flex items-center justify-center text-black/30 mb-0">
+          <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-ink/30 mb-0">
             <TrendingUp className="w-6 h-6" />
           </div>
         </div>
-        <p className="text-sm text-black/40 text-center -mt-4">
+        <p className="text-sm text-ink/40 text-center -mt-4">
           No spending this month yet — your streams will appear here.
         </p>
       </div>
@@ -91,7 +91,7 @@ export function SpendingStreamsChart({
   return (
     <div className={variant === "bare" ? "w-full" : CARD_CLASS}>
       <ChartHeader monthLabel={monthLabel} live={live} />
-      <p className="text-2xl font-bold tracking-tight tabular-nums text-black mt-2">
+      <p className="text-2xl font-bold tracking-tight tabular-nums text-ink mt-2">
         {formatRupiah(totalSpent)}
       </p>
 
@@ -118,42 +118,42 @@ export function SpendingStreamsChart({
               <div className="flex items-center gap-3">
                 <span
                   className={`w-24 shrink-0 text-xs truncate transition ${
-                    isHovered ? "text-black font-medium" : "text-black/45"
+                    isHovered ? "text-ink font-medium" : "text-ink/45"
                   }`}
                 >
                   {categoryLabel(r.category)}
                 </span>
-                <div className="relative flex-1 h-3 bg-black/[0.04] rounded-full overflow-visible">
+                <div className="relative flex-1 h-3 bg-hairline-track rounded-full overflow-visible">
                   <div
                     className={`h-full rounded-full transition-all duration-200 ${
-                      over ? "bg-[#D8000C]" : "bg-[#FFBABA]"
+                      over ? "bg-expense" : "bg-expense-tint"
                     } ${isHovered ? "opacity-90" : ""}`}
                     style={{ width: `${Math.max(fillPct, 1.5)}%` }}
                   />
                   {markerPct !== null && (
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 bg-black/40 rounded-full"
+                      className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 bg-ink/40 rounded-full"
                       style={{ left: `${Math.min(markerPct, 99.5)}%` }}
                       aria-label="Budget limit"
                     />
                   )}
                 </div>
-                <span className="w-24 shrink-0 text-right text-xs font-semibold tabular-nums text-black">
+                <span className="w-24 shrink-0 text-right text-xs font-semibold tabular-nums text-ink">
                   {formatRupiah(r.spent)}
                 </span>
               </div>
 
               {isHovered && (
-                <div className="absolute right-24 top-0 z-10 pointer-events-none bg-white rounded-[20px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12)] border border-black/5 px-3 py-2 whitespace-nowrap"
+                <div className="absolute right-24 top-0 z-10 pointer-events-none bg-card rounded-[20px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12)] border border-hairline px-3 py-2 whitespace-nowrap"
                   style={{ transform: "translateY(-100%)", marginTop: "-6px" }}>
-                  <p className="text-[10px] text-black/40 leading-none">
+                  <p className="text-[10px] text-ink/40 leading-none">
                     {categoryLabel(r.category)}
                   </p>
-                  <p className="text-sm font-bold tabular-nums text-black leading-tight mt-1">
+                  <p className="text-sm font-bold tabular-nums text-ink leading-tight mt-1">
                     {formatRupiah(r.spent)}
                   </p>
                   {hasBudget && (
-                    <p className="text-[10px] text-black/40 tabular-nums mt-1">
+                    <p className="text-[10px] text-ink/40 tabular-nums mt-1">
                       Budget {formatRupiah(budget as number)}
                       {over
                         ? " · over"
@@ -169,16 +169,16 @@ export function SpendingStreamsChart({
 
       <div className="flex items-center gap-4 mt-4">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#FFBABA]" />
-          <span className="text-[10px] text-black/40">Spent</span>
+          <span className="w-2 h-2 rounded-full bg-expense-tint" />
+          <span className="text-[10px] text-ink/40">Spent</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#D8000C]" />
-          <span className="text-[10px] text-black/40">Over budget</span>
+          <span className="w-2 h-2 rounded-full bg-expense" />
+          <span className="text-[10px] text-ink/40">Over budget</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-0.5 h-3 bg-black/40 rounded-full" />
-          <span className="text-[10px] text-black/40">Budget limit</span>
+          <span className="w-0.5 h-3 bg-ink/40 rounded-full" />
+          <span className="text-[10px] text-ink/40">Budget limit</span>
         </span>
       </div>
     </div>

@@ -34,9 +34,9 @@ function Row({ ariaHidden = false }: { ariaHidden?: boolean }) {
       {FACTS.map((f) => (
         <li
           key={f.label}
-          className="inline-flex items-center gap-2.5 text-sm font-medium text-[#615d59] whitespace-nowrap"
+          className="inline-flex items-center gap-2.5 text-sm font-medium text-ink/60 whitespace-nowrap"
         >
-          <span className="text-black/35">{f.icon}</span>
+          <span className="text-ink/35">{f.icon}</span>
           {f.label}
         </li>
       ))}

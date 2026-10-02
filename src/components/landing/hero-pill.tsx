@@ -65,7 +65,7 @@ export function HeroPill() {
 
   return (
     <span
-      className="relative inline-flex items-center gap-[0.18em] align-baseline rounded-[0.22em] px-[0.4em] py-[0.1em] text-[0.75em] font-medium leading-[1.21] tracking-[-0.0278em] whitespace-nowrap transition-colors duration-200 ease-out motion-reduce:transition-none"
+      className="relative inline-flex items-center gap-[0.18em] align-baseline rounded-[0.22em] px-[0.4em] py-[0.1em] text-[0.75em] font-medium leading-[1.21] tracking-[-0.0278em] text-[#141414] whitespace-nowrap transition-colors duration-200 ease-out motion-reduce:transition-none"
       style={{ backgroundColor: word.bg }}
     >
       <span

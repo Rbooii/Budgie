@@ -14,7 +14,10 @@ const description =
   "A calm, minimal personal-finance app for tracking accounts, transactions, budgets, and subscriptions. Built around the rupiah.";
 
 export const viewport: Viewport = {
-  themeColor: "#FFFFFF",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f7f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#101014" },
+  ],
   width: "device-width",
   initialScale: 1,
 };

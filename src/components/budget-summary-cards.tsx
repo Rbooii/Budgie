@@ -29,7 +29,7 @@ export function BudgetSummaryCards({ monthly, daily }: BudgetSummaryCardsProps) 
   return (
     <div
       className={`w-full mt-4 rounded-[35px] p-6 text-white ${
-        over ? "bg-[#D8000C]" : "bg-[#00C610]"
+        over ? "bg-expense" : "bg-brand"
       }`}
     >
       <div className="flex items-center justify-between gap-2">

@@ -29,43 +29,23 @@ export default function CashflowCard({
   const expenseOffset = -(incomeLen + gapLen);
 
   return (
-    <div className="w-full bg-white rounded-[35px] shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)] border border-black/5 p-6">
+    <div className="w-full bg-card rounded-[35px] shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)] border border-hairline p-6">
       {/* Header */}
       <div className="text-center mb-4">
-        <h2 className="text-xl font-bold text-black">{title}</h2>
-        <p className="text-sm text-black/40 mt-1">{date}</p>
+        <h2 className="text-xl font-bold text-ink">{title}</h2>
+        <p className="text-sm text-ink/40 mt-1">{date}</p>
       </div>
 
       {/* Donut chart */}
       <div className="relative flex items-center justify-center my-4">
         <svg viewBox="0 0 160 160" className="w-56 h-56 -rotate-90 drop-shadow-[0_4px_8px_rgba(0,0,0,0.06)]">
-          <defs>
-            <linearGradient id="incomeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#00C610" />
-              <stop offset="100%" stopColor="#00B609" />
-            </linearGradient>
-            <linearGradient id="expenseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#e0584f" />
-              <stop offset="100%" stopColor="#c4453b" />
-            </linearGradient>
-          </defs>
-
-          {/* Base track */}
-          <circle
-            cx="80"
-            cy="80"
-            r={radius}
-            fill="none"
-            strokeWidth="18"
-          />
-
           {/* Expense arc */}
           <circle
             cx="80"
             cy="80"
             r={radius}
             fill="none"
-            stroke="url(#expenseGrad)"
+            stroke="var(--expense)"
             strokeWidth="18"
             strokeLinecap="round"
             strokeDasharray={`${expenseLen} ${circumference - expenseLen}`}
@@ -77,7 +57,7 @@ export default function CashflowCard({
             cy="80"
             r={radius}
             fill="none"
-            stroke="url(#incomeGrad)"
+            stroke="var(--income)"
             strokeWidth="18"
             strokeLinecap="round"
             strokeDasharray={`${incomeLen} ${circumference - incomeLen}`}
@@ -87,35 +67,35 @@ export default function CashflowCard({
 
         {/* Center label */}
         <div className="absolute flex flex-col items-center">
-          <span className={`font-bold text-lg ${net >= 0 ? "text-[#00C610]" : "text-[#e0584f]"}`}>
+          <span className={`font-bold text-lg ${net >= 0 ? "text-brand" : "text-expense"}`}>
             {net >= 0 ? "+" : "-"} {(Math.abs(net) / 1_000_000).toFixed(1)} mil
           </span>
-          <span className="text-black font-medium text-sm mt-0.5">
+          <span className="text-ink font-medium text-sm mt-0.5">
             {formatRupiah(Math.abs(net))}
           </span>
         </div>
       </div>
 
       {/* Income row */}
-      <div className="flex items-center justify-between bg-[#A0FFA8] rounded-[20px] px-5 py-4 mb-3">
+      <div className="flex items-center justify-between bg-income-tint rounded-[20px] px-5 py-4 mb-3">
         <div>
-          <p className="text-[#1F9B29] text-xs font-semibold">Income</p>
-          <p className="text-[#1F9B29] text-2xl font-bold">
+          <p className="text-income text-xs font-semibold">Income</p>
+          <p className="text-income text-2xl font-bold">
             {Math.round(incomePct)}%
           </p>
         </div>
-        <p className="text-[#1F9B29] text-lg font-semibold">{formatRupiah(income)}</p>
+        <p className="text-income text-lg font-semibold">{formatRupiah(income)}</p>
       </div>
 
       {/* Expense row */}
-      <div className="flex items-center justify-between bg-[#FFBABA] rounded-[20px] px-5 py-4">
+      <div className="flex items-center justify-between bg-expense-tint rounded-[20px] px-5 py-4">
         <div>
-          <p className="text-[#e0584f] text-xs font-semibold">Expense</p>
-          <p className="text-[#e0584f] text-2xl font-bold">
+          <p className="text-expense text-xs font-semibold">Expense</p>
+          <p className="text-expense text-2xl font-bold">
             {Math.round(expensePct)}%
           </p>
         </div>
-        <p className="text-[#e0584f] text-lg font-semibold">{formatRupiah(expense)}</p>
+        <p className="text-expense text-lg font-semibold">{formatRupiah(expense)}</p>
       </div>
     </div>
   );

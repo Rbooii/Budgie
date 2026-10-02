@@ -15,11 +15,12 @@ anything under `src/components/landing/`.
 | Auth-gated app (`/dashboard` …) | Calm minimal fintech, dense data | `rounded-2xl` rows, `rounded-[20px]` tiles, `rounded-[35px]` cards | Tabular nums, `dynamicFontSize` |
 | Landing page (`/`) | Notion-calmed product marketing, airy | `rounded-[35px]` ledger panel, `rounded-[20px]` bento tiles + link tiles, Budgie `rounded-[35px]` CTAs | Fluid `clamp(2.625rem, 11.25vw - 25.5px, 6rem)` headline |
 
-The landing runs on white + `#F9F9F8` gray surfaces with **one brand green
-`#00C610`** for CTAs and pricing accents; the semantic pastel tints
-(income/expense/transfer) appear only inside the real app components shown in
-the bento previews. Section rhythm is `py-20 sm:py-28` inside
-`max-w-screen-xl px-5 sm:px-8`.
+The landing runs on `bg-screen`/`bg-surface` surfaces with **one brand green
+`brand` (#39CD6B)** for CTAs and pricing accents; the semantic
+income/expense/transfer tokens appear only inside the real app components
+shown in the bento previews. Section rhythm is `py-20 sm:py-28` inside
+`max-w-screen-xl px-5 sm:px-8`. Everything flips with the app theme — see §19
+(Theme & Dark Mode).
 
 ### Page anatomy (Notion's exact order)
 
@@ -65,7 +66,7 @@ the bento previews. Section rhythm is `py-20 sm:py-28` inside
    on a white `rounded-[35px]` surface with hairline border + soft shadow —
    the app's own card language — beside a `lg:col-span-2` rail stacking the
    **search panel** (`FindCard`) over the **budget panel** (`LiveSpending`),
-   both quiet `bg-[#F9F9F8]` `rounded-[20px]` tiles. **No eyebrows, no card
+   both quiet `bg-surface` `rounded-[20px]` tiles. **No eyebrows, no card
    titles, no uppercase "LIVE" badges, no legends, no trailing result
    counters, no hover tooltips** — the real Budgie UI is the content, and the
    section deck carries the words. The ledger lists hairline-divided rows (`LedgerRow` —
@@ -91,11 +92,11 @@ the bento previews. Section rhythm is `py-20 sm:py-28` inside
    pulse animations.
 6. **FAQ** (`faq.tsx`, `#faq`) — `details` accordions, `rounded-[28px]`.
 7. **Facts marquee** (`facts-marquee.tsx`) — Notion's `statsMarquee` anatomy
-   (single infinite row, `marquee` keyframe, warm-gray `#615d59` text) filled
+   (single infinite row, `marquee` keyframe, warm-gray `text-ink/60` text) filled
    with **true, verifiable product facts** (21 categories, QRIS, Rp-first
    formatting, 12-month history, PDF exports, hidden balances). Notion's
    invented-stats slot is used honestly — no fake "users/countries" numbers.
-8. **Endcap** — "Get started today." on a **neutral `bg-[#F2F2F2]`
+8. **Endcap** — "Get started today." on a **neutral `bg-surface`
    full-bleed section** (Notion's `surfaceNeutral`, NOT a saturated green
    block) with `py-24 sm:py-36`, the green pill ("Get Budgie free") + outline
    secondary.
@@ -192,12 +193,14 @@ facts, and every footer/nav link resolves to a real page or section.
 ## 17. Chat UI (auth-gated `/chat`)
 
 `src/components/chat/` is the Budgie AI assistant surface. The register is
-**ChatGPT/Claude-calmed on Budgie tokens**: full-bleed column, quiet header,
-functional prompt cards, assistant prose with hover actions, and a model-aware
-composer. The web palette stays in force — brand green `#00C610` (user bubble,
-send, streaming caret), `#F2F2F2` surfaces, the 3 semantic tints (`#1F9B29`
-income / `#D8000C` expense / `#B25B00` transfer), `tabular-nums`,
-`formatRupiah`, motion ≤200ms `ease-out`, `motion-reduce` respected.
+**quiet and app-native on Budgie tokens** — no sparkles, no AI iconography, no
+per-message avatars: full-bleed column, quiet header, plain suggestion chips,
+assistant prose with hover actions, tool widgets built from the same list rows
+as the app, and a model-aware composer. The tokens stay in force — `brand`
+(user bubble, send, streaming caret), `surface` trays, the 3 semantic tokens
+(`income` / `expense` / `transfer`), `tabular-nums`, `formatRupiah`, motion
+≤200ms `ease-out`, `motion-reduce` respected. The thread paints `bg-chat`
+(#FCFAF7 light / #16151A dark), the composer/bubbles `bg-card`.
 
 ### Layout — full-bleed (`PageShell flush`)
 
@@ -231,57 +234,59 @@ button was removed — both actions cleared the same conversation.
 
 ### Empty state (`ChatEmptyState`)
 
-Centered (`min-h-full justify-center`): 44px `bg-[#00C610]/10` brand tile with
-`Sparkles`, then `text-2xl font-semibold tracking-tight`
-**"Hi {firstName}, how can I help you this morning/afternoon/evening/late
-night?"** (time-of-day computed post-mount; `userName` comes from the RSC).
-Subtitle: "Ask about your balances, spending and budgets — or record a
-transaction in plain words."
+Centered (`min-h-full justify-center`), **no icon**: `text-2xl font-semibold
+tracking-tight` **"Hi {firstName}, how can I help you
+this morning/afternoon/evening/late night?"** (time-of-day computed
+post-mount; `userName` comes from the RSC). Subtitle: "Ask about your
+balances, spending and budgets — or record a transaction in plain words."
 
-Below, the four suggestions become **functional prompt cards**
-(`grid sm:grid-cols-2 gap-2.5 max-w-xl`): `rounded-[20px] border
-border-black/[0.07] bg-white p-3.5 text-left`, 36px tinted icon tile + the
-prompt itself as a 14px semibold title + a 12px `text-black/40` hint
-(TrendingUp/red "See where your money went", Wallet/green "Accounts and
-totals", PiggyBank/brown "How much is left to spend", Plus "Log an expense in
-plain words"). No serif greeting, no stacked capsules.
+Below, the four suggestions are **plain capsule chips** (centered
+`flex flex-wrap justify-center gap-2 max-w-lg`): `rounded-full border
+border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/70`, hover
+`bg-card text-ink`. No icon tiles, no hint copy, no serif greeting.
 
 ### Bubbles & states
 
 | Element | Style |
 | ------- | ----- |
-| User bubble | right-aligned `max-w-[85%] sm:max-w-[340px] rounded-[20px] rounded-br-[6px] bg-[#00C610] px-4 py-2.5 text-[15px] text-white` (iMessage tail kept) |
-| Assistant | 24px `bg-[#00C610]/10` tile with `Sparkles` + full-width `text-[15px] leading-relaxed` prose, no bubble |
+| User bubble | right-aligned `max-w-[85%] sm:max-w-[340px] rounded-[20px] rounded-br-[6px] bg-brand px-4 py-2.5 text-[15px] text-white` (iMessage tail kept) |
+| Assistant | full-width `text-[15px] leading-relaxed` prose — **no avatar, no bubble** |
 | Message gap | `gap-4`; every message enters with `stepReveal` 180ms, `motion-reduce` off |
 | Actions | under an assistant message: **Copy** (clipboard → "Copied" for 1.5s) and **Regenerate** (last assistant message only, `aria-label="Regenerate response"`) — 11px ghost pills, `-ml-2` |
-| Streaming caret | 2px `bg-[#00C610]` pill appended to the last text part while `status === "streaming"` (`.chat-caret`, 1s blink, `motion-reduce` off) |
-| Typing | 24px brand tile + white bubble with tail, three 7px `bg-black/30` dots on `typingPulse`, `role="status" aria-label="Budgie is typing"` |
-| Thinking (`ChatThinking`) | streaming: `Loader2` + "Thinking…" 13px; done: a `bg-black/[0.03]` pill with chevron + "Thought for a moment" → plain `font-mono text-[13px]` reasoning |
-| Tool running (`ChatToolStatus`) | white `rounded-[16px]` card (`border-black/[0.06]`, soft shadow) + brand spinner + per-tool label |
-| Tool error | `rounded-[16px] bg-[#D8000C]/10 text-[#D8000C]` + `AlertTriangle` |
+| Streaming caret | 2px `bg-brand` pill appended to the last text part while `status === "streaming"` (`.chat-caret`, 1s blink, `motion-reduce` off) |
+| Typing | white bubble with tail (no avatar), three 7px `bg-black/30` dots on `typingPulse`, `role="status" aria-label="Budgie is typing"` |
+| Thinking (`ChatThinking`) | streaming: neutral `Loader2` (`text-black/30`) + "Thinking…" 13px `text-ink/45`; done: plain chevron + "Thought for a moment" text button → 13px `text-ink/45` reasoning |
+| Tool running (`ChatToolStatus`) | inline neutral row (no card) — `Loader2` + per-tool label, 13px `text-ink/45` |
+| Tool error | `rounded-[16px] bg-expense-tint text-expense` + `AlertTriangle` |
 | Error surface | `role="alert"` red callout above the composer: `AlertTriangle` + "Something went wrong" + capsule "Retry" → `regenerate()` |
 | Jump to latest | white capsule + `ArrowDown` + "Latest", `absolute bottom-4`, appears only when the user scrolls away (`scrollHeight - scrollTop - clientHeight >= 56`) |
 
-### Tool result cards (`ChatToolResult`)
+### Tool result widgets (`ChatToolResult`)
 
-`max-w-[440px] rounded-[20px] border border-black/[0.06] bg-white p-4
-shadow-[0_2px_8px_rgba(0,0,0,0.04)]`, header = 24px `rounded-[8px]`
-`bg-[#F2F2F2]` icon tile + 13px semibold title, `stepReveal` in. Contents
-(small type, `tabular-nums`) unchanged from the iOS port:
-- **Accounts** — "Total balance" 11px + 18px bold total, then name/balance rows.
-- **Transactions** — up to **6** rows (name 13px + "Category · Account" 11px,
-  unsigned amount 13px semibold in the type tint), "+N more" caption; empty →
-  "No transactions found."
-- **Budgets** — per budget: label + "spent / limit" (red when over) + 6px
-  progress track; empty → "No budgets yet."
-- **Subscriptions** — name + "Next {date}" 11px, amount in transfer tint;
-  empty → "No subscriptions yet."
-- **Insights** — net worth 18px bold, plain Income/Expense text tiles
-  (10/12px tinted), top categories rows (max 5).
-- **create_transaction** — success: `CheckCircle2` + name + "amount · account";
-  failure: `AlertTriangle` + the reason.
+Tool output renders as a **quiet panel built from the app's own list rows**:
+`max-w-[440px] rounded-[20px] border border-black/[0.08] p-2`, `stepReveal` in,
+header = the app's 11px section label (`font-medium uppercase tracking-wide
+text-black/35`). Rows follow the real screens: 36px `rounded-full` full-tint
+icon circle + 14px medium title + 12–13px `text-ink/45` subtitle,
+`tabular-nums` amounts, semantic tints. No `surface` icon-tile header, no
+card-per-item, no sparkles.
+- **Accounts** — "Total balance" 13px label + 18px bold, then per account a
+  neutral `bg-surface` circle with `Wallet`, name + capitalized type.
+- **Transactions** — up to **6** `TransactionItem`-style rows (type icon circle,
+  name, `Account • Category` 12px, signed amount in the type tint, date 11px),
+  "+N more" caption; empty → "No transactions found."
+- **Budgets** — `BudgetsList`-style rows: expense-tinted category circle, label
+  + `periodLabel`, limit + "left"/"Over …" (red when over) + 6px progress
+  track; empty → "No budgets yet."
+- **Subscriptions** — `SubscriptionList`-style rows: transfer-tinted category
+  circle, name + `Category · period`, "Next {date}", amount in transfer tint,
+  "Inactive" caption; empty → "No subscriptions yet."
+- **Insights** — "Net worth" 11px label + 20px bold, plain Income/Expense tiles
+  (10/12px tinted), top categories rows (max 5, neutral circles).
+- **create_transaction** — success: a transaction row + green "Added" caption;
+  failure: `rounded-[16px] bg-expense-tint` callout + `AlertTriangle`.
 
-Cards are static (no navigation/sheets) and unknown tools render nothing.
+Widgets are static (no navigation/sheets) and unknown tools render nothing.
 
 ### Composer (`ChatInput`)
 
@@ -290,10 +295,10 @@ focus deepens the hairline + a 4px `ring-black/[0.04]`):
 - Textarea `placeholder="Ask about your money…"`, `text-[15px]`, auto-grows
   1–6 lines (`max-h-[160px]`), `px-4 pt-3.5`; `Enter` sends, `Shift+Enter`
   newline.
-- Bottom row: **left = `ChatModelMenu`** — a 28px chip (`Sparkles` + model
-  label + `ChevronDown`, `aria-label="Select model. Current: …"`) whose panel
-  opens **upward** (`bottom-full mb-2`) listing `MODEL_CHAIN` with a `Check` on
-  the active model. **right = send**: 36px circle, `bg-[#00C610] text-white`
+- Bottom row: **left = `ChatModelMenu`** — a 28px chip (model label +
+  `ChevronDown`, `aria-label="Select model. Current: …"`) whose panel opens
+  **upward** (`bottom-full mb-2`) listing `MODEL_CHAIN` with a `Check` on the
+  active model. **right = send**: 36px circle, `bg-brand text-white`
   when sendable, `bg-black/[0.06] text-black/30` when empty, swaps to a dark
   `Square` stop while streaming; disabled in the error state.
 - Caption below the card: 11px `text-black/35` "Budgie can make mistakes.
@@ -316,6 +321,9 @@ focus deepens the hairline + a 4px `ring-black/[0.04]`):
   effect.
 - Never re-introduce a second clear button, a serif greeting, or a page
   `AccountTab`/`h1` on `/chat`.
+- **No AI slop**: no `Sparkles`/`CheckCircle2` brand tiles, no per-message
+  avatars, no per-tool icon-tile headers, no card-per-item. Widgets reuse the
+  app's list-row primitives and tints — don't invent new chrome.
 
 ## 18. App Shell — Mobile Tab Bar, Graph Draw-in, Skeletons
 
@@ -324,9 +332,9 @@ focus deepens the hairline + a 4px `ring-black/[0.04]`):
 The mobile tab bar is `fixed bottom-0` with height
 `--app-tabbar-h: calc(3.5rem + env(safe-area-inset-bottom, 0px))`
 (`globals.css`), `pb-[env(safe-area-inset-bottom,0px)]`, frosted
-`bg-white/90 backdrop-blur-xl` and a `border-black/[0.06]` hairline. The active
-tab is a `bg-[#00C610]/10` pill behind a green icon + green label
-(`aria-current="page"`); inactive tabs are `text-black/45`. `viewportFit:
+`bg-card/90 backdrop-blur-xl` and a `border-hairline` hairline. The active
+tab is a `bg-brand/10` pill behind a green icon + green label
+(`aria-current="page"`); inactive tabs are `text-ink/45`. `viewportFit:
 "cover"` is set in `src/app/layout.tsx` — without it `env(safe-area-inset-*)`
 is always `0` on iOS and the bar collides with the home indicator.
 
@@ -354,6 +362,73 @@ line **dotted** (the old account-sparkline bug).
 (`dashboard | transactions | budget | profile | chat | add-transaction`) and
 mirrors that route's real geometry — the AccountTab row, the green balance
 card, account-card grid, list rows, the chat header/thread/composer. Blocks are
-`bg-[#F2F2F2] animate-pulse motion-reduce:animate-none` with white inner bars
+`bg-surface animate-pulse motion-reduce:animate-none` with bg-skeleton inner bars
 on cards, entire tree `aria-hidden`. Add a variant when a new route appears —
 never reuse the generic rows shape.
+
+## 19. Theme & Dark Mode (iOS palette parity)
+
+The web palette is a **1:1 port of `Budgie-ios/Budgie/Core/DesignSystem/Colors.swift`**
+and is fully semantic: every surface/ink/hue flips with the theme, and no
+component picks a raw hex directly.
+
+### Token table (`globals.css`)
+
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `background` | `#F7F7F7` | `#101014` | app scroll backgrounds |
+| `screen` | `#FFFFFF` | `#101014` | full-screen shells (auth, add flow, landing, footer) |
+| `card` | `#FFFFFF` | `#1C1C1E` | cards, sheets, dialogs, rows, inputs |
+| `surface` | `#F2F2F2` | `white 10%` | icon tiles, inset/gray rows, skeleton bars |
+| `chat` | `#FCFAF7` | `#16151A` | `/chat` thread |
+| `ink` | `#171717` | `#FFFFFF` | primary text (`text-ink`, `/45`, `/35`… keep the opacity hierarchy) |
+| `ink-soft` / `ink-contrast` | `#3D3D3D` / white | `#F2F2F2` / `#171717` | dark controls (chat stop/send) |
+| `hairline` | `black 6%` | `white 12%` | borders/dividers |
+| `hairline-track` | `black 6%` | `white 16%` | progress tracks |
+| `hover` | `black 3%` | `white 6%` | hover/quiet inset fills |
+| `skeleton` | `white 70%` | `white 14%` | skeleton inner bars |
+| `scrim` | `#000000` | `#000000` | dialog/sheet overlays (`bg-scrim/30|40`) |
+| `brand` | `#39CD6B` | `#39CD6B` | CTAs, active tabs, under-budget fills |
+| `income` | `#39CD6B` | `#3DDC74` | income amounts/icons |
+| `expense` | `#FF2600` | `#FF5A4D` | expense amounts/icons/over-budget |
+| `transfer` | `#FF9F33` | `#FFB454` | transfer amounts/icons |
+| `stagnant` | `#B0B0B0` | `#8E8E93` | flat chart bars, "Stable" legend |
+| `brand/income/expense/transfer-tint` | `color-mix(hue 12–16%)` | same | icon circles, badges, soft buttons |
+| `chart-placeholder` | `#E5E5E5` | `white 16%` | future/unrecorded chart bars |
+
+### Mechanism
+
+- **`.dark` on `<html>`**, not `prefers-color-scheme` directly — a system
+  listener in `ThemeProvider` keeps `system` in sync.
+- `ThemeScript` (first child of `<body>`, `layout.tsx`) applies the stored class
+  **before paint**, so there is no light flash. Logic duplicated: keep
+  `theme-provider.tsx` and the inline script in sync.
+- Storage: `localStorage["budgie.theme"]` = `system | light | dark` (default
+  `system`). `useTheme()` exposes `{ theme, resolved, setTheme, toggle }`.
+- Controls: **Profile → Settings → Appearance** (`ThemePicker`, segmented
+  System/Light/Dark, mirrors the iOS settings row) plus the sidebar quick-toggle
+  row. `suppressHydrationWarning` is set on `<html>`.
+- **Token changes need a dev restart.** After renaming/adding tokens in
+  `globals.css`, Turbopack can keep serving the old Tailwind sheet (old utility
+  names, old `:root` vars) — the app then renders unstyled/monochrome because
+  the new class names don't exist in the served CSS. Stop dev, `rm -rf .next`,
+  start again.
+
+### Rules
+
+- **Never** write raw `#hex`, `text-black`, `bg-white`, `border-black`, or
+  Tailwind grays in app/landing components — use the semantic utilities
+  (`text-ink/…`, `bg-card`, `bg-surface`, `border-hairline`, `text-income`, …).
+- Keep the text-opacity hierarchy (`text-ink/45` secondary, `/35` tertiary,
+  `/25` faint) — the alpha is what makes it match `budgieTextSecondary` etc.
+- Tints are derived with `color-mix` from the adaptive hue, so they flip for
+  free; prefer them over new opacity piles.
+- **Always-light exceptions**: QRIS QR container (`plus-payment-wizard`),
+  jsPDF output, `opengraph-image.tsx`, and the identity card (always dark,
+  `#1C1C1E`). Shadows stay black-based in both themes.
+- SVG colors use `var(--income|expense|transfer|stagnant|chart-placeholder)` or
+  `fill-ink/…`; never hardcode `fill="#00C610"`-style values.
+- No gradients (`cashflow-card` arcs are solid semantic strokes).
+- Tests: `tests/components/theme.test.tsx` (provider/system sync/persistence/
+  picker/no-flash script) + the sidebar toggle test wrap `ThemeProvider` and
+  `stubMatchMedia(false)`.

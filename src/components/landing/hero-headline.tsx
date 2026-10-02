@@ -12,7 +12,7 @@ import { HeroPill } from "./hero-pill";
  */
 export function HeroHeadline() {
   return (
-    <h1 className="text-[clamp(2.625rem,11.25vw-25.5px,6rem)] font-semibold leading-[clamp(3rem,10.83vw-17px,6.25rem)] tracking-[clamp(-0.2875rem,-0.6458vw+2.375px,-0.09375rem)] text-black">
+    <h1 className="text-[clamp(2.625rem,11.25vw-25.5px,6rem)] font-semibold leading-[clamp(3rem,10.83vw-17px,6.25rem)] tracking-[clamp(-0.2875rem,-0.6458vw+2.375px,-0.09375rem)] text-ink">
       <span className="block overflow-hidden">
         <span className="block animate-[headlineReveal_0.3s_ease-out_backwards] motion-reduce:animate-none">
           Where your money

@@ -97,7 +97,7 @@ afterEach(() => {
 });
 
 describe("ChatView", () => {
-  it("shows the empty state with a greeting and all four prompt cards", () => {
+  it("shows the empty state with a greeting and all four suggestion chips", () => {
     renderChat();
     expect(screen.getByText(/hi arco, how can i help/i)).toBeInTheDocument();
     expect(
@@ -106,7 +106,6 @@ describe("ChatView", () => {
     expect(screen.getByText(/what's my net worth/i)).toBeInTheDocument();
     expect(screen.getByText(/show my budgets/i)).toBeInTheDocument();
     expect(screen.getByText(/record that i bought coffee/i)).toBeInTheDocument();
-    expect(screen.getByText(/see where your money went/i)).toBeInTheDocument();
   });
 
   it("renders a single New chat action and no redundant clear button", () => {
@@ -122,7 +121,7 @@ describe("ChatView", () => {
     );
   });
 
-  it("sends the prompt text with the current model when a prompt card is clicked", async () => {
+  it("sends the prompt text with the current model when a suggestion chip is clicked", async () => {
     renderChat();
     await userEvent.click(screen.getByText(/what's my net worth/i));
     expect(defaultChat.sendMessage).toHaveBeenCalledWith(

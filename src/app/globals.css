@@ -1,27 +1,110 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens — same palette as the iOS app (`Budgie/Core/DesignSystem/Colors.swift`).
+   Semantic hues stay constant per scheme; surfaces/ink flip on the `.dark` class
+   set by the no-flash script in `theme-provider.tsx`. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
   color-scheme: light;
+
+  /* Brand & semantic */
+  --brand: #39cd6b;
+  --income: #39cd6b;
+  --expense: #ff2600;
+  --transfer: #ff9f33;
+  --stagnant: #b0b0b0;
+
+  /* Surfaces */
+  --background: #f7f7f7;
+  --screen: #ffffff;
+  --card: #ffffff;
+  --surface: #f2f2f2;
+  --chat: #fcfaf7;
+  --ink: #171717;
+  --ink-soft: #3d3d3d;
+  --ink-contrast: #ffffff;
+  --chip: rgb(0 0 0 / 0.06);
+  --hover: rgb(0 0 0 / 0.03);
+  --skeleton: rgb(255 255 255 / 0.7);
+  --scrim: #000000;
+
+  /* Lines & charts */
+  --hairline: rgb(0 0 0 / 0.06);
+  --hairline-track: rgb(0 0 0 / 0.06);
+  --chart-placeholder: #e5e5e5;
+
+  /* Tint fills — derive from the semantic hue so they adapt with the theme */
+  --brand-tint: color-mix(in oklab, var(--brand) 12%, transparent);
+  --income-tint: color-mix(in oklab, var(--income) 15%, transparent);
+  --expense-tint: color-mix(in oklab, var(--expense) 12%, transparent);
+  --transfer-tint: color-mix(in oklab, var(--transfer) 16%, transparent);
+
   /* Mobile bottom tab bar height incl. the iOS home-indicator inset.
      Keep in sync with the `h-[var(--app-tabbar-h)]` in sidebar.tsx. */
   --app-tabbar-h: calc(3.5rem + env(safe-area-inset-bottom, 0px));
 }
 
+.dark {
+  color-scheme: dark;
+
+  --income: #3ddc74;
+  --expense: #ff5a4d;
+  --transfer: #ffb454;
+  --stagnant: #8e8e93;
+
+  --background: #101014;
+  --screen: #101014;
+  --card: #1c1c1e;
+  --surface: rgb(255 255 255 / 0.1);
+  --chat: #16151a;
+  --ink: #ffffff;
+  --ink-soft: #f2f2f2;
+  --ink-contrast: #171717;
+  --chip: rgb(255 255 255 / 0.12);
+  --hover: rgb(255 255 255 / 0.06);
+  --skeleton: rgb(255 255 255 / 0.14);
+
+  --hairline: rgb(255 255 255 / 0.12);
+  --hairline-track: rgb(255 255 255 / 0.16);
+  --chart-placeholder: rgb(255 255 255 / 0.16);
+}
+
 html {
-  background-color: #ffffff;
+  background-color: var(--background);
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-screen: var(--screen);
+  --color-card: var(--card);
+  --color-surface: var(--surface);
+  --color-chat: var(--chat);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-contrast: var(--ink-contrast);
+  --color-chip: var(--chip);
+  --color-hover: var(--hover);
+  --color-skeleton: var(--skeleton);
+  --color-scrim: var(--scrim);
+  --color-hairline: var(--hairline);
+  --color-hairline-track: var(--hairline-track);
+  --color-chart-placeholder: var(--chart-placeholder);
+  --color-brand: var(--brand);
+  --color-brand-tint: var(--brand-tint);
+  --color-income: var(--income);
+  --color-income-tint: var(--income-tint);
+  --color-expense: var(--expense);
+  --color-expense-tint: var(--expense-tint);
+  --color-transfer: var(--transfer);
+  --color-transfer-tint: var(--transfer-tint);
+  --color-stagnant: var(--stagnant);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  color: var(--foreground);
+  color: var(--ink);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 

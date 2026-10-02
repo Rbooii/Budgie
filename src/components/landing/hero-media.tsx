@@ -53,8 +53,8 @@ export function HeroMedia() {
         label="Budgie app walkthrough, sixty seconds, silent"
         videoRef={videoRef}
         glyphSize="w-14 h-14"
-        posterClassName="bg-[#FAFAFA]"
-        frameClassName="aspect-square sm:aspect-[1.6] rounded-[8px] border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12),0_24px_60px_-20px_rgba(0,0,0,0.18)]"
+        posterClassName="bg-surface"
+        frameClassName="aspect-square sm:aspect-[1.6] rounded-[8px] border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12),0_24px_60px_-20px_rgba(0,0,0,0.18)]"
       />
 
       {!reduced && (

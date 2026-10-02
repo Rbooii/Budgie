@@ -1,4 +1,4 @@
-const INK = "#141414";
+const INK = "currentColor";
 
 /**
  * Budgie's mascot — the hand-drawn character above the hero headline, in
@@ -18,7 +18,7 @@ export function BudgieMascot({ className }: { className?: string }) {
         aria-label="Budgie's mascot, a hand-drawn character"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className={className}
+        className={`text-ink ${className ?? ""}`}
       >
         {/* neck, tucked behind the head and the collar */}
         <path
@@ -31,7 +31,7 @@ export function BudgieMascot({ className }: { className?: string }) {
         {/* shirt — income pastel, V-neck collar */}
         <path
           d="M71 108 80 122 89 108c11 3 23 10 29 19 5 7 7 19 8 33H34c1-14 3-26 8-33 6-9 18-16 29-19Z"
-          fill="#A0FFA8"
+          fill="var(--income-tint)"
           stroke={INK}
           strokeWidth="3"
           strokeLinejoin="round"
@@ -40,7 +40,7 @@ export function BudgieMascot({ className }: { className?: string }) {
         {/* head — white fill so the neck stays outside the jaw */}
         <path
           d="M80 18c21 0 35 14 35 36 0 14-5 30-17 42-5 5-11 8-18 8s-13-3-18-8C50 84 45 68 45 54c0-22 14-36 35-36Z"
-          fill="#FFFFFF"
+          fill="var(--card)"
           stroke={INK}
           strokeWidth="3"
           strokeLinejoin="round"

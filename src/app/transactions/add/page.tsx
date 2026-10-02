@@ -11,7 +11,7 @@ import { Button } from "@/components/button";
 
 export default function AddTransactionPage() {
   return (
-    <main className="w-full min-h-screen flex items-center justify-center bg-white text-black">
+    <main className="w-full min-h-screen flex items-center justify-center bg-screen text-ink">
       <div className="w-full flex flex-col items-center justify-center min-h-screen py-8 md:py-10 px-4 sm:px-6 pb-[calc(var(--app-tabbar-h)_+_2rem)] md:pb-10">
         <Suspense fallback={<PageSkeleton variant="add-transaction" />}>
           <AddTransactionContent />
@@ -37,11 +37,11 @@ async function AddTransactionContent() {
       </h1>
       {accounts.length === 0 ? (
         <div className="w-full max-w-md flex flex-col items-center text-center py-20 px-4">
-          <div className="w-12 h-12 rounded-full bg-[#F2F2F2] flex items-center justify-center text-black/30 mb-4">
+          <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-ink/30 mb-4">
             <Wallet className="w-7 h-7" />
           </div>
-          <p className="text-base font-semibold text-black">No accounts yet</p>
-          <p className="text-sm text-black/40 mt-1 max-w-xs">
+          <p className="text-base font-semibold text-ink">No accounts yet</p>
+          <p className="text-sm text-ink/40 mt-1 max-w-xs">
             Create an account first to start recording transactions.
           </p>
           <div className="mt-5 w-full h-fit">

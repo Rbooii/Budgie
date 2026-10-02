@@ -35,14 +35,14 @@ export function Faq() {
       className="mx-auto max-w-screen-xl px-5 sm:px-8 py-20 sm:py-28 scroll-mt-24"
     >
       <Reveal className="max-w-2xl">
-        <p className="text-sm font-semibold text-[#00C610]">Questions</p>
+        <p className="text-sm font-semibold text-brand">Questions</p>
         <h2
           id="faq-title"
-          className="text-3xl sm:text-4xl font-bold tracking-tight text-black mt-2"
+          className="text-3xl sm:text-4xl font-bold tracking-tight text-ink mt-2"
         >
           Things people ask
         </h2>
-        <p className="text-base text-black/45 mt-3 leading-relaxed">
+        <p className="text-base text-ink/45 mt-3 leading-relaxed">
           Short, honest answers. If something is missing, the app itself is the
           best place to look — it only takes a minute to set up.
         </p>
@@ -53,21 +53,21 @@ export function Faq() {
           {FAQ_ITEMS.map((item) => (
             <details
               key={item.q}
-              className="group rounded-[28px] border border-black/[0.06] bg-white px-5 sm:px-6 open:bg-[#FAFAFA] transition-colors duration-200"
+              className="group rounded-[28px] border border-hairline bg-card px-5 sm:px-6 open:bg-hover transition-colors duration-200"
             >
               <summary
                 className="flex items-center justify-between gap-4 py-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden"
               >
-                <span className="text-base font-semibold text-black leading-snug">
+                <span className="text-base font-semibold text-ink leading-snug">
                   {item.q}
                 </span>
                 <span
                   aria-hidden="true"
-                  className="shrink-0 w-7 h-7 rounded-full bg-[#F2F2F2] flex items-center justify-center transition-transform duration-200 ease-out group-open:rotate-45"
+                  className="shrink-0 w-7 h-7 rounded-full bg-surface flex items-center justify-center transition-transform duration-200 ease-out group-open:rotate-45"
                 >
                   <svg
                     viewBox="0 0 24 24"
-                    className="w-3.5 h-3.5 text-black/60"
+                    className="w-3.5 h-3.5 text-ink/60"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2.2"
@@ -79,7 +79,7 @@ export function Faq() {
               </summary>
               <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-open:grid-rows-[1fr] motion-reduce:transition-none">
                 <div className="overflow-hidden">
-                  <p className="text-sm text-black/60 leading-relaxed pb-5 -mt-1">
+                  <p className="text-sm text-ink/60 leading-relaxed pb-5 -mt-1">
                     {item.a}
                   </p>
                 </div>

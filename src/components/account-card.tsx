@@ -51,7 +51,12 @@ export function AccountCard({
   const balanceFont = dynamicFontSize(formattedBalance);
 
   const trend = computeSparklineTrend(series);
-  const sparkColor = trend === "up" ? "#00C610" : trend === "down" ? "#D8000C" : "#B0B0B0";
+  const sparkColor =
+    trend === "up"
+      ? "var(--income)"
+      : trend === "down"
+        ? "var(--expense)"
+        : "var(--stagnant)";
   const investable = ["investment", "stocks"].includes(account.type.toLowerCase());
 
   function startEdit() {
@@ -133,11 +138,11 @@ export function AccountCard({
           setEditing(false);
           setOpen(true);
         }}
-        className="w-full min-h-[180px] bg-white text-black border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_32px_-10px_rgba(0,0,0,0.12)] rounded-[35px] px-5 py-5 sm:px-[22px] sm:py-[20px] flex flex-col gap-3 cursor-pointer transition transform duration-200"
+        className="w-full min-h-[180px] bg-card text-ink border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_32px_-10px_rgba(0,0,0,0.12)] rounded-[35px] px-5 py-5 sm:px-[22px] sm:py-[20px] flex flex-col gap-3 cursor-pointer transition transform duration-200"
       >
         <div className="flex items-center justify-between gap-2">
           <p className="text-lg sm:text-xl font-bold truncate">{account.name}</p>
-          <ChevronRight className="w-4 h-4 text-black/20 shrink-0" />
+          <ChevronRight className="w-4 h-4 text-ink/20 shrink-0" />
         </div>
 
         <Sparkline values={series} color={sparkColor} className="w-full h-11 shrink-0" />
@@ -147,7 +152,7 @@ export function AccountCard({
             <MaskedBalance value={account.balance} mask="short" />
           </p>
           {investable && todayChangePct != null && (
-            <p className="text-xs font-medium tabular-nums text-black/50 mt-0.5">
+            <p className="text-xs font-medium tabular-nums text-ink/50 mt-0.5">
               {todayChangePct <= 0 ? "↓" : "↑"} {Math.abs(todayChangePct).toFixed(1)}% today
             </p>
           )}
@@ -163,7 +168,7 @@ export function AccountCard({
             </div>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-black/50">Name</span>
+              <span className="text-xs font-medium text-ink/50">Name</span>
               <AuthInput
                 type="text"
                 required
@@ -173,22 +178,22 @@ export function AccountCard({
             </label>
 
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-black/50">Balance</span>
+              <span className="text-xs font-medium text-ink/50">Balance</span>
               <div className="flex items-center justify-center gap-2 mt-2">
-                <span className={`${balanceFont} text-gray-400 font-semibold`}>{currency}</span>
+                <span className={`${balanceFont} text-ink/40 font-semibold`}>{currency}</span>
                 <input
                   type="text"
                   inputMode="decimal"
                   placeholder="0"
                   value={formattedBalance}
                   onChange={(e) => setBalance(e.target.value.replace(/[^0-9-]/g, ""))}
-                  className={`${balanceFont} text-gray-400 font-semibold bg-transparent text-center focus:outline-none placeholder:text-gray-300 w-full max-w-[280px] tabular-nums`}
+                  className={`${balanceFont} text-ink/40 font-semibold bg-transparent text-center focus:outline-none placeholder:text-ink/25 w-full max-w-[280px] tabular-nums`}
                 />
               </div>
             </div>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-black/50">Currency</span>
+              <span className="text-xs font-medium text-ink/50">Currency</span>
               <AuthInput
                 type="text"
                 value={currency}
@@ -197,11 +202,11 @@ export function AccountCard({
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-black/50">Type</span>
+              <span className="text-xs font-medium text-ink/50">Type</span>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full h-11 text-lg bg-white text-black px-[17px] py-[6px] rounded-[20px] border border-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 transition"
+                className="w-full h-11 text-lg bg-card text-ink px-[17px] py-[6px] rounded-[20px] border border-hairline focus:outline-none focus:ring-2 focus:ring-ink/20 transition"
               >
                 {TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -212,7 +217,7 @@ export function AccountCard({
             </label>
 
             {error && (
-              <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5">
+              <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 {error}
               </p>
@@ -239,13 +244,13 @@ export function AccountCard({
               <p className="text-2xl font-bold">{account.name}</p>
               <Badge variant="soft">{account.type}</Badge>
             </div>
-            <p className="text-sm text-black/50">{account.currency}</p>
+            <p className="text-sm text-ink/50">{account.currency}</p>
             <p className="text-3xl font-bold tracking-tight mt-4">
               {formatRupiah(account.balance)}
             </p>
 
             {error && (
-              <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5 mt-2">
+              <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5 mt-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 {error}
               </p>
@@ -266,7 +271,7 @@ export function AccountCard({
                 type="button"
                 variant="softred"
                 size="md"
-                leadingIcon={<Trash2 className="w-4 h-4 text-red-600" />}
+                leadingIcon={<Trash2 className="w-4 h-4 text-expense" />}
                 onClick={() => { setError(null); setConfirmOpen(true); }}
                 disabled={loading}
               >
@@ -284,12 +289,12 @@ export function AccountCard({
         <div className="flex flex-col gap-3">
           <div>
             <h2 className="text-2xl font-medium">Delete account?</h2>
-            <p className="text-sm text-black/40 mt-1">
-              Deleting <span className="font-medium text-black/70">{account.name}</span> ({formatRupiah(account.balance)}) will remove this account. Its transactions will be kept but unlinked from any account. This cannot be undone.
+            <p className="text-sm text-ink/40 mt-1">
+              Deleting <span className="font-medium text-ink/70">{account.name}</span> ({formatRupiah(account.balance)}) will remove this account. Its transactions will be kept but unlinked from any account. This cannot be undone.
             </p>
           </div>
           {error && (
-            <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5">
+            <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </p>

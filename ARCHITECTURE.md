@@ -118,14 +118,14 @@ budgie/
     │  ├─ page-shell.tsx            # shared authenticated shell (Sidebar + max-w-screen-2xl content wrapper)
     │  ├─ chat/                     # AI assistant UI (see §22 + UI_DESIGN.md §17)
     │  │  ├─ chat-view.tsx          # "use client" — useChat + transport, message list, typing/error/stop states
-    │  │  ├─ chat-message.tsx       # user/assistant bubbles; iterates parts (text/reasoning/tool)
+    │  │  ├─ chat-message.tsx       # user bubble + plain assistant prose; iterates parts (text/reasoning/tool)
     │  │  ├─ chat-thinking.tsx      # collapsible "Thinking…" block (reasoning parts)
-    │  │  ├─ chat-tool-card.tsx     # tool part dispatcher (status pill / result card / error)
-    │  │  ├─ chat-tool-status.tsx   # running pill (Loader2 + label)
-    │  │  ├─ chat-tool-result.tsx   # per-tool result cards (accounts/transactions/budgets/subscriptions/insights/create)
-    │  │  ├─ chat-input.tsx         # iOS-style composer card (textarea + dark send/stop circle)
-    │  │  ├─ chat-model-menu.tsx    # header model dropdown (MODEL_CHAIN + Check on active)
-    │  │  ├─ chat-empty-state.tsx   # serif time-of-day greeting + 3 suggestion capsules
+    │  │  ├─ chat-tool-card.tsx     # tool part dispatcher (status / result widget / error)
+    │  │  ├─ chat-tool-status.tsx   # inline running row (Loader2 + label)
+    │  │  ├─ chat-tool-result.tsx   # per-tool result widgets built from app list rows (accounts/transactions/budgets/subscriptions/insights/create)
+    │  │  ├─ chat-input.tsx         # composer card (textarea + send/stop circle)
+    │  │  ├─ chat-model-menu.tsx    # composer model dropdown (MODEL_CHAIN + Check on active)
+    │  │  ├─ chat-empty-state.tsx   # time-of-day greeting + suggestion chips
     │  │  └─ types.ts               # typed tool-result payloads
     │  └─ download-pdf-dialog.tsx   # jsPDF export (all / filtered / date range)
     ├─ lib/
@@ -1371,6 +1371,14 @@ the transactions page; the guard is now baked in).
   The catch-all `[[...route]]` handler ignores params and lets Hono route, so
   this rarely matters — but if you add a typed dynamic Route Handler elsewhere,
   await `params`.
+- **`cacheComponents` keeps pages alive with React `<Activity>`.** Navigating away
+  hides a route instead of unmounting it (DOM + client state preserved; up to 3
+  routes). A create-then-return flow that navigates back to itself (e.g.
+  `/transactions/add`) must reset its form when hidden, or the previous draft
+  reappears — and re-submitting duplicates the record. Pattern: a
+  `useLayoutEffect` cleanup guarded by a `shouldReset` ref set only on success
+  (`add-transaction-wizard.tsx`); never reset on a failed submit. See Next docs
+  `guides/preserving-ui-state`.
 - **Pages that read the DB must be dynamic.** A Server Component that calls
   Prisma at request time must set `export const dynamic = "force-dynamic"`, or
   `next build` will try to prerender it and fail (no DB at build time).
@@ -1427,6 +1435,16 @@ the transactions page; the guard is now baked in).
   Skipping any of these is a privilege-escalation bug.
 - **better-auth `prismaAdapter` needs `provider: "postgresql"`.** It's set in
   `src/lib/auth.ts`. If you switch DBs, change both Prisma and the adapter.
+- **Theme = semantic CSS variables + `.dark` class.** `globals.css` carries the
+  iOS `Colors.swift` palette as `--background/--screen/--card/--surface/--chat/
+  --ink/--hairline(-track)/--hover/--skeleton/--scrim` + `--brand/--income/
+  --expense/--transfer/--stagnant` and their `*-tint` mixes, exposed to Tailwind
+  via `@theme inline` (`bg-card`, `text-ink/45`, `border-hairline`, …).
+  `ThemeScript` (first child of `<body>`) applies the stored class before paint;
+  `ThemeProvider`/`useTheme` syncs `system` and persists
+  `localStorage["budgie.theme"]`. Never hardcode hex/`text-black`/`bg-white` in
+  components — see UI_DESIGN §19. Always-light exceptions: QRIS QR box, jsPDF,
+  `opengraph-image.tsx`.
 
 ---
 

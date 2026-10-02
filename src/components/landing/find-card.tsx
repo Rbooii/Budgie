@@ -29,28 +29,28 @@ export function FindCard() {
   const results = matches.slice(0, LIMIT);
 
   return (
-    <div className="flex h-full flex-col rounded-[35px] border border-black/[0.06] bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)]">
+    <div className="flex h-full flex-col rounded-[35px] border border-hairline bg-card shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)]">
       <div className="flex items-center justify-between px-5 pt-5 pb-3 sm:px-6">
-        <p className="text-[13px] text-black/40">All transactions</p>
-        <p className="text-xs text-black/35">Filters as you type</p>
+        <p className="text-[13px] text-ink/40">All transactions</p>
+        <p className="text-xs text-ink/35">Filters as you type</p>
       </div>
 
       <div className="flex flex-1 flex-col justify-center px-5 sm:px-6">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search transactions"
             aria-label="Search transactions"
-            className="h-10 w-full rounded-[20px] border border-black/10 bg-white pl-10 pr-4 text-sm outline-none transition-colors duration-200 ease-out placeholder:text-black/30 focus:border-black/20 focus:ring-2 focus:ring-black/20"
+            className="h-10 w-full rounded-[20px] border border-hairline bg-card pl-10 pr-4 text-sm outline-none transition-colors duration-200 ease-out placeholder:text-ink/30 focus:border-ink/20 focus:ring-2 focus:ring-ink/20"
           />
         </div>
 
         <div className="mt-2 flex flex-col">
           {results.length === 0 ? (
-            <p className="py-8 text-center text-sm text-black/40">
+            <p className="py-8 text-center text-sm text-ink/40">
               Nothing matches &ldquo;{query.trim()}&rdquo;.
             </p>
           ) : (
@@ -59,9 +59,9 @@ export function FindCard() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-black/[0.05] px-5 py-4 sm:px-6">
-        <p className="text-[13px] text-black/40">Showing</p>
-        <p className="text-[15px] font-semibold tabular-nums text-black">
+      <div className="flex items-center justify-between border-t border-hairline px-5 py-4 sm:px-6">
+        <p className="text-[13px] text-ink/40">Showing</p>
+        <p className="text-[15px] font-semibold tabular-nums text-ink">
           {results.length} of {matches.length}
         </p>
       </div>

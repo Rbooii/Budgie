@@ -61,7 +61,7 @@ describe("BudgetSummaryCards", () => {
       />,
     );
     const card = heroCard("Monthly budget");
-    expect(card.className).toContain("bg-[#D8000C]");
+    expect(card.className).toContain("bg-expense");
     expect(card).toHaveTextContent("Over budget");
     expect(card).toHaveTextContent("Rp 250.000.00");
   });
@@ -74,7 +74,7 @@ describe("BudgetSummaryCards", () => {
       />,
     );
     const card = heroCard("Monthly budget");
-    expect(card.className).toContain("bg-[#00C610]");
+    expect(card.className).toContain("bg-brand");
     expect(card).toHaveTextContent("Left to spend");
     expect(card).not.toHaveTextContent("Over budget");
   });

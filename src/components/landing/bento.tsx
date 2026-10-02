@@ -19,11 +19,11 @@ export function Bento() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <h2
             id="bento-title"
-            className="text-[32px] font-bold leading-10 tracking-[-0.75px] text-black"
+            className="text-[32px] font-bold leading-10 tracking-[-0.75px] text-ink"
           >
             Where your money lives.
           </h2>
-          <p className="text-lg leading-[28px] font-normal text-black/60 lg:max-w-md lg:text-right">
+          <p className="text-lg leading-[28px] font-normal text-ink/60 lg:max-w-md lg:text-right">
             One ledger for every account, transaction, and budget. No imports,
             no sync.
           </p>

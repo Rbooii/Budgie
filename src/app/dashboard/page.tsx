@@ -116,7 +116,7 @@ async function DashboardContent() {
       {/* Account section */}
       <h1 className="font-bold text-xl mt-8">Your Accounts</h1>
       {accounts.length === 0 ? (
-        <p className="text-sm text-black/40 mt-3">
+        <p className="text-sm text-ink/40 mt-3">
           No accounts yet. Click &ldquo;Add Account&rdquo; to create your first one.
         </p>
       ) : (

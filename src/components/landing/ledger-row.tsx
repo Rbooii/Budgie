@@ -11,18 +11,18 @@ const TYPE_META: Record<
 > = {
   income: {
     icon: <ArrowDownLeft className="w-4 h-4" />,
-    tint: "bg-[#A0FFA8]/30",
-    text: "text-[#1F9B29]",
+    tint: "bg-income-tint",
+    text: "text-income",
   },
   expense: {
     icon: <ArrowUpRight className="w-4 h-4" />,
-    tint: "bg-[#FFBABA]/40",
-    text: "text-[#D8000C]",
+    tint: "bg-expense-tint",
+    text: "text-expense",
   },
   transfer: {
     icon: <ArrowLeftRight className="w-4 h-4" />,
-    tint: "bg-[#FFD9A0]/40",
-    text: "text-[#B25B00]",
+    tint: "bg-transfer-tint",
+    text: "text-transfer",
   },
 };
 
@@ -50,10 +50,10 @@ export function LedgerRow({ transaction }: { transaction: TransactionRow }) {
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-medium text-black">
+        <p className="truncate text-[15px] font-medium text-ink">
           {transaction.name}
         </p>
-        <p className="truncate text-[13px] text-black/45">
+        <p className="truncate text-[13px] text-ink/45">
           {transactionSubtitle(transaction)}
         </p>
       </div>
@@ -63,7 +63,7 @@ export function LedgerRow({ transaction }: { transaction: TransactionRow }) {
           {sign}
           {formatRupiah(transaction.amount)}
         </p>
-        <p className="text-xs text-black/35">{formatTime(transaction.date)}</p>
+        <p className="text-xs text-ink/35">{formatTime(transaction.date)}</p>
       </div>
     </div>
   );

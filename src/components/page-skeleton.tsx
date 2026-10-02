@@ -14,7 +14,7 @@ type PageSkeletonVariant =
 const PULSE = "animate-pulse motion-reduce:animate-none";
 
 function Bar({ className }: { className: string }) {
-  return <div className={`${PULSE} bg-[#F2F2F2] ${className}`} />;
+  return <div className={`${PULSE} bg-surface ${className}`} />;
 }
 
 function AccountTabSkeleton() {
@@ -28,13 +28,13 @@ function AccountTabSkeleton() {
 
 function ListRowSkeleton() {
   return (
-    <div className={`${PULSE} flex h-[72px] w-full items-center gap-3 rounded-2xl bg-[#F2F2F2] px-4`}>
-      <div className="h-10 w-10 shrink-0 rounded-full bg-white/70" />
+    <div className={`${PULSE} flex h-[72px] w-full items-center gap-3 rounded-2xl bg-surface px-4`}>
+      <div className="h-10 w-10 shrink-0 rounded-full bg-skeleton" />
       <div className="flex flex-1 flex-col gap-2">
-        <div className="h-3.5 w-32 rounded-full bg-white/70" />
-        <div className="h-3 w-20 rounded-full bg-white/70" />
+        <div className="h-3.5 w-32 rounded-full bg-skeleton" />
+        <div className="h-3 w-20 rounded-full bg-skeleton" />
       </div>
-      <div className="h-3.5 w-20 rounded-full bg-white/70" />
+      <div className="h-3.5 w-20 rounded-full bg-skeleton" />
     </div>
   );
 }
@@ -54,11 +54,11 @@ function DashboardSkeleton() {
         {Array.from({ length: 3 }, (_, i) => (
           <div
             key={i}
-            className={`${PULSE} flex min-h-[180px] flex-col gap-3 rounded-[35px] bg-[#F2F2F2] px-5 py-5`}
+            className={`${PULSE} flex min-h-[180px] flex-col gap-3 rounded-[35px] bg-surface px-5 py-5`}
           >
-            <div className="h-5 w-28 rounded-full bg-white/70" />
-            <div className="h-11 w-full rounded-full bg-white/70" />
-            <div className="mt-auto h-6 w-32 rounded-full bg-white/70" />
+            <div className="h-5 w-28 rounded-full bg-skeleton" />
+            <div className="h-11 w-full rounded-full bg-skeleton" />
+            <div className="mt-auto h-6 w-32 rounded-full bg-skeleton" />
           </div>
         ))}
       </div>

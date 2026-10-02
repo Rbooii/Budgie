@@ -68,7 +68,7 @@ export function SignInForm() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-[#00CE11] flex items-center justify-center p-6 sm:p-8">
+    <main className="w-full min-h-screen bg-brand flex items-center justify-center p-6 sm:p-8">
       <div className="w-82 h-fit">
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
           {isSignup ? "Sign up" : "Sign in"}
@@ -107,7 +107,7 @@ export function SignInForm() {
             <span className="w-full border-t border-white/30" />
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-[#00CE11] px-2 text-xs text-white/80 font-medium">
+            <span className="bg-brand px-2 text-xs text-white/80 font-medium">
               or
             </span>
           </div>

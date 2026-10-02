@@ -45,7 +45,7 @@ export function LandingPageView({
   nav?: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-white text-black font-[family-name:var(--font-inter)]">
+    <main className="min-h-screen bg-screen text-ink font-[family-name:var(--font-inter)]">
       {/* Native smooth scrolling — Lenis-free. Gated by reduced motion. */}
       <style>{`
         @media (prefers-reduced-motion: no-preference) {
@@ -71,7 +71,7 @@ export function LandingPageView({
           </Reveal>
 
           <Reveal delay={160}>
-            <p className="text-lg leading-[28px] font-normal  text-black/60 mt-6 max-w-2xl mx-auto">
+            <p className="text-lg leading-[28px] font-normal  text-ink/60 mt-6 max-w-2xl mx-auto">
               Capture every rupiah, find any answer, and stay ahead of every
               budget.
             </p>
@@ -81,13 +81,13 @@ export function LandingPageView({
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
               <Link
                 href="/sign-in"
-                className="inline-flex items-center justify-center text-sm font-normal px-[20px] py-[6px] h-11 rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
+                className="inline-flex items-center justify-center text-sm font-normal px-[20px] py-[6px] h-11 rounded-[35px] bg-brand text-white hover:bg-brand/90 active:scale-[0.98] transition transform duration-150"
               >
                 Get started for free
               </Link>
               <Link
                 href="/#features"
-                className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-white text-black border border-black/10 hover:bg-[#F2F2F2] active:scale-[0.98] transition transform duration-150"
+                className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-card text-ink border border-hairline hover:bg-surface active:scale-[0.98] transition transform duration-150"
               >
                 See what Budgie can do
               </Link>
@@ -109,26 +109,26 @@ export function LandingPageView({
       <FactsMarquee />
 
       {/* Final CTA — Notion's neutral endcap (quiet gray surface, one primary CTA) */}
-      <section className="bg-[#F2F2F2] mt-20 sm:mt-28">
+      <section className="bg-surface mt-20 sm:mt-28">
         <div className="mx-auto max-w-screen-xl px-5 sm:px-8 py-24 sm:py-36 text-center">
           <Reveal>
-            <h2 className="text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.1] tracking-[-0.5px] text-black">
+            <h2 className="text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.1] tracking-[-0.5px] text-ink">
               Get started today.
             </h2>
-            <p className="text-base text-black/50 mt-4 max-w-xl mx-auto">
+            <p className="text-base text-ink/50 mt-4 max-w-xl mx-auto">
               Free to start. No card required. Upgrade to Plus whenever you want
               deeper insights.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
               <Link
                 href="/sign-in"
-                className="inline-flex items-center justify-center text-sm font-normal px-[20px] py-[6px] h-11 rounded-[35px] bg-[#00C610] text-white hover:bg-[#00B609] active:scale-[0.98] transition transform duration-150"
+                className="inline-flex items-center justify-center text-sm font-normal px-[20px] py-[6px] h-11 rounded-[35px] bg-brand text-white hover:bg-brand/90 active:scale-[0.98] transition transform duration-150"
               >
                 Get Budgie free
               </Link>
               <Link
                 href="/#features"
-                className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-white text-black border border-black/10 hover:bg-[#F2F2F2] active:scale-[0.98] transition transform duration-150"
+                className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-card text-ink border border-hairline hover:bg-surface active:scale-[0.98] transition transform duration-150"
               >
                 See what Budgie can do
               </Link>

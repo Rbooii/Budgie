@@ -90,12 +90,12 @@ describe("AccountCard", () => {
 
     it("colors the sparkline green when the series trends up", () => {
       const { container } = render(<AccountCard account={ACCOUNT} series={[1000, 1500]} />);
-      expect(container.querySelector("svg.spark-reveal path")!.getAttribute("stroke")).toBe("#00C610");
+      expect(container.querySelector("svg.spark-reveal path")!.getAttribute("stroke")).toBe("var(--income)");
     });
 
     it("colors the sparkline red when the series trends down", () => {
       const { container } = render(<AccountCard account={ACCOUNT} series={[1500, 1000]} />);
-      expect(container.querySelector("svg.spark-reveal path")!.getAttribute("stroke")).toBe("#D8000C");
+      expect(container.querySelector("svg.spark-reveal path")!.getAttribute("stroke")).toBe("var(--expense)");
     });
 
     it("shows today's change for investment accounts", () => {

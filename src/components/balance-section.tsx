@@ -17,7 +17,7 @@ export function BalanceSection({ value, deltaPct, deltaAbsolute }: BalanceSectio
     : `${deltaAbsolute >= 0 ? "+" : "-"}${formatRupiah(Math.abs(deltaAbsolute))} this month`;
 
   return (
-    <div className="w-full h-fit mt-8 md:mt-10 rounded-[35px] bg-[#00C610] p-6 text-white">
+    <div className="w-full h-fit mt-8 md:mt-10 rounded-[35px] bg-brand p-6 text-white">
       <div className="flex items-center gap-2">
         <p className="text-sm font-semibold text-white/95">Balance</p>
 

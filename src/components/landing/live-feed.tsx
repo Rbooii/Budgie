@@ -37,19 +37,19 @@ export function LiveFeed() {
   );
 
   return (
-    <div className="flex h-full flex-col rounded-[35px] border border-black/[0.06] bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)]">
+    <div className="flex h-full flex-col rounded-[35px] border border-hairline bg-card shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)]">
       <div className="flex items-center justify-between px-6 pt-6 pb-3 sm:px-7">
-        <p className="text-[13px] text-black/40">Today</p>
-        <p className="flex items-center gap-1.5 text-xs text-black/35">
+        <p className="text-[13px] text-ink/40">Today</p>
+        <p className="flex items-center gap-1.5 text-xs text-ink/35">
           <span
             aria-hidden="true"
-            className="h-1.5 w-1.5 rounded-full bg-[#00C610]"
+            className="h-1.5 w-1.5 rounded-full bg-brand"
           />
           Updating live
         </p>
       </div>
 
-      <div className="flex flex-1 flex-col divide-y divide-black/[0.05] px-6 sm:px-7">
+      <div className="flex flex-1 flex-col divide-y divide-hairline px-6 sm:px-7">
         {rows.map(({ item, entering }) => (
           <div
             key={item.id}
@@ -64,9 +64,9 @@ export function LiveFeed() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between border-t border-black/[0.05] px-6 py-4 sm:px-7">
-        <p className="text-[13px] text-black/40">Net today</p>
-        <p className="text-[15px] font-semibold tabular-nums text-black">
+      <div className="flex items-center justify-between border-t border-hairline px-6 py-4 sm:px-7">
+        <p className="text-[13px] text-ink/40">Net today</p>
+        <p className="text-[15px] font-semibold tabular-nums text-ink">
           {formatRupiah(net)}
         </p>
       </div>

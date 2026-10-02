@@ -173,21 +173,21 @@ export function AddBudgetDialog({
         <div className="flex flex-col text-left">
           <div className="flex items-center justify-between pr-8">
             <h2 className="text-2xl font-medium">Add Budget</h2>
-            <span className="text-xs font-medium text-black/40">
+            <span className="text-xs font-medium text-ink/40">
               {step} of 3
             </span>
           </div>
 
-          <div className="h-0.5 w-full bg-black/[0.06] mt-4 mb-5">
+          <div className="h-0.5 w-full bg-hairline-track mt-4 mb-5">
             <div
-              className="h-full bg-[#00C610] transition-all duration-300 ease-out"
+              className="h-full bg-brand transition-all duration-300 ease-out"
               style={{ width: `${(step / 3) * 100}%` }}
             />
           </div>
 
           {step === 1 && (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-black/40">Choose a budget period.</p>
+              <p className="text-sm text-ink/40">Choose a budget period.</p>
               <div className="flex flex-col gap-2">
                 {PERIODS.map((p) => {
                   const active = periodKey === p.key;
@@ -201,23 +201,23 @@ export function AddBudgetDialog({
                       }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-[20px] border transition active:scale-[0.98] ${
                         active
-                          ? "border-[#A0FFA8] bg-[#A0FFA8]/15"
-                          : "border-black/10 hover:border-black/20 hover:bg-[#FAFAFA]"
+                          ? "border-income/40 bg-income-tint"
+                          : "border-hairline hover:border-ink/20 hover:bg-hover"
                       }`}
                     >
-                      <span className="w-10 h-10 rounded-full bg-[#F2F2F2] flex items-center justify-center text-black/60">
+                      <span className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-ink/60">
                         {p.icon}
                       </span>
                       <span className="flex-1 text-left">
-                        <span className="block text-sm font-semibold text-black">
+                        <span className="block text-sm font-semibold text-ink">
                           {p.label}
                         </span>
-                        <span className="block text-xs text-black/40">
+                        <span className="block text-xs text-ink/40">
                           {p.desc}
                         </span>
                       </span>
                       {active && (
-                        <Check className="w-4 h-4 shrink-0 text-black" />
+                        <Check className="w-4 h-4 shrink-0 text-ink" />
                       )}
                     </button>
                   );
@@ -226,7 +226,7 @@ export function AddBudgetDialog({
 
               {periodKey === "custom" && (
                 <label className="flex flex-col gap-1 mt-1">
-                  <span className="text-xs font-medium text-black/50">
+                  <span className="text-xs font-medium text-ink/50">
                     Period length (days)
                   </span>
                   <input
@@ -238,7 +238,7 @@ export function AddBudgetDialog({
                     onChange={(e) =>
                       setCustomDays(e.target.value.replace(/[^0-9]/g, ""))
                     }
-                    className="w-full h-11 text-lg bg-white text-black px-[17px] py-[6px] rounded-[20px] border border-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 transition"
+                    className="w-full h-11 text-lg bg-card text-ink px-[17px] py-[6px] rounded-[20px] border border-hairline focus:outline-none focus:ring-2 focus:ring-ink/20 transition"
                   />
                 </label>
               )}
@@ -248,11 +248,11 @@ export function AddBudgetDialog({
           {step === 2 && (
             <div className="flex flex-col gap-4">
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-black/50">Category</span>
+                <span className="text-xs font-medium text-ink/50">Category</span>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full h-11 text-lg bg-white text-black px-[17px] py-[6px] rounded-[20px] border border-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 transition"
+                  className="w-full h-11 text-lg bg-card text-ink px-[17px] py-[6px] rounded-[20px] border border-hairline focus:outline-none focus:ring-2 focus:ring-ink/20 transition"
                 >
                   <option value="" disabled>
                     Select category
@@ -264,16 +264,16 @@ export function AddBudgetDialog({
                   ))}
                 </select>
                 {availableCategories.length === 0 && (
-                  <span className="text-xs text-black/40 mt-1">
+                  <span className="text-xs text-ink/40 mt-1">
                     All expense categories already have budgets.
                   </span>
                 )}
               </label>
 
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-black/50">Amount</span>
+                <span className="text-xs font-medium text-ink/50">Amount</span>
                 <div className="flex items-center justify-center gap-2 py-4">
-                  <span className={`${amountFont} text-gray-400 font-semibold`}>
+                  <span className={`${amountFont} text-ink/40 font-semibold`}>
                     IDR
                   </span>
                   <input
@@ -285,7 +285,7 @@ export function AddBudgetDialog({
                     onChange={(e) =>
                       setAmount(e.target.value.replace(/[^0-9-]/g, ""))
                     }
-                    className={`${amountFont} text-gray-400 font-semibold bg-transparent text-center focus:outline-none placeholder:text-gray-300 w-full max-w-[240px] tabular-nums`}
+                    className={`${amountFont} text-ink/40 font-semibold bg-transparent text-center focus:outline-none placeholder:text-ink/25 w-full max-w-[240px] tabular-nums`}
                   />
                 </div>
               </div>
@@ -295,15 +295,15 @@ export function AddBudgetDialog({
           {step === 3 && (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col items-center text-center gap-1 py-3">
-                <p className="text-sm text-black/40">
+                <p className="text-sm text-ink/40">
                   {categoryLabel(category)}
                 </p>
-                <p className="text-3xl font-bold tracking-tight tabular-nums text-black">
+                <p className="text-3xl font-bold tracking-tight tabular-nums text-ink">
                   {formatRupiah(amountNum)}
                 </p>
               </div>
 
-              <div className="flex flex-col rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]">
+              <div className="flex flex-col rounded-[20px] bg-surface divide-y divide-hairline">
                 <ReviewRow label="Category" value={categoryLabel(category)} />
                 <ReviewRow label="Period" value={periodLabel(periodDays)} />
                 <ReviewRow
@@ -314,7 +314,7 @@ export function AddBudgetDialog({
               </div>
 
               {error && (
-                <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5">
+                <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   {error}
                 </p>
@@ -323,7 +323,7 @@ export function AddBudgetDialog({
           )}
 
           {step !== 3 && error && (
-            <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5 mt-3">
+            <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5 mt-3">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </p>
@@ -374,8 +374,8 @@ function ReviewRow({
         last ? "py-3.5" : "py-3"
       }`}
     >
-      <span className="text-xs font-medium text-black/40">{label}</span>
-      <span className="text-sm text-black font-medium text-right">{value}</span>
+      <span className="text-xs font-medium text-ink/40">{label}</span>
+      <span className="text-sm text-ink font-medium text-right">{value}</span>
     </div>
   );
 }

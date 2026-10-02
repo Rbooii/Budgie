@@ -45,10 +45,10 @@ export function LiveSpending() {
   const left = [...budgetByCategory.values()].reduce((sum, b) => sum + b, 0) - spent;
 
   return (
-    <div className="flex h-full flex-col rounded-[35px] border border-black/[0.06] bg-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)]">
+    <div className="flex h-full flex-col rounded-[35px] border border-hairline bg-card shadow-[0_4px_24px_-8px_rgba(0,0,0,0.06)]">
       <div className="flex items-baseline justify-between gap-4 px-5 pt-5 pb-3 sm:px-6">
-        <p className="text-[13px] text-black/40">Spent in December</p>
-        <p className="text-xl font-semibold tabular-nums tracking-tight text-black">
+        <p className="text-[13px] text-ink/40">Spent in December</p>
+        <p className="text-xl font-semibold tabular-nums tracking-tight text-ink">
           {formatRupiah(spent)}
         </p>
       </div>
@@ -56,27 +56,27 @@ export function LiveSpending() {
       <div className="flex flex-1 flex-col justify-center gap-3 px-5 sm:px-6">
         {rows.map((row) => (
           <div key={row.category} className="flex items-center gap-3">
-            <span className="w-24 shrink-0 truncate text-xs text-black/45">
+            <span className="w-24 shrink-0 truncate text-xs text-ink/45">
               {categoryLabel(row.category)}
             </span>
-            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/[0.05]">
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-hairline-track">
               <span
                 className={`block h-full rounded-full transition-[width] duration-200 ease-out motion-reduce:transition-none ${
-                  row.over ? "bg-[#D8000C]" : "bg-[#FFBABA]"
+                  row.over ? "bg-expense" : "bg-expense-tint"
                 }`}
                 style={{ width: `${row.pct}%` }}
               />
             </span>
-            <span className="w-[92px] shrink-0 text-right text-[11px] tabular-nums text-black/55">
+            <span className="w-[92px] shrink-0 text-right text-[11px] tabular-nums text-ink/55">
               {formatRupiah(row.spent)}
             </span>
           </div>
         ))}
       </div>
 
-      <div className="flex items-center justify-between border-t border-black/[0.05] px-5 py-4 sm:px-6">
-        <p className="text-[13px] text-black/40">Left to spend</p>
-        <p className="text-[15px] font-semibold tabular-nums text-black">
+      <div className="flex items-center justify-between border-t border-hairline px-5 py-4 sm:px-6">
+        <p className="text-[13px] text-ink/40">Left to spend</p>
+        <p className="text-[15px] font-semibold tabular-nums text-ink">
           {formatRupiah(left)}
         </p>
       </div>

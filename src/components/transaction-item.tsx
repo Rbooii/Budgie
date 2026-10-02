@@ -30,18 +30,18 @@ const TYPE_META: Record<
 > = {
   income: {
     icon: <ArrowDownLeft className="w-5 h-5" />,
-    bg: "bg-[#A0FFA8]/30",
-    text: "text-[#1F9B29]",
+    bg: "bg-income-tint",
+    text: "text-income",
   },
   expense: {
     icon: <ArrowUpRight className="w-5 h-5" />,
-    bg: "bg-[#FFBABA]/40",
-    text: "text-[#D8000C]",
+    bg: "bg-expense-tint",
+    text: "text-expense",
   },
   transfer: {
     icon: <ArrowLeftRight className="w-5 h-5" />,
-    bg: "bg-[#FFD9A0]/40",
-    text: "text-[#B25B00]",
+    bg: "bg-transfer-tint",
+    text: "text-transfer",
   },
 };
 
@@ -82,7 +82,7 @@ export function TransactionItem({
     <button
       type="button"
       onClick={() => onClick?.(transaction)}
-      className="group w-full flex items-center gap-3.5 px-3.5 py-3.5 text-left rounded-2xl hover:bg-[#FAFAFA] transition"
+      className="group w-full flex items-center gap-3.5 px-3.5 py-3.5 text-left rounded-2xl hover:bg-hover transition"
     >
       <span
         className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${meta.bg} ${meta.text}`}
@@ -91,10 +91,10 @@ export function TransactionItem({
       </span>
 
       <div className="flex-1 min-w-0">
-        <p className="text-base font-medium text-black truncate">
+        <p className="text-base font-medium text-ink truncate">
           {transaction.name}
         </p>
-        <p className="text-sm text-black/45 truncate">{subtitle}</p>
+        <p className="text-sm text-ink/45 truncate">{subtitle}</p>
       </div>
 
       <div className="flex flex-col items-end shrink-0">
@@ -102,11 +102,11 @@ export function TransactionItem({
           {sign}
           {formatRupiah(transaction.amount)}
         </p>
-        <p className="text-xs text-black/35">{formatTime(transaction.date)}</p>
+        <p className="text-xs text-ink/35">{formatTime(transaction.date)}</p>
       </div>
 
       {!hideChevron && (
-        <ChevronRight className="w-5 h-5 text-black/15 group-hover:text-black/30 transition shrink-0 hidden sm:block" />
+        <ChevronRight className="w-5 h-5 text-ink/15 group-hover:text-ink/30 transition shrink-0 hidden sm:block" />
       )}
     </button>
   );

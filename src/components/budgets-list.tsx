@@ -39,12 +39,12 @@ export function BudgetsList({
   if (list.length === 0) {
     return (
       <>
-        <div className="w-full rounded-[35px] bg-white border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center text-center py-16 px-4 mt-3">
-          <div className="w-12 h-12 rounded-full bg-[#A0FFA8]/30 flex items-center justify-center text-[#00C610] mb-4">
+        <div className="w-full rounded-[35px] bg-card border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] flex flex-col items-center justify-center text-center py-16 px-4 mt-3">
+          <div className="w-12 h-12 rounded-full bg-income-tint flex items-center justify-center text-brand mb-4">
             <Wallet className="w-7 h-7" />
           </div>
-          <p className="text-base font-semibold text-black">No budgets yet</p>
-          <p className="text-sm text-black/40 mt-1 max-w-xs">
+          <p className="text-base font-semibold text-ink">No budgets yet</p>
+          <p className="text-sm text-ink/40 mt-1 max-w-xs">
             Set a limit per category to track spending and stay on plan.
           </p>
           <div className="mt-5">{addTrigger}</div>
@@ -72,29 +72,29 @@ export function BudgetsList({
               key={b.id}
               type="button"
               onClick={() => setSelected({ budget: b, spent })}
-              className="group w-full rounded-[35px] bg-white border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_32px_-10px_rgba(0,0,0,0.12)] p-4 text-left transition active:scale-[0.98]"
+              className="group w-full rounded-[35px] bg-card border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_32px_-10px_rgba(0,0,0,0.12)] p-4 text-left transition active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-[#FFBABA]/40 text-[#D8000C]">
+                <span className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-expense-tint text-expense">
                   {categoryIcon(b.category, "w-5 h-5")}
                 </span>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-semibold text-black truncate">
+                  <p className="text-base font-semibold text-ink truncate">
                     {categoryLabel(b.category)}
                   </p>
-                  <p className="text-xs text-black/50 mt-0.5">
+                  <p className="text-xs text-ink/50 mt-0.5">
                     {periodLabel(b.periodDays)}
                   </p>
                 </div>
 
                 <div className="flex flex-col items-end shrink-0">
-                  <p className="text-base font-semibold tabular-nums text-black">
+                  <p className="text-base font-semibold tabular-nums text-ink">
                     {formatRupiah(b.amount)}
                   </p>
                   <p
                     className={`text-[11px] font-medium tabular-nums ${
-                      over ? "text-[#D8000C]" : "text-black/40"
+                      over ? "text-expense" : "text-ink/40"
                     }`}
                   >
                     {over
@@ -104,10 +104,10 @@ export function BudgetsList({
                 </div>
               </div>
 
-              <div className="h-1.5 w-full bg-black/[0.06] rounded-full mt-2.5 overflow-hidden">
+              <div className="h-1.5 w-full bg-hairline-track rounded-full mt-2.5 overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
-                    over ? "bg-[#D8000C]" : "bg-[#00C610]"
+                    over ? "bg-expense" : "bg-brand"
                   }`}
                   style={{ width: `${pct}%` }}
                 />

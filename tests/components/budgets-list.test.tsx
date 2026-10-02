@@ -88,7 +88,7 @@ describe("BudgetsList — rows", () => {
       />,
     );
     const card = screen.getByRole("button", { name: /food & drink/i });
-    expect(card.className).toContain("bg-white");
+    expect(card.className).toContain("bg-card");
     expect(card.className).toContain("rounded-[35px]");
   });
 
@@ -109,7 +109,7 @@ describe("BudgetsList — rows", () => {
     );
     const bar = document.querySelector('[style*="width"]') as HTMLElement;
     expect(bar).not.toBeNull();
-    expect(bar.className).toContain("bg-[#D8000C]");
+    expect(bar.className).toContain("bg-expense");
     expect(screen.getByText("Over Rp 50.000.00")).toBeInTheDocument();
   });
 
@@ -134,7 +134,7 @@ describe("BudgetsList — rows", () => {
       />,
     );
     const bar = document.querySelector('[style*="width"]') as HTMLElement;
-    expect(bar.className).toContain("bg-[#00C610]");
+    expect(bar.className).toContain("bg-brand");
   });
 
   it("keeps the bar at 0% when the budget has no spend", () => {

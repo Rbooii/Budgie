@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 type Variant = "default" | "success" | "soft";
 
 const VARIANT_CLASS: Record<Variant, string> = {
-  default: "bg-white text-black",
-  success: "bg-[#00C610] text-white",
-  soft: "bg-[#A0FFA8] text-[#1F9B29]",
+  default: "bg-card text-ink",
+  success: "bg-brand text-white",
+  soft: "bg-income-tint text-income",
 };
 
 interface BadgeProps {

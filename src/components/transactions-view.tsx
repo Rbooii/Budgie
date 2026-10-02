@@ -122,13 +122,13 @@ export function TransactionsView({
       <div className="w-full mt-2 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-sm">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-black/25" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/25" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search transactions"
-              className="w-full h-11 pl-10 pr-4 text-sm bg-[#F2F2F2] text-black rounded-full placeholder:text-black/40 focus:outline-none focus:bg-white focus:ring-2 focus:ring-black/15 transition"
+              className="w-full h-11 pl-10 pr-4 text-sm bg-surface text-ink rounded-full placeholder:text-ink/40 focus:outline-none focus:bg-card focus:ring-2 focus:ring-ink/15 transition"
             />
           </div>
 
@@ -152,7 +152,7 @@ export function TransactionsView({
           <div className="flex flex-col gap-3">
             {grouped.map(({ label, items }) => (
               <div key={label} className="flex flex-col gap-1.5">
-                <p className="px-3.5 pt-2 pb-0.5 text-[11px] font-medium uppercase tracking-wide text-black/35">
+                <p className="px-3.5 pt-2 pb-0.5 text-[11px] font-medium uppercase tracking-wide text-ink/35">
                   {label}
                 </p>
                 {items.map((t) => (
@@ -180,7 +180,7 @@ export function TransactionsView({
               Load older transactions
             </Button>
             {loadError ? (
-              <p className="text-xs text-[#D8000C]">
+              <p className="text-xs text-expense">
                 Couldn&rsquo;t load more. Try again.
               </p>
             ) : null}
@@ -238,11 +238,11 @@ function EmptyState({
 }) {
   return (
     <div className="w-full flex flex-col items-center justify-center text-center py-20 px-4">
-      <div className="w-12 h-12 rounded-full bg-[#F2F2F2] flex items-center justify-center text-black/30 mb-4">
+      <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center text-ink/30 mb-4">
         {icon}
       </div>
-      <p className="text-base font-semibold text-black">{title}</p>
-      <p className="text-sm text-black/40 mt-1 max-w-xs">{desc}</p>
+      <p className="text-base font-semibold text-ink">{title}</p>
+      <p className="text-sm text-ink/40 mt-1 max-w-xs">{desc}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>
   );

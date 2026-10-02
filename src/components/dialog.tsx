@@ -29,18 +29,18 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-scrim/40 backdrop-blur-sm"
       onClick={() => onOpenChange(false)}
     >
       <div
-        className="relative w-full max-w-md bg-white rounded-[35px] p-6 shadow-2xl animate-[dialogIn_0.18s_ease-out]"
+        className="relative w-full max-w-md bg-card rounded-[35px] p-6 shadow-2xl animate-[dialogIn_0.18s_ease-out]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={() => onOpenChange(false)}
           aria-label="Close"
-          className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-black/50 hover:bg-[#F2F2F2] hover:text-black transition"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-ink/50 hover:bg-surface hover:text-ink transition"
         >
           <X className="w-5 h-5" />
         </button>

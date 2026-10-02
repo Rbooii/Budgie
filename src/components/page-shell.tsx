@@ -13,7 +13,7 @@ export function PageShell({
   flush?: boolean;
 }) {
   return (
-    <main className="w-full max-w-screen-2xl mx-auto min-h-screen flex flex-col md:flex-row bg-white text-black">
+    <main className="w-full max-w-screen-2xl mx-auto min-h-screen flex flex-col md:flex-row bg-screen text-ink">
       <Sidebar />
       <div
         className={

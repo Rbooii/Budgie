@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/button";
@@ -50,31 +50,31 @@ const TYPES: {
     label: "Income",
     desc: "Money in",
     icon: <ArrowDownLeft className="w-5 h-5" />,
-    text: "text-[#1F9B29]",
-    ring: "border-[#A0FFA8] bg-[#A0FFA8]/15",
+    text: "text-income",
+    ring: "border-income/40 bg-income-tint",
   },
   {
     key: "expense",
     label: "Expense",
     desc: "Money out",
     icon: <ArrowUpRight className="w-5 h-5" />,
-    text: "text-[#D8000C]",
-    ring: "border-[#FFBABA] bg-[#FFBABA]/20",
+    text: "text-expense",
+    ring: "border-expense/40 bg-expense-tint",
   },
   {
     key: "transfer",
     label: "Transfer",
     desc: "Between accounts",
     icon: <ArrowLeftRight className="w-5 h-5" />,
-    text: "text-[#B25B00]",
-    ring: "border-[#FFD9A0] bg-[#FFD9A0]/20",
+    text: "text-transfer",
+    ring: "border-transfer/40 bg-transfer-tint",
   },
 ];
 
 const AMOUNT_TYPE_TEXT: Record<TxType, string> = {
-  income: "text-[#1F9B29]",
-  expense: "text-[#D8000C]",
-  transfer: "text-[#B25B00]",
+  income: "text-income",
+  expense: "text-expense",
+  transfer: "text-transfer",
 };
 
 const SIGN: Record<TxType, string> = {
@@ -96,6 +96,27 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
   const [date, setDate] = useState(formatDateTimeLocalValue(new Date()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // `cacheComponents` keeps pages alive via React <Activity>, so navigating back
+  // to /transactions/add re-shows this same instance. Reset the form once it is
+  // hidden — but only after a successful submit.
+  const shouldResetRef = useRef(false);
+
+  useLayoutEffect(() => {
+    return () => {
+      if (!shouldResetRef.current) return;
+      shouldResetRef.current = false;
+      setStep(1);
+      setType(null);
+      setSourceId("");
+      setDestId("");
+      setName("");
+      setAmount("");
+      setAdminFee("");
+      setCategory("");
+      setDate(formatDateTimeLocalValue(new Date()));
+      setError(null);
+    };
+  }, []);
 
   const isTransfer = type === "transfer";
   const formattedAmount = formatBalanceInput(amount);
@@ -118,6 +139,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
   function selectType(t: TxType) {
     setType(t);
     setCategory("");
+    setDate(formatDateTimeLocalValue(new Date()));
     setError(null);
   }
 
@@ -172,6 +194,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
         } catch {}
         throw new Error(msg);
       }
+      shouldResetRef.current = true;
       router.push("/transactions");
       router.refresh();
     } catch (err) {
@@ -198,7 +221,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <h2 className="text-xl font-bold text-center">New transaction</h2>
-              <p className="text-sm text-black/40 text-center -mt-2">
+              <p className="text-sm text-ink/40 text-center -mt-2">
                 What kind of transaction is this?
               </p>
               <div className="flex flex-col gap-2.5">
@@ -214,24 +237,24 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
                       className={`flex items-center gap-3 px-4 py-3.5 rounded-[20px] border transition active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 ${
                         active
                           ? t.ring
-                          : "border-black/10 hover:border-black/20 hover:bg-[#FAFAFA] disabled:hover:border-black/10 disabled:hover:bg-transparent"
+                          : "border-hairline hover:border-ink/20 hover:bg-hover disabled:hover:border-hairline disabled:hover:bg-transparent"
                       }`}
                     >
                       <span
-                        className={`w-10 h-10 rounded-full bg-[#F2F2F2] flex items-center justify-center ${t.text}`}
+                        className={`w-10 h-10 rounded-full bg-surface flex items-center justify-center ${t.text}`}
                       >
                         {t.icon}
                       </span>
                       <span className="flex-1 text-left">
-                        <span className="block text-sm font-semibold text-black">
+                        <span className="block text-sm font-semibold text-ink">
                           {t.label}
                         </span>
-                        <span className="block text-xs text-black/40">
+                        <span className="block text-xs text-ink/40">
                           {transferDisabled ? "Add another account to transfer" : t.desc}
                         </span>
                       </span>
                       {active && (
-                        <Check className="w-4 h-4 shrink-0 text-black" />
+                        <Check className="w-4 h-4 shrink-0 text-ink" />
                       )}
                     </button>
                   );
@@ -252,7 +275,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
               <Field label="Amount">
                 <div className="flex items-center justify-center gap-2 py-6">
                   <span
-                    className={`${amountFont} text-gray-400 font-semibold`}
+                    className={`${amountFont} text-ink/40 font-semibold`}
                   >
                     {source?.currency ?? "IDR"}
                   </span>
@@ -265,7 +288,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
                     onChange={(e) =>
                       setAmount(e.target.value.replace(/[^0-9-]/g, ""))
                     }
-                    className={`${amountFont} text-gray-400 font-semibold bg-transparent text-center focus:outline-none placeholder:text-gray-300 w-full max-w-[240px] tabular-nums`}
+                    className={`${amountFont} text-ink/40 font-semibold bg-transparent text-center focus:outline-none placeholder:text-ink/25 w-full max-w-[240px] tabular-nums`}
                   />
                 </div>
               </Field>
@@ -322,7 +345,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-transparent text-sm text-black focus:outline-none"
+                    className="w-full bg-transparent text-sm text-ink focus:outline-none"
                   />
                 </CardRow>
               </Card>
@@ -332,7 +355,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
           {step === 3 && (
             <div className="flex flex-col gap-5">
               <div className="flex flex-col items-center text-center gap-1 py-4">
-                <p className="text-sm text-black/40">{name.trim()}</p>
+                <p className="text-sm text-ink/40">{name.trim()}</p>
                 <p
                   className={`text-3xl font-bold tracking-tight tabular-nums ${
                     type ? AMOUNT_TYPE_TEXT[type] : ""
@@ -342,7 +365,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
                   {formatRupiah(amountNum)}
                 </p>
                 {isTransfer && feeNum > 0 && (
-                  <p className="text-xs text-black/40 tabular-nums">
+                  <p className="text-xs text-ink/40 tabular-nums">
                     Admin fee {formatRupiah(feeNum)}
                   </p>
                 )}
@@ -369,7 +392,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
               </Card>
 
               {error && (
-                <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5">
+                <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   {error}
                 </p>
@@ -380,7 +403,7 @@ export function AddTransactionWizard({ accounts }: AddTransactionWizardProps) {
 
         <div className="px-2 sm:px-6 pb-6">
           {step !== 3 && error && (
-            <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5 mb-3">
+            <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5 mb-3">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </p>
@@ -427,11 +450,11 @@ function TopBar({ step, onBack }: { step: Step; onBack: () => void }) {
           type="button"
           onClick={onBack}
           aria-label="Back"
-          className="w-9 h-9 rounded-full flex items-center justify-center text-black/50 hover:bg-[#F2F2F2] hover:text-black transition"
+          className="w-9 h-9 rounded-full flex items-center justify-center text-ink/50 hover:bg-surface hover:text-ink transition"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <span className="text-xs font-medium text-black/40">
+        <span className="text-xs font-medium text-ink/40">
           {step} of 3
         </span>
         <span className="w-9" />
@@ -442,9 +465,9 @@ function TopBar({ step, onBack }: { step: Step; onBack: () => void }) {
 
 function ProgressBar({ step }: { step: Step }) {
   return (
-    <div className="h-0.5 w-full bg-black/[0.06]">
+    <div className="h-0.5 w-full bg-hairline-track">
       <div
-        className="h-full bg-[#00C610] transition-all duration-300 ease-out"
+        className="h-full bg-brand transition-all duration-300 ease-out"
         style={{ width: `${(step / 3) * 100}%` }}
       />
     </div>
@@ -460,7 +483,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-black/40 mx-auto">{label}</span>
+      <span className="text-xs font-medium text-ink/40 mx-auto">{label}</span>
       {children}
     </label>
   );
@@ -468,7 +491,7 @@ function Field({
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="divide-y divide-black/[0.04]">{children}</div>
+    <div className="divide-y divide-hairline">{children}</div>
   );
 }
 
@@ -483,7 +506,7 @@ function CardRow({
 }) {
   return (
     <div className={`flex items-center gap-3 px-4 ${last ? "py-3.5" : "py-3"}`}>
-      <span className="text-xs font-medium text-black/40 w-20 shrink-0">
+      <span className="text-xs font-medium text-ink/40 w-20 shrink-0">
         {label}
       </span>
       <div className="flex-1 min-w-0">{children}</div>
@@ -509,7 +532,7 @@ function InlineInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full bg-transparent text-sm text-black focus:outline-none placeholder:text-black/25"
+      className="w-full bg-transparent text-sm text-ink focus:outline-none placeholder:text-ink/25"
     />
   );
 }
@@ -530,7 +553,7 @@ function AccountSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       required
-      className="w-full bg-transparent text-sm text-black focus:outline-none appearance-none cursor-pointer"
+      className="w-full bg-transparent text-sm text-ink focus:outline-none appearance-none cursor-pointer"
     >
       <option value="" disabled>
         {placeholder}
@@ -561,7 +584,7 @@ function CategorySelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       required
-      className="w-full bg-transparent text-sm text-black focus:outline-none appearance-none cursor-pointer"
+      className="w-full bg-transparent text-sm text-ink focus:outline-none appearance-none cursor-pointer"
     >
       <option value="" disabled>
         {placeholder}
@@ -586,8 +609,8 @@ function ReviewRow({
 }) {
   return (
     <div className={`flex items-center justify-between gap-4 px-4 ${last ? "py-3.5" : "py-3"}`}>
-      <span className="text-xs font-medium text-black/40">{label}</span>
-      <span className="text-sm text-black font-medium text-right">{value}</span>
+      <span className="text-xs font-medium text-ink/40">{label}</span>
+      <span className="text-sm text-ink font-medium text-right">{value}</span>
     </div>
   );
 }

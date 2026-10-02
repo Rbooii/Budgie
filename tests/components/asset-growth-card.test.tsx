@@ -32,7 +32,7 @@ describe("AssetGrowthCard", () => {
   it("shows a positive YTD value in green", () => {
     render(<AssetGrowthCard {...defaultProps} />);
     const value = screen.getByText("+Rp 150.000.00");
-    expect(value.className).toContain("text-[#00C610]");
+    expect(value.className).toContain("text-brand");
   });
 
   it("shows a negative YTD value in red", () => {
@@ -45,7 +45,7 @@ describe("AssetGrowthCard", () => {
       />,
     );
     const value = screen.getByText("-Rp 1.000.000.00");
-    expect(value.className).toContain("text-[#D8000C]");
+    expect(value.className).toContain("text-expense");
   });
 
   it("renders all 12 month slots as single-letter labels", () => {
@@ -65,7 +65,7 @@ describe("AssetGrowthCard", () => {
     expect(future.length).toBe(9);
     for (const bar of future) {
       expect(bar.getAttribute("height")).toBe("6");
-      expect(bar.getAttribute("fill")).toBe("#E5E5E5");
+      expect(bar.getAttribute("fill")).toBe("var(--chart-placeholder)");
     }
   });
 
@@ -90,7 +90,7 @@ describe("AssetGrowthCard", () => {
       />,
     );
     const rects = Array.from(container.querySelectorAll("rect"));
-    expect(rects[1].getAttribute("fill")).toBe("#B25B00");
+    expect(rects[1].getAttribute("fill")).toBe("var(--stagnant)");
   });
 
   it("ignores hover on future months", () => {

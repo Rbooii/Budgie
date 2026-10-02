@@ -62,9 +62,9 @@ describe("ChatToolResult", () => {
     expect(screen.getByText("Transactions")).toBeInTheDocument();
     expect(screen.getByText("Lunch")).toBeInTheDocument();
     expect(screen.getByText("Salary")).toBeInTheDocument();
-    expect(screen.getByText("Food & Drink · Mandiri")).toBeInTheDocument();
-    expect(screen.getByText("Rp 45.000.00")).toBeInTheDocument();
-    expect(screen.getByText("Rp 5.000.000.00")).toBeInTheDocument();
+    expect(screen.getByText("Mandiri • Food & Drink")).toBeInTheDocument();
+    expect(screen.getByText("-Rp 45.000.00")).toBeInTheDocument();
+    expect(screen.getByText("+Rp 5.000.000.00")).toBeInTheDocument();
 
     rerender(
       <ChatToolResult
@@ -121,7 +121,8 @@ describe("ChatToolResult", () => {
 
     expect(screen.getByText("Budgets")).toBeInTheDocument();
     expect(screen.getByText("Food & Drink")).toBeInTheDocument();
-    expect(screen.getByText("Rp 45.000.00 / Rp 1.000.000.00")).toBeInTheDocument();
+    expect(screen.getByText("Rp 1.000.000.00")).toBeInTheDocument();
+    expect(screen.getByText("Rp 955.000.00 left")).toBeInTheDocument();
 
     rerender(
       <ChatToolResult toolName="get_budgets" output={{ budgets: [] }} />,
@@ -163,8 +164,8 @@ describe("ChatToolResult", () => {
     expect(screen.getByText("Subscriptions")).toBeInTheDocument();
     expect(screen.getByText("Netflix")).toBeInTheDocument();
     expect(screen.getAllByText(/Next .*/i).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/Entertainment · Monthly/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Inactive/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Entertainment · Monthly")).toBeInTheDocument();
+    expect(screen.getByText("Inactive")).toBeInTheDocument();
   });
 
   it("renders insights with net worth, month totals and top categories", () => {
@@ -207,7 +208,9 @@ describe("ChatToolResult", () => {
 
     expect(screen.getByText("Transaction")).toBeInTheDocument();
     expect(screen.getByText("Lunch at Warung")).toBeInTheDocument();
-    expect(screen.getByText(/Rp 45\.000\.00 · Mandiri/)).toBeInTheDocument();
+    expect(screen.getByText("-Rp 45.000.00")).toBeInTheDocument();
+    expect(screen.getByText("Food & Drink • Mandiri")).toBeInTheDocument();
+    expect(screen.getByText("Added")).toBeInTheDocument();
   });
 
   it("renders a failed create_transaction result with the reason", () => {

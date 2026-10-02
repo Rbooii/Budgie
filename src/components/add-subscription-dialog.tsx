@@ -111,13 +111,13 @@ export function AddSubscriptionDialog({
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 text-left">
           <div>
             <h2 className="text-2xl font-medium">Add Subscription</h2>
-            <p className="text-sm text-black/40 mt-1">
+            <p className="text-sm text-ink/40 mt-1">
               Track recurring charges so you always know what&rsquo;s coming out.
             </p>
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-black/50">Name</span>
+            <span className="text-xs font-medium text-ink/50">Name</span>
             <AuthInput
               type="text"
               placeholder="e.g. Netflix, Spotify"
@@ -128,12 +128,12 @@ export function AddSubscriptionDialog({
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-black/50">Category</span>
+            <span className="text-xs font-medium text-ink/50">Category</span>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required
-              className="w-full h-11 text-lg bg-white text-black px-[17px] py-[6px] rounded-[20px] border border-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 transition"
+              className="w-full h-11 text-lg bg-card text-ink px-[17px] py-[6px] rounded-[20px] border border-hairline focus:outline-none focus:ring-2 focus:ring-ink/20 transition"
             >
               <option value="" disabled>
                 Select category
@@ -147,11 +147,11 @@ export function AddSubscriptionDialog({
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-black/50">Billing cycle</span>
+            <span className="text-xs font-medium text-ink/50">Billing cycle</span>
             <select
               value={periodDays}
               onChange={(e) => setPeriodDays(Number(e.target.value))}
-              className="w-full h-11 text-lg bg-white text-black px-[17px] py-[6px] rounded-[20px] border border-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 transition"
+              className="w-full h-11 text-lg bg-card text-ink px-[17px] py-[6px] rounded-[20px] border border-hairline focus:outline-none focus:ring-2 focus:ring-ink/20 transition"
             >
               {PERIOD_OPTIONS.map((p) => (
                 <option key={p.days} value={p.days}>
@@ -162,20 +162,20 @@ export function AddSubscriptionDialog({
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-black/50">Start date</span>
+            <span className="text-xs font-medium text-ink/50">Start date</span>
             <input
               type="date"
               required
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full h-11 text-lg bg-white text-black px-[17px] py-[6px] rounded-[20px] border border-black/10 focus:outline-none focus:ring-2 focus:ring-black/20 transition"
+              className="w-full h-11 text-lg bg-card text-ink px-[17px] py-[6px] rounded-[20px] border border-hairline focus:outline-none focus:ring-2 focus:ring-ink/20 transition"
             />
           </label>
 
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-black/50">Amount</span>
+            <span className="text-xs font-medium text-ink/50">Amount</span>
             <div className="flex items-center justify-center gap-2 py-3">
-              <span className={`${amountFont} text-gray-400 font-semibold`}>
+              <span className={`${amountFont} text-ink/40 font-semibold`}>
                 IDR
               </span>
               <input
@@ -186,13 +186,13 @@ export function AddSubscriptionDialog({
                 onChange={(e) =>
                   setAmount(e.target.value.replace(/[^0-9-]/g, ""))
                 }
-                className={`${amountFont} text-gray-400 font-semibold bg-transparent text-center focus:outline-none placeholder:text-gray-300 w-full max-w-[240px] tabular-nums`}
+                className={`${amountFont} text-ink/40 font-semibold bg-transparent text-center focus:outline-none placeholder:text-ink/25 w-full max-w-[240px] tabular-nums`}
               />
             </div>
           </div>
 
           {error && (
-            <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-[20px] px-4 py-2.5">
+            <p className="flex items-center gap-2 text-sm text-expense bg-expense-tint border border-expense/30 rounded-[20px] px-4 py-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
             </p>

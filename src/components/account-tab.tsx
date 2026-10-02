@@ -27,12 +27,12 @@ export function AccountTabView({ userName, plus }: AccountTabProps & { plus: boo
         </Link>
       )}
       <Link href="/profile">
-        <div className="flex items-center gap-[13px] w-fit h-fit cursor-pointer hover:bg-[#F2F2F2] transition transform duration-150 active:scale-[0.98] rounded-full pr-4 pl-1 py-1">
-          <div className="w-[40px] h-[40px] font-bold bg-[#F2F2F2] rounded-full flex items-center justify-center text-sm">
+        <div className="flex items-center gap-[13px] w-fit h-fit cursor-pointer hover:bg-surface transition transform duration-150 active:scale-[0.98] rounded-full pr-4 pl-1 py-1">
+          <div className="w-[40px] h-[40px] font-bold bg-surface rounded-full flex items-center justify-center text-sm">
             {getInitials(userName)}
           </div>
           <p className="text-sm font-medium hidden sm:block">{userName}</p>
-          <ArrowRight className="w-4 h-4 text-black/50" />
+          <ArrowRight className="w-4 h-4 text-ink/50" />
         </div>
       </Link>
     </div>
