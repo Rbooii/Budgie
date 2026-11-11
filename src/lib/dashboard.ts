@@ -179,3 +179,88 @@ export function computeTodayChangePercent(
   if (previous <= 0) return null;
   return (net / previous) * 100;
 }
+
+export type CashflowTotals = { income: number; expense: number };
+
+/** Net worth effect of one transaction (transfers only cost the admin fee). */
+export function netEffect(transaction: YearTxn): number {
+  if (transaction.type === "income") return transaction.amount;
+  if (transaction.type === "expense") return -transaction.amount;
+  if (transaction.type === "transfer") return -transaction.adminFee;
+  return 0;
+}
+
+/** Income, expenses, and transfer fees inside [start, end). */
+export function sumCashflow(
+  transactions: YearTxn[],
+  start: Date,
+  end: Date,
+): CashflowTotals {
+  let income = 0;
+  let expense = 0;
+
+  for (const transaction of transactions) {
+    const date = new Date(transaction.date);
+    if (date < start || date >= end) continue;
+    if (transaction.type === "income") income += transaction.amount;
+    else if (transaction.type === "expense") expense += transaction.amount;
+    else if (transaction.type === "transfer") expense += transaction.adminFee;
+  }
+
+  return { income, expense };
+}
+
+/** Net worth effect of every transaction inside [start, end). */
+export function sumNetEffect(
+  transactions: YearTxn[],
+  start: Date,
+  end: Date,
+): number {
+  return transactions.reduce((sum, transaction) => {
+    const date = new Date(transaction.date);
+    if (date < start || date >= end) return sum;
+    return sum + netEffect(transaction);
+  }, 0);
+}
+
+/** Monthly net buckets for `months` months starting at the first of `start`. */
+export function monthlyNetBetween(
+  transactions: YearTxn[],
+  start: Date,
+  months: number,
+): number[] {
+  const buckets = new Array<number>(months).fill(0);
+  const startYear = start.getFullYear();
+  const startMonth = start.getMonth();
+
+  for (const transaction of transactions) {
+    const date = new Date(transaction.date);
+    const index =
+      (date.getFullYear() - startYear) * 12 + (date.getMonth() - startMonth);
+    if (index < 0 || index >= months) continue;
+    buckets[index] += netEffect(transaction);
+  }
+
+  return buckets;
+}
+
+/** Whether each month in the window has at least one transaction. */
+export function activeMonthsBetween(
+  transactions: YearTxn[],
+  start: Date,
+  months: number,
+): boolean[] {
+  const buckets = new Array<boolean>(months).fill(false);
+  const startYear = start.getFullYear();
+  const startMonth = start.getMonth();
+
+  for (const transaction of transactions) {
+    const date = new Date(transaction.date);
+    const index =
+      (date.getFullYear() - startYear) * 12 + (date.getMonth() - startMonth);
+    if (index < 0 || index >= months) continue;
+    buckets[index] = true;
+  }
+
+  return buckets;
+}

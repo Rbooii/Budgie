@@ -4,10 +4,9 @@ import { setWindowScrollY } from "@/test-utils/browser-mocks";
 import { LandingNav } from "@/components/landing/landing-nav";
 
 const NAV_LINKS = [
-  ["Use cases", "/#use-cases"],
-  ["Features", "/#features"],
+  ["Product", "/#live"],
   ["Pricing", "/#pricing"],
-  ["FAQ", "/#faq"],
+  ["Questions", "/#faq"],
 ] as const;
 
 describe("LandingNav — anonymous", () => {
@@ -16,19 +15,19 @@ describe("LandingNav — anonymous", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders the brand link to the home page", () => {
+  it("renders the wordmark link to the home page", () => {
     render(<LandingNav session={false} />);
     expect(screen.getByRole("link", { name: "Budgie" })).toHaveAttribute("href", "/");
   });
 
-  it("shows the app-icon logo next to the wordmark", () => {
+  it("renders the old Budgie logo next to the wordmark", () => {
     const { container } = render(<LandingNav session={false} />);
     const logo = container.querySelector("img");
     expect(logo?.getAttribute("src")).toContain("android-chrome-192x192");
     expect(logo?.getAttribute("alt")).toBe("");
   });
 
-  it("renders all five anchor nav links", () => {
+  it("renders every anchor nav link", () => {
     render(<LandingNav session={false} />);
     for (const [label, href] of NAV_LINKS) {
       const links = screen.getAllByRole("link", { name: label });
@@ -36,53 +35,45 @@ describe("LandingNav — anonymous", () => {
     }
   });
 
-  it("types nav links in 14px medium (Notion style)", () => {
-    render(<LandingNav session={false} />);
-    const link = screen.getByRole("link", { name: "Features" });
-    expect(link.className).toContain("text-sm");
-    expect(link.className).toContain("font-medium");
-  });
-
-  it("shows Sign in and Get started for anonymous visitors", () => {
+  it("shows Sign in and Start free for anonymous visitors", () => {
     render(<LandingNav session={false} />);
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/sign-in",
     );
-    expect(screen.getByRole("link", { name: "Get started" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Start free" })).toHaveAttribute(
       "href",
       "/sign-in",
     );
-    expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
   });
 
-  it("starts transparent and gains the solid background after scrolling", () => {
+  it("starts transparent and gains the paper background after scrolling", () => {
     setWindowScrollY(0);
     const { container } = render(<LandingNav session={false} />);
     const header = container.querySelector("header") as HTMLElement;
     expect(header.className).toContain("bg-transparent");
     setWindowScrollY(50);
     fireEvent.scroll(window);
-    expect(header.className).toContain("bg-screen/80");
+    expect(header.className).toContain("bg-paper/85");
   });
 });
 
 describe("LandingNav — signed in", () => {
-  it("shows the Dashboard link instead of auth links", () => {
+  it("shows Open Budgie instead of auth links", () => {
     render(<LandingNav session={true} />);
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Open Budgie" })).toHaveAttribute(
       "href",
       "/dashboard",
     );
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Get started" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Start free" })).not.toBeInTheDocument();
   });
 
   it("still renders the anchor nav links when signed in", () => {
     render(<LandingNav session={true} />);
-    expect(screen.getByRole("link", { name: "Use cases" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Product" })).toHaveAttribute(
       "href",
-      "/#use-cases",
+      "/#live",
     );
   });
 });

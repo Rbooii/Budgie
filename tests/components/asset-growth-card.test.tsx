@@ -2,8 +2,27 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import AssetGrowthCard from "@/components/asset-growth-card";
 
+const SHORT_LABELS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+const FULL_LABELS = [
+  "January 2026",
+  "February 2026",
+  "March 2026",
+  "April 2026",
+  "May 2026",
+  "June 2026",
+  "July 2026",
+  "August 2026",
+  "September 2026",
+  "October 2026",
+  "November 2026",
+  "December 2026",
+];
+
 const defaultProps = {
-  year: 2026,
+  shortLabels: SHORT_LABELS,
+  fullLabels: FULL_LABELS,
+  rangeLabel: "2026",
+  changeLabel: "YTD",
   data: [
     { month: 0, value: 1000000 },
     { month: 1, value: 1100000 },
@@ -23,7 +42,12 @@ describe("AssetGrowthCard", () => {
     expect(screen.getByText("2026")).toBeInTheDocument();
   });
 
-  it("renders an absolute Rupiah YTD pill", () => {
+  it("does not render the Sparkles symbol", () => {
+    const { container } = render(<AssetGrowthCard {...defaultProps} />);
+    expect(container.querySelector(".lucide-sparkles")).toBeNull();
+  });
+
+  it("renders the signed YTD change", () => {
     render(<AssetGrowthCard {...defaultProps} />);
     expect(screen.getByText("YTD")).toBeInTheDocument();
     expect(screen.getByText("+Rp 150.000.00")).toBeInTheDocument();
@@ -52,9 +76,9 @@ describe("AssetGrowthCard", () => {
     const { container } = render(<AssetGrowthCard {...defaultProps} />);
     const labels = container.querySelectorAll("text");
     expect(labels.length).toBe(12);
-    expect(Array.from(labels).map((l) => l.textContent)).toEqual([
-      "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D",
-    ]);
+    expect(Array.from(labels).map((l) => l.textContent)).toEqual(
+      SHORT_LABELS,
+    );
   });
 
   it("renders a 6px placeholder bar for every future month", () => {
@@ -113,11 +137,12 @@ describe("AssetGrowthCard", () => {
     expect(screen.getByText(/No transactions yet/)).toBeInTheDocument();
   });
 
-  it("renders the legend when hasTransactions is true", () => {
-    render(<AssetGrowthCard {...defaultProps} />);
+  it("renders a text-only legend without status dots", () => {
+    const { container } = render(<AssetGrowthCard {...defaultProps} />);
     expect(screen.getByText("Growth")).toBeInTheDocument();
     expect(screen.getByText("Stable")).toBeInTheDocument();
     expect(screen.getByText("Decline")).toBeInTheDocument();
+    expect(container.querySelectorAll(".rounded-full")).toHaveLength(0);
   });
 
   it("does not render the legend when hasTransactions is false", () => {

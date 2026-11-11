@@ -5,13 +5,15 @@ import { Faq, FAQ_ITEMS } from "@/components/landing/faq";
 describe("Faq", () => {
   it("renders the section heading", () => {
     render(<Faq />);
-    expect(screen.getByText("Things people ask")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Things people ask" })).toBeInTheDocument();
+    expect(screen.getByText("Questions, answered.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Questions, answered." }),
+    ).toBeInTheDocument();
   });
 
   it("labels the section with the faq title id", () => {
     render(<Faq />);
-    const section = screen.getByText("Things people ask").closest("section");
+    const section = screen.getByText("Questions, answered.").closest("section");
     expect(section?.getAttribute("aria-labelledby")).toBe("faq-title");
   });
 
@@ -41,10 +43,16 @@ describe("FAQ_ITEMS data", () => {
     }
   });
 
-  it("mentions the rupiah/QRIS and the privacy behavior in the right items", () => {
+  it("keeps the privacy and rupiah facts", () => {
     const privacy = FAQ_ITEMS.find((i) => i.q.includes("private"));
     expect(privacy?.a).toMatch(/260ms/);
     const rupiah = FAQ_ITEMS.find((i) => i.q.includes("rupiah"));
     expect(rupiah?.a).toMatch(/QRIS/);
+  });
+
+  it("describes Plus honestly as optional support", () => {
+    const plus = FAQ_ITEMS.find((i) => i.q.includes("Plus"));
+    expect(plus?.a).toMatch(/optional support/i);
+    expect(plus?.a).toMatch(/Every feature stays free/i);
   });
 });

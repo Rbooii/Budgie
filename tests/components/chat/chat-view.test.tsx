@@ -235,14 +235,16 @@ describe("ChatView", () => {
     expect(screen.getByText("Looking up your accounts…")).toBeInTheDocument();
   });
 
-  it("shows the typing indicator while submitted", () => {
+  it("shows a static thinking indicator while submitted", () => {
     renderChat({
       status: "submitted",
       messages: [
         { id: "u1", role: "user", parts: [{ type: "text", text: "hi" }] },
       ],
     });
-    expect(screen.getByRole("status", { name: /typing/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("status", { name: /thinking/i }),
+    ).toHaveTextContent("Thinking");
   });
 
   it("shows a stop button instead of the send button while streaming", () => {

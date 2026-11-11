@@ -1,194 +1,134 @@
-## 16. Landing Page — Marketing Surface (public `/`)
+## 16. Landing Page — Anthropic Company Register (public `/`)
 
-`src/app/page.tsx` → `<LandingPage/>` (`src/components/landing/`) is Budgie's
-**public marketing surface**, rebuilt to mirror **notion.com's homepage anatomy
-1:1** (the saved reference lives in `ui/` at the repo root — Notion's actual
-`/` page). It sits **outside** the auth-gated app: a React Server Component —
-no auth data beyond the session flag, no Prisma, no Hono — with a calmer
-visual register than the dense app screens. Read this section before touching
-anything under `src/components/landing/`.
+`src/app/page.tsx` renders `<LandingPageView>` from `src/components/landing/`.
+It follows **anthropic.com's company register**, not Claude's product register.
+Read this before touching anything under `src/components/landing/`.
 
-### Visual register vs the auth-gated app
+### Visual register
 
-| Surface | Tone | Radii | Hero type |
-| --- | --- | --- | --- |
-| Auth-gated app (`/dashboard` …) | Calm minimal fintech, dense data | `rounded-2xl` rows, `rounded-[20px]` tiles, `rounded-[35px]` cards | Tabular nums, `dynamicFontSize` |
-| Landing page (`/`) | Notion-calmed product marketing, airy | `rounded-[35px]` ledger panel, `rounded-[20px]` bento tiles + link tiles, Budgie `rounded-[35px]` CTAs | Fluid `clamp(2.625rem, 11.25vw - 25.5px, 6rem)` headline |
+- Warm paper canvas (`bg-paper` / `#FAF9F5`), ink text (`#141413`), and
+  hairline borders only on cards and chart frames. **No section separators, no
+  list rules, no image plates**, no shadows, no gradients. Sections are
+  separated by whitespace and type, not lines.
+- **Accent: Budgie green + ink.** The accent is sampled from the green dollar
+  sign in the Budgie logo: `#5ABB37`, with `#41802A` for stronger text and
+  hover states. It carries CTAs, the logo, positive figures, and chart lines.
+  No clay, terracotta, or orange in the UI. Surfaces stay paper/ink; colour
+  comes from the charts and the green accent.
+- **Wise clarity, Anthropic register.** Borrow Wise's practical card structure
+  and minimalist navigation, but keep the paper, serif headings, hairlines,
+  and restrained motion. The hero stage is theme-aware: transparent paper in
+  light mode and an ink field in dark mode. No stock photos, gradients, or app-store
+  chrome.
+- **Animated sketch line charts**, not abstract images. `sketch-line.tsx`
+  draws a lightly jittered ink line on paper, with a dashed target line and a
+  left-to-right reveal. Used in the feature cards, editorial, and
+  learn sections. **No mascot, no radial mark, no abstract image plates.**
+- Typography is the Anthropic split, not a Claude slogan:
+  - Hero: one paragraph, **sans lead 600** + **serif statement 400**,
+    `clamp(1.5625rem, 3vw, 3rem)`, line-height `1.3`, tracking `-0.01em`.
+  - Section headings: **serif 300**, `clamp(2.5rem, 5.6vw, 5rem)`,
+    line-height `1.05`, `max-width: 12ch`.
+  - Body: sans `17px/26px`.
+  - Logo: the old green app icon (`/android-chrome-192x192.png`) beside the
+    "Budgie" wordmark in Geist 600.
+- **No AI-slop typography:** no em dashes, en dashes, middle dots, uppercase
+  labels, badge pills, "Fig." captions, "Optional", "Sample", "By the
+  numbers", or generic filler.
 
-The landing runs on `bg-screen`/`bg-surface` surfaces with **one brand green
-`brand` (#39CD6B)** for CTAs and pricing accents; the semantic
-income/expense/transfer tokens appear only inside the real app components
-shown in the bento previews. Section rhythm is `py-20 sm:py-28` inside
-`max-w-screen-xl px-5 sm:px-8`. Everything flips with the app theme — see §19
-(Theme & Dark Mode).
+### Page anatomy
 
-### Page anatomy (Notion's exact order)
+1. **Nav** (`landing-nav.tsx`): green app icon + wordmark, links Product /
+   Pricing / Questions, one green pill. No demo or learn link.
+2. **Hero** (`hero.tsx`): mixed statement and one green CTA on the left, a
+   borderless `MoneySnapshot` stage on the right. The stage is a masked dark
+   field (`bg-transparent` in light, `bg-ink-field` in dark), not a card. `NaniteField` is a
+   roaming field of independent dots that occasionally searches toward a card,
+   not an orbit. Every 4.6s the stage builds a random composition of 1 to 3
+   real app components,
+   scaled down: income rows (`TransactionItem`), expense rows, `CashflowCard`
+   summary, and `BudgetSummaryCards`. Cards use loose slots with jitter; the
+   three-card composition uses the compact pool so it fits. No header, no net
+   number, no controls, no live counters.
+3. **Product story** (`product-story.tsx`, `#live`): sticky 3-step story
+   built from real app components: `BalanceSection`, `BudgetSummaryCards`,
+   `SpendingStreamsChart` (bare), and `CashflowCard`. Mobile stacks each step.
+   The wrapper adds a paper-sheet reveal; the components keep their app
+   behavior and data flow. Each sheet is `inert`, so the showcase cannot be
+   clicked, focused, or hovered for tooltips. `AutoRevealBalance` supplies a
+   demo-local visibility state, so the masked balance animates open once
+   without user input and without touching the saved preference. There is no deck
+   copy beside the heading.
+4. **Feature cards** (`feature-cards.tsx`, `#product`): three sketch-line
+   cards (balance, savings, spending), no images or badges.
+5. **Editorial** (`editorial-section.tsx`, `#how`): a savings line chart with
+   a target line, large serif pull statement, two short paragraphs.
+6. **Learn** (`learn-section.tsx`, `#learn`): a spending line chart against a
+   budget, plus one static plain-language note.
+7. **Pricing** (`pricing.tsx`): honest supporter tier, two plain columns,
+   green Plus heading, no rules, cards, or badges.
+8. **FAQ** (`faq.tsx`): borderless `<details>`, separated by whitespace, thin
+   plus line.
+9. **Endcap** (`endcap.tsx`): paper section, "Start with what you have.",
+   green CTA.
+10. **Footer** (`footer.tsx`): ink field `#141413`, paper text, green logo,
+    real links.
 
-1. **Nav** (`landing-nav.tsx`) — app-icon mark (`/android-chrome-192x192.png`
-   via `next/image`, 28px, decorative `alt=""` so the link name stays
-   "Budgie") + wordmark, anchor links (Use cases / Features / Pricing / FAQ),
-   then Budgie's green-pill CTAs (Sign in / Get started; Dashboard when
-   authed). Translucent white + hairline after scroll. **No dropdowns, no
-   mega-menus** — Budgie has no sub-pages.
-2. **Hero** — center column: mascot → headline → mono deck → CTAs →
-   demo video.
-   - **Mascot** (`budgie-mascot.tsx`) — Notion's mascot language (Roman
-     Muradov's ink faces: wobbly monoline strokes, dot eyes, short brows, a
-     hooked nose, one flat fill) drawn for Budgie: a round-glasses character
-     in the income-green shirt, 104px tall (124px on `sm`). **Original
-     artwork — no third-party illustration SVGs, no icon pile.** The only
-     motion is a 6s blink, `motion-safe` only (reduced motion keeps the eyes
-     still).
-   - **Headline** (`hero-headline.tsx`) — Notion's exact fluid type:
-     `font-semibold`, `clamp(2.625rem, 11.25vw - 25.5px, 6rem)`, line-height
-     `clamp(3rem, 10.83vw - 17px, 6.25rem)`, tracking
-     `clamp(-0.2875rem, -0.6458vw + 2.375px, -0.09375rem)`. Two mask-reveal
-     lines: "Where your money" / `{HeroPill}`.
-   - **Rotating pill** (`hero-pill.tsx`, `"use client"`) — Notion's
-     `productPillAnimation`: pastel rounded-rect capsule + saturated square
-     dot, verb cycles **works → grows → rests → flows → stays** every 2.2s
-     with the label's inline-size animating to hug each word (offscreen
-     measurer spans, Notion's `--pill-label-inline-size`). Colors are Notion's
-     own pastel pairs (green/teal/purple/blue/orange 200-bg + 500-dot).
-     All sizes are **em-based** so the pill scales with the fluid H1. Static
-     first word under `prefers-reduced-motion`.
-   - **Deck** — mono font (`font-[family-name:var(--font-geist-mono)]`,
-     Notion's iA-Writer-Mono analog), `text-lg leading-[28px]`, `text-black/60`.
-   - **CTAs** — Budgie green pill ("Get started for free" → `/sign-in`) +
-     white outline pill ("See what Budgie can do" → `/#features`).
-   - **Video** (`hero-media.tsx`) — `AutoVideo` in a `max-w-[960px]`
-     hairline-bordered 8px-radius frame (`aspect-square` mobile,
-     `sm:aspect-[1.6]`), 32px round play/pause controller bottom-left
-     (`bg-black/10 backdrop-blur`), controller hidden under reduced motion.
-3. **Bento** (`bento.tsx`, `#features`) — "Where your money lives." Heading
-   left, one-line deck bottom-aligned right on `lg`. Then an asymmetric
-   `lg:grid-cols-5`: the focal **ledger panel** (`LiveFeed`, `lg:col-span-3`)
-   on a white `rounded-[35px]` surface with hairline border + soft shadow —
-   the app's own card language — beside a `lg:col-span-2` rail stacking the
-   **search panel** (`FindCard`) over the **budget panel** (`LiveSpending`),
-   both quiet `bg-surface` `rounded-[20px]` tiles. **No eyebrows, no card
-   titles, no uppercase "LIVE" badges, no legends, no trailing result
-   counters, no hover tooltips** — the real Budgie UI is the content, and the
-   section deck carries the words. The ledger lists hairline-divided rows (`LedgerRow` —
-   the app's transaction row one step quieter: 32px tinted tile, 15px type,
-   no hover background, no chevron) and slides one row in per tick. All three
-   tiles share one anatomy — **caption row** (13px `text-black/40` left,
-   `text-xs text-black/35` right), live body, **hairline summary footer** —
-   so they read as one system: ledger "Today / Updating live" → "Net today"
-   (income minus expenses of the visible window, transfers excluded); search
-   "All transactions / Filters as you type" → "Showing 3 of 4"; budgets
-   "Spent in December / total" → "Left to spend". The budget bars measure
-   each category against its own budget (the track *is* the limit, so no
-   marker or legend is needed) and grow via the 200ms width transition. Media
-   sits directly on the panel surface at natural height — never a
-   fixed-aspect box, never card-in-card. The old card eyebrows ("Capture every rupiah" / "Find
-   answers" / "Automate busywork") and 22px card titles were removed as
-   AI-slop chrome and must not return.
-4. **Use cases** (`use-cases.tsx`, `#use-cases`) — "See what Budgie can do":
-   five compact `rounded-[20px]` bordered link cards (tinted icon tile +
-   bold title, no arrows) → `/sign-in`.
-5. **Pricing** (`pricing.tsx`, `#pricing`) — Budgie's own card language:
-   `rounded-[35px]`, Free tier + Plus tier with green border/highlight. No
-   pulse animations.
-6. **FAQ** (`faq.tsx`, `#faq`) — `details` accordions, `rounded-[28px]`.
-7. **Facts marquee** (`facts-marquee.tsx`) — Notion's `statsMarquee` anatomy
-   (single infinite row, `marquee` keyframe, warm-gray `text-ink/60` text) filled
-   with **true, verifiable product facts** (21 categories, QRIS, Rp-first
-   formatting, 12-month history, PDF exports, hidden balances). Notion's
-   invented-stats slot is used honestly — no fake "users/countries" numbers.
-8. **Endcap** — "Get started today." on a **neutral `bg-surface`
-   full-bleed section** (Notion's `surfaceNeutral`, NOT a saturated green
-   block) with `py-24 sm:py-36`, the green pill ("Get Budgie free") + outline
-   secondary.
-9. **Footer** (`footer.tsx`) — Notion's anatomy trimmed to **real links
-   only**: app-icon mark (32px) + wordmark + one-liner + ©, then Product (`/#features`, `/#use-cases`,
-   `/#pricing`, `/#faq`) and Get started (`/sign-in` ×2). No fake columns, no
-   language selector, no cookie settings.
+### Motion
 
-### `AutoVideo` — the only `<video>` (canonical video spec)
+- Hero word reveal, once, `motion-reduce` gated.
+- `NaniteField`: 100 to 140 dots in a canvas. Each dot wanders on its own
+  smooth phase and keeps a minimum distance from its neighbors; there is no
+  cohesion or alignment, so the field never merges. A short search pull toward
+  a card fades before dispersing. Every dot has a thin outline, plus faint
+  connection edges to nearby dots. No orbit, no ring, no random per-frame
+  jitter. Pause offscreen, reduced motion static. The stage mask keeps the
+  field contained without a card edge.
+- `MoneySnapshot` cards: a random 1 to 3 card composition every 4.6s, using
+  loose slots, jitter, and adaptive scale. Each card also floats on its own
+  path (different direction, 5 to 8 second duration, negative delay, tiny
+  rotation). The composition spawns with opacity, scale, and blur, holds, then
+  despawns. Reduced motion shows the initial income and summary cards
+  statically with no float or cycle.
+- Sticky story: active text cross-fades as each panel enters.
+- `SketchLine`: a left-to-right clip-path draw-in on view. No dash-based
+  draws, no fake live counters.
+- Product story: paper-sheet clip-path reveal. The real components are not
+  animated internally by the landing, except the demo-local balance reveal
+  driven once by `AutoRevealBalance` and the chart's own mount animation.
+- No per-section fade-slide, no marquee, no scroll progress bar, no fake live
+  counters.
 
-`src/components/landing/auto-video.tsx` is the sole `<video>` in the repo (a
-`"use client"` component): `muted` + `loop` + `playsInline`, a poster tint that
-fades out once the media can play, and a tasteful play glyph. It does **not**
-autoplay under `prefers-reduced-motion: reduce` (the poster stays — the text
-carries the message). Always render `<video>` through `AutoVideo`; never
-hand-roll a second video primitive. Canonical specs (`public/videos/`
-drop-in):
+### Data visualization, not abstract imagery
 
-| File | Role | Spec |
-| --- | --- | --- |
-| `brand.mp4` + `brand.webm` | Hero demo walkthrough | 16:9 (played at 1.6 in the hero frame), 1920×1080, ~60s, silent, loopable, < 8MB |
+Feature and editorial visuals are `sketch-line.tsx` data charts. Do not add
+abstract image plates, stock photos, or copied Anthropic/Claude assets. If a
+new visual is needed, extend `SketchLine` or use a real app component. Keep the
+ink line, dashed target, end dot, and restrained labels. No chart grid.
 
-List `.mp4` first, `.webm` second — the mp4 is the asset that always exists
-(the hosted `BudgieDemo` Vercel-Blob clip, or a local `brand.mp4`), so listing
-the optional `.webm` first used to fire a 404 on every landing visit. The
-hosted `BudgieDemo` mp4 URL is the same clip embedded in `README.md`'s demo
-`<video>` — keep the landing `AutoVideo` and the README demo in sync.
+### Anti-slop rules
 
-### Motion (ties to §8)
+The canonical checklist lives in [`ANTI_SLOP.md`](./ANTI_SLOP.md). It applies
+to the whole app, not only the landing. In short:
 
-All landing motion is ≤300ms, `ease-out`, never bounces, always honors
-`motion-reduce`:
-
-- `Reveal` (`reveal.tsx`) — the **only** landing motion primitive:
-  `IntersectionObserver` fade + small translate on enter; renders final state
-  immediately under reduced motion.
-- `FactsMarquee` — `marquee` keyframe (defined in `globals.css`),
-  `motion-reduce:animate-none`.
-- `HeroPill` rotation — 2.2s interval; the label swap is a 200ms keyframe
-  (`heroPillWord`) gated by `motion-reduce`; the interval never starts under
-  reduced motion.
-- `HeroHeadline` — `headlineReveal` line-mask, 300ms ease-out, 80ms stagger,
-  `motion-reduce:animate-none`.
-- **Smooth scroll** — native `html { scroll-behavior: smooth }` via a
-  `<style>` tag in `LandingPageView` (media-gated to
-  `prefers-reduced-motion: no-preference`). Anchored sections carry
-  `scroll-mt-24` so they clear the sticky nav. **No Lenis.**
-
-Keyframe names stay namespaced (`headlineReveal`, `heroPillWord`, `marquee`)
-and are defined in the component that uses them (or `globals.css` for the
-shared `marquee`), following the `dialogIn`/`sheetIn` pattern.
-
-### What was deliberately removed (the anti-slop list)
-
-The landing used to carry classic AI-generated-page chrome; all of it is gone
-and must not return: floating icon chips around the hero, a tilt/parallax
-"live" transaction card, magnetic CTAs, scroll-progress bars, Lenis smooth
-scroll, pulsing pricing badges, fake bank "trusted by" logo walls, invented
-testimonials (Dimas P., Sari W.), card eyebrows stacked above every preview,
-uppercase "LIVE" badges, trailing match counters ("3 of 3 most recent" adrift
-under a list — a count belongs in the tile's summary footer, ledger-style),
-chart legends and tooltips, and footer links that pointed at `#`.
-Budgie does not fake social proof: the only marquee carries true product
-facts, and every footer/nav link resolves to a real page or section.
-
-### Testability split
-
-`landing/index.tsx` exports **two** components:
-- `LandingPage` — the **async RSC** (fetches the session via
-  `auth.api.getSession` + `headers()`), delegating to the view below. It is
-  NOT rendered in tests (jsdom can't await async RSC — same rule as
-  `AccountTab`).
-- `LandingPageView` — the **sync presentational** half, props
-  `{ session: boolean }`. This is what `tests/components/landing/index.test.tsx`
-  exercises: full page
-  composition, CTA copy, section headings, session-conditional nav. When
-  editing landing copy, update `tests/components/landing/index.test.tsx` in the
-  same change.
-
-### Reuse rules
-- Reuse the §2 color tokens and §6 radius system — **do not invent new
-  colors** (the pill's six pastel pairs are the one sanctioned exception:
-  they are Notion's own tokens, documented in `hero-pill.tsx`).
-- Motion follows §8 exactly (≤300ms, ease-out, `motion-reduce` gated).
-- Don't add auth, Prisma, or Hono here; this surface is static marketing only.
-- A missing `public/videos/` asset must never break the page — the poster stays
-  (do not "fix" the graceful no-op into an error state).
-- **No decorative arrows** anywhere on the landing (the app's own list
-  chevrons are hidden in previews via `TransactionItem hideChevron`).
-- When embedding app data in a bento, render it directly on the panel
-  surface (`LedgerRow` for transaction rows) instead of boxing it — never
-  card-in-card.
+- No `Sparkles` or AI-coded symbols, no blinking or typing dots, no status
+  dots, no decorative badges or pills.
+- No horizontal separators between sections, FAQ rows, pricing lists, or
+  footer/nav edges. Whitespace is the divider.
+- No dead controls. The showcase is `inert`, so its real controls are never
+  half-clickable. Every link resolves to a real page or section.
+- No fake product claims. Plus is optional support, not a gated feature.
+- No gradients, glassmorphism, card-per-item, or heavy shadows.
+- Solid buttons with a non-white fill use white text; soft/tint buttons keep
+  ink or semantic text.
+- No em/en dashes, middle dots, or uppercase labels in UI copy.
+- No `rounded-md/lg/xl` and no rigid 12px frames. Landing cards use
+  `rounded-[20px] sm:rounded-[24px]`; the hero stage has no card frame, and the
+  cards add `[corner-shape:squircle]` for Apple-style continuous corners.
+  Buttons and controls stay `rounded-full`.
+- Tests: `tests/components/landing/anti-slop.test.ts` enforces the landing copy
+  and class rules; `tests/anti-slop.test.ts` enforces the global symbols,
+  badges, dots, and uppercase rules.
 
 ## 17. Chat UI (auth-gated `/chat`)
 
@@ -253,8 +193,8 @@ border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/70`, hover
 | Assistant | full-width `text-[15px] leading-relaxed` prose — **no avatar, no bubble** |
 | Message gap | `gap-4`; every message enters with `stepReveal` 180ms, `motion-reduce` off |
 | Actions | under an assistant message: **Copy** (clipboard → "Copied" for 1.5s) and **Regenerate** (last assistant message only, `aria-label="Regenerate response"`) — 11px ghost pills, `-ml-2` |
-| Streaming caret | 2px `bg-brand` pill appended to the last text part while `status === "streaming"` (`.chat-caret`, 1s blink, `motion-reduce` off) |
-| Typing | white bubble with tail (no avatar), three 7px `bg-black/30` dots on `typingPulse`, `role="status" aria-label="Budgie is typing"` |
+| Streaming caret | 2px `bg-brand` pill appended to the last text part while `status === "streaming"` (`.chat-caret`, static, no blink) |
+| Typing | white bubble with tail (no avatar), static `Thinking` text, `role="status" aria-label="Budgie is thinking"` |
 | Thinking (`ChatThinking`) | streaming: neutral `Loader2` (`text-black/30`) + "Thinking…" 13px `text-ink/45`; done: plain chevron + "Thought for a moment" text button → 13px `text-ink/45` reasoning |
 | Tool running (`ChatToolStatus`) | inline neutral row (no card) — `Loader2` + per-tool label, 13px `text-ink/45` |
 | Tool error | `rounded-[16px] bg-expense-tint text-expense` + `AlertTriangle` |
@@ -265,8 +205,8 @@ border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/70`, hover
 
 Tool output renders as a **quiet panel built from the app's own list rows**:
 `max-w-[440px] rounded-[20px] border border-black/[0.08] p-2`, `stepReveal` in,
-header = the app's 11px section label (`font-medium uppercase tracking-wide
-text-black/35`). Rows follow the real screens: 36px `rounded-full` full-tint
+header = the app's 11px section label (`font-medium text-ink/35`). Rows follow
+the real screens: 36px `rounded-full` full-tint
 icon circle + 14px medium title + 12–13px `text-ink/45` subtitle,
 `tabular-nums` amounts, semantic tints. No `surface` icon-tile header, no
 card-per-item, no sparkles.
@@ -321,9 +261,10 @@ focus deepens the hairline + a 4px `ring-black/[0.04]`):
   effect.
 - Never re-introduce a second clear button, a serif greeting, or a page
   `AccountTab`/`h1` on `/chat`.
-- **No AI slop**: no `Sparkles`/`CheckCircle2` brand tiles, no per-message
-  avatars, no per-tool icon-tile headers, no card-per-item. Widgets reuse the
-  app's list-row primitives and tints — don't invent new chrome.
+- **No AI slop**: see [`ANTI_SLOP.md`](./ANTI_SLOP.md). No `Sparkles` or
+  `CheckCircle2` brand tiles, no per-message avatars, no per-tool icon-tile
+  headers, no card-per-item, no blinking dots or status badges. Widgets reuse
+  the app's list-row primitives and tints, don't invent new chrome.
 
 ## 18. App Shell — Mobile Tab Bar, Graph Draw-in, Skeletons
 
@@ -353,7 +294,8 @@ line **dotted** (the old account-sparkline bug).
 - `Sparkline` (`sparkline.tsx`) — iOS `Sparkline.swift` parity: measures its
   container, draws in real pixel geometry (`viewBox 0 0 w 44`, 2.5px stroke),
   and reveals via the `.spark-reveal` `clip-path` wipe (0.7s ease-out,
-  `motion-reduce` off).
+  `motion-reduce` off). `variant="paper"` adds a jittered cubic curve and an
+  end dot; the dashboard account cards use it. No grid lines.
 - `AssetGrowthCard` bars use the `.bar-grow` `scaleY` transform instead.
 
 ### Skeletons (`PageSkeleton`)
@@ -365,6 +307,38 @@ card, account-card grid, list rows, the chat header/thread/composer. Blocks are
 `bg-surface animate-pulse motion-reduce:animate-none` with bg-skeleton inner bars
 on cards, entire tree `aria-hidden`. Add a variant when a new route appears —
 never reuse the generic rows shape.
+
+### Dashboard account cards + Quick Insight
+
+- **Account cards are papery**: `rounded-[28px] border border-hairline
+  bg-card`, no shadow. The card face has a name, a `GripVertical` drag handle,
+  a paper `Sparkline`, and the masked balance. The whole card opens the detail
+  dialog unless it is being dragged; the handle stops propagation.
+- **Kanban reorder**: `AccountGrid` uses dnd-kit with pointer + keyboard
+  sensors. Dropping a card optimistically reorders the grid and persists the
+  full id list through `POST /api/balance-accounts/reorder`. The server stores
+  `BalanceAccount.sortOrder` and lists by `sortOrder ASC, createdAt DESC`.
+- **Quick Insight header**: each card owns a shadcn-style Radix Select in the
+  header row, aligned with a quiet `text-sm font-semibold text-ink/50` title and
+  a `text-xs text-ink/30` date/range. The visible period label is `sr-only`; the
+  trigger shows the active period. Trigger is a compact hairline button with a
+  chevron; the popover has a checkmark on the selected item, highlighted hover
+  states, and keyboard/outside-click handling. Cashflow presets are This month /
+  Last month / Last 3 months / This year / Last year. Asset Growth presets are
+  This year / Last year / Last 12 months. The dashboard precomputes the compact
+  period data in the RSC, so switching is instant.
+- **Cashflow**: compact 144px donut, 14px strokes, 12 degree gap, no shadow.
+  Center shows `Net` plus one signed Rupiah value. Income and expense are
+  single-line rows with semantic text labels, muted percentages, and neutral
+  amounts. No tinted blocks, no status dots, no pills.
+- **Asset Growth**: no `Sparkles`, no pill, no dots. The signed change is the
+  hero (`text-2xl font-semibold`), `changeLabel` (`YTD` / `Year` / `12M`) is a
+  quiet caption, the chart keeps 12 slots with slimmer bars, and the legend is
+  text-only (`Growth`, `Stable`, `Decline`). Month labels and tooltip labels
+  come from the selected period. No shadow.
+- **Empty state**: Quick Insight renders only when there are no transactions at
+  all, not merely none this year. The empty state is plain text plus the real
+  Add transaction CTA, with no sparkles or decorative icon tile.
 
 ## 19. Theme & Dark Mode (iOS palette parity)
 
@@ -388,12 +362,12 @@ component picks a raw hex directly.
 | `hover` | `black 3%` | `white 6%` | hover/quiet inset fills |
 | `skeleton` | `white 70%` | `white 14%` | skeleton inner bars |
 | `scrim` | `#000000` | `#000000` | dialog/sheet overlays (`bg-scrim/30|40`) |
-| `brand` | `#39CD6B` | `#39CD6B` | CTAs, active tabs, under-budget fills |
-| `income` | `#39CD6B` | `#3DDC74` | income amounts/icons |
+| `brand` | `#5ABB37` | `#5ABB37` | CTAs, active tabs, under-budget fills |
+| `income` | `#2F9E44` | `#3DDC74` | income amounts/icons |
 | `expense` | `#FF2600` | `#FF5A4D` | expense amounts/icons/over-budget |
 | `transfer` | `#FF9F33` | `#FFB454` | transfer amounts/icons |
 | `stagnant` | `#B0B0B0` | `#8E8E93` | flat chart bars, "Stable" legend |
-| `brand/income/expense/transfer-tint` | `color-mix(hue 12–16%)` | same | icon circles, badges, soft buttons |
+| `brand/income/expense/transfer-tint` | `color-mix(hue 12–16%)` | same | icon circles, soft buttons |
 | `chart-placeholder` | `#E5E5E5` | `white 16%` | future/unrecorded chart bars |
 
 ### Mechanism
@@ -427,7 +401,7 @@ component picks a raw hex directly.
   jsPDF output, `opengraph-image.tsx`, and the identity card (always dark,
   `#1C1C1E`). Shadows stay black-based in both themes.
 - SVG colors use `var(--income|expense|transfer|stagnant|chart-placeholder)` or
-  `fill-ink/…`; never hardcode `fill="#00C610"`-style values.
+  `fill-ink/…`; never hardcode a fixed `fill` value, use `fill-ink/…` or `var(--brand)`.
 - No gradients (`cashflow-card` arcs are solid semantic strokes).
 - Tests: `tests/components/theme.test.tsx` (provider/system sync/persistence/
   picker/no-flash script) + the sidebar toggle test wrap `ThemeProvider` and

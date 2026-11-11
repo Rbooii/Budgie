@@ -1,85 +1,81 @@
-import { Reveal } from "./reveal";
-
 export const FAQ_ITEMS: ReadonlyArray<{ q: string; a: string }> = [
   {
     q: "Is Budgie really free?",
-    a: "Yes. The free tier includes up to 3 accounts, unlimited transactions, budgets, and subscriptions. Upgrade to Budgie Plus only if you want deeper insights and priority PDF exports.",
+    a: "Yes. Every feature is free. Accounts, transactions, budgets, savings, the assistant, and PDF export. Plus is optional support, not a paywall.",
+  },
+  {
+    q: "What does Budgie Plus include?",
+    a: "Budgie Plus is optional support. You get a Plus badge on your profile, and the knowledge that you are supporting independent development. Every feature stays free. Cancel anytime.",
   },
   {
     q: "Does Budgie work with Indonesian rupiah?",
-    a: "Budgie is built around the rupiah. Every amount is formatted with id-ID grouping and two decimals, and Budgie Plus checkout uses QRIS — the Indonesian standard.",
+    a: "Yes. Budgie is built for the rupiah. Every amount uses id-ID grouping and two decimals, and Plus checkout uses QRIS.",
   },
   {
     q: "How are my balances kept private?",
-    a: "Balances are hidden behind bullets by default. Tap the eye icon to reveal each character with a short blur-in, capped at 260ms. The reveal honors your reduced-motion setting.",
+    a: "Balances are hidden behind bullets by default. Tap the eye to reveal each character with a short blur-in, capped at 260ms. The reveal honors your reduced-motion setting.",
+  },
+  {
+    q: "Can I move money to savings?",
+    a: "Yes. Create a savings account, then transfer money from checking. Both balances update at once, with an optional admin fee.",
   },
   {
     q: "Can I export my transactions?",
-    a: "Yes. Download a clean, monochrome PDF of your transactions for any date range directly from the dashboard — no third-party tool required.",
+    a: "Yes. Download a clean, monochrome PDF for any date range from the transactions screen. No third-party tool required.",
   },
   {
     q: "What happens if I go over budget?",
-    a: "Spending bars turn red the moment a category crosses its limit, and a budget tick marks where your limit sits on the chart. Nothing is blocked — Budgie informs, it never nags.",
+    a: "Spending bars turn red when a category crosses its limit. A tick marks the limit on the chart. Nothing is blocked. Budgie informs, it never nags.",
   },
   {
     q: "How do transfers between accounts work?",
-    a: "Transfers debit the source account and credit the destination, with an optional admin fee. Deleting a transfer reverses both sides automatically so balances always reconcile.",
+    a: "Transfers debit the source account and credit the destination, with an optional admin fee. Deleting a transfer reverses both sides automatically, so balances always reconcile.",
   },
 ];
 
 export function Faq() {
   return (
-    <section
-      id="faq"
-      aria-labelledby="faq-title"
-      className="mx-auto max-w-screen-xl px-5 sm:px-8 py-20 sm:py-28 scroll-mt-24"
-    >
-      <Reveal className="max-w-2xl">
-        <p className="text-sm font-semibold text-brand">Questions</p>
-        <h2
-          id="faq-title"
-          className="text-3xl sm:text-4xl font-bold tracking-tight text-ink mt-2"
-        >
-          Things people ask
-        </h2>
-        <p className="text-base text-ink/45 mt-3 leading-relaxed">
-          Short, honest answers. If something is missing, the app itself is the
-          best place to look — it only takes a minute to set up.
-        </p>
-      </Reveal>
+    <section id="faq" aria-labelledby="faq-title">
+      <div className="mx-auto max-w-[1280px] px-5 py-20 sm:px-8 sm:py-28">
+        <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
+          <h2
+            id="faq-title"
+            className="max-w-[12ch] font-serif text-[clamp(2.5rem,5.6vw,5rem)] font-light leading-[1.05] tracking-[-0.02em] text-ink lg:col-span-7"
+          >
+            Questions, answered.
+          </h2>
+          <p className="max-w-md text-[17px] leading-[26px] text-ink/60 lg:col-span-5 lg:justify-self-end">
+            Short, honest answers. If something is missing, the app itself is
+            the best place to look.
+          </p>
+        </div>
 
-      <Reveal delay={120} className="mt-10 max-w-3xl">
-        <div className="flex flex-col gap-2">
+        <div className="mt-12 flex flex-col gap-2">
           {FAQ_ITEMS.map((item) => (
-            <details
-              key={item.q}
-              className="group rounded-[28px] border border-hairline bg-card px-5 sm:px-6 open:bg-hover transition-colors duration-200"
-            >
-              <summary
-                className="flex items-center justify-between gap-4 py-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden"
-              >
-                <span className="text-base font-semibold text-ink leading-snug">
+            <details key={item.q} className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-6 [&::-webkit-details-marker]:hidden">
+                <span className="font-serif text-xl leading-snug text-ink">
                   {item.q}
                 </span>
                 <span
                   aria-hidden="true"
-                  className="shrink-0 w-7 h-7 rounded-full bg-surface flex items-center justify-center transition-transform duration-200 ease-out group-open:rotate-45"
+                  className="flex h-5 w-5 shrink-0 items-center justify-center text-ink/45 transition-transform duration-200 ease-out group-open:rotate-45 motion-reduce:transition-none"
                 >
                   <svg
-                    viewBox="0 0 24 24"
-                    className="w-3.5 h-3.5 text-ink/60"
+                    viewBox="0 0 16 16"
+                    className="h-4 w-4"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2.2"
+                    strokeWidth="1.2"
                     strokeLinecap="round"
                   >
-                    <path d="M12 5v14M5 12h14" />
+                    <path d="M8 2v12M2 8h12" />
                   </svg>
                 </span>
               </summary>
               <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-open:grid-rows-[1fr] motion-reduce:transition-none">
                 <div className="overflow-hidden">
-                  <p className="text-sm text-ink/60 leading-relaxed pb-5 -mt-1">
+                  <p className="max-w-2xl pb-6 text-[15px] leading-[24px] text-ink/60">
                     {item.a}
                   </p>
                 </div>
@@ -87,7 +83,7 @@ export function Faq() {
             </details>
           ))}
         </div>
-      </Reveal>
+      </div>
     </section>
   );
 }

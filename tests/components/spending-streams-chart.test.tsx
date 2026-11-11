@@ -49,12 +49,12 @@ describe("SpendingStreamsChart — empty state", () => {
     expect(screen.getByText(/No spending this month yet/)).toBeInTheDocument();
   });
 
-  it("marks live data with the caption (and omits it by default)", () => {
+  it("does not render a live status badge", () => {
     const { container } = render(
-      <SpendingStreamsChart data={data} budgets={budgets} monthLabel="Aug 2026" live />,
+      <SpendingStreamsChart data={data} budgets={budgets} monthLabel="Aug 2026" />,
     );
-    expect(screen.getByText("Live")).toBeInTheDocument();
-    expect(container.querySelector(".uppercase")).not.toBeNull();
+    expect(screen.queryByText("Live")).not.toBeInTheDocument();
+    expect(container.querySelector(".uppercase")).toBeNull();
   });
 });
 
@@ -172,7 +172,7 @@ describe("SpendingStreamsChart — tooltip", () => {
       el.textContent?.includes("Shopping"),
     ) as HTMLElement;
     fireEvent.mouseEnter(row);
-    expect(screen.getByText(/· over/)).toBeInTheDocument();
+    expect(screen.getByText(/, over/)).toBeInTheDocument();
   });
 
   it("hides the tooltip on mouse leave", () => {

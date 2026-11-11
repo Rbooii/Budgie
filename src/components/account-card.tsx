@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
-import { Badge } from "@/components/badge";
 import { Dialog } from "@/components/dialog";
 import { Button } from "@/components/button";
 import { AuthInput } from "@/components/auth-input";
@@ -12,9 +11,15 @@ import { Sparkline } from "@/components/sparkline";
 import { formatRupiah, formatBalanceInput } from "@/lib/format";
 import { dynamicFontSize } from "@/lib/font-size";
 import { computeSparklineTrend } from "@/lib/dashboard";
-import { Pencil, Trash2, AlertCircle, ChevronRight } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  AlertCircle,
+  ChevronRight,
+  GripVertical,
+} from "lucide-react";
 
-type Account = {
+export type Account = {
   id: string;
   name: string;
   balance: number;
@@ -26,6 +31,9 @@ interface AccountCardProps {
   account: Account;
   series?: number[];
   todayChangePct?: number | null;
+  /** dnd-kit listeners/attributes for the drag handle. */
+  dragHandleProps?: React.ButtonHTMLAttributes<HTMLButtonElement>;
+  isDragging?: boolean;
 }
 
 const TYPES = ["bank", "digital wallet", "cash", "credit", "investment"];
@@ -34,6 +42,8 @@ export function AccountCard({
   account,
   series = [],
   todayChangePct = null,
+  dragHandleProps,
+  isDragging = false,
 }: AccountCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -134,18 +144,43 @@ export function AccountCard({
   return (
     <>
       <div
+        data-account-id={account.id}
         onClick={() => {
+          if (isDragging) return;
           setEditing(false);
           setOpen(true);
         }}
-        className="w-full min-h-[180px] bg-card text-ink border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_32px_-10px_rgba(0,0,0,0.12)] rounded-[35px] px-5 py-5 sm:px-[22px] sm:py-[20px] flex flex-col gap-3 cursor-pointer transition transform duration-200"
+        className={`w-full min-h-[180px] bg-card text-ink border border-hairline rounded-[28px] px-5 py-5 sm:px-[22px] sm:py-[20px] flex flex-col gap-3 cursor-pointer transition duration-200 hover:border-ink/20 ${
+          isDragging ? "opacity-80" : ""
+        }`}
       >
         <div className="flex items-center justify-between gap-2">
           <p className="text-lg sm:text-xl font-bold truncate">{account.name}</p>
-          <ChevronRight className="w-4 h-4 text-ink/20 shrink-0" />
+          <div className="flex items-center gap-1 shrink-0">
+            {dragHandleProps && (
+              <button
+                type="button"
+                aria-label="Reorder account"
+                className="flex h-7 w-7 touch-none cursor-grab items-center justify-center rounded-full text-ink/25 transition-colors hover:text-ink/55 active:cursor-grabbing"
+                {...dragHandleProps}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  dragHandleProps.onClick?.(event);
+                }}
+              >
+                <GripVertical className="h-4 w-4" />
+              </button>
+            )}
+            <ChevronRight className="w-4 h-4 text-ink/20 shrink-0" />
+          </div>
         </div>
 
-        <Sparkline values={series} color={sparkColor} className="w-full h-11 shrink-0" />
+        <Sparkline
+          values={series}
+          color={sparkColor}
+          variant="paper"
+          className="w-full h-11 shrink-0"
+        />
 
         <div className="mt-auto">
           <p className="text-xl sm:text-2xl font-bold tracking-tight">
@@ -164,7 +199,9 @@ export function AccountCard({
           <form onSubmit={handleUpdate} className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-bold">Edit Account</h2>
-              <Badge variant="soft">{account.type}</Badge>
+              <span className="text-xs font-medium text-ink/40">
+                {account.type}
+              </span>
             </div>
 
             <label className="flex flex-col gap-1">
@@ -242,7 +279,9 @@ export function AccountCard({
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               <p className="text-2xl font-bold">{account.name}</p>
-              <Badge variant="soft">{account.type}</Badge>
+              <span className="text-xs font-medium text-ink/40">
+                {account.type}
+              </span>
             </div>
             <p className="text-sm text-ink/50">{account.currency}</p>
             <p className="text-3xl font-bold tracking-tight mt-4">

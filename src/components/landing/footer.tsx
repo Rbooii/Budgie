@@ -7,35 +7,35 @@ const FOOTER_COLUMNS = [
   {
     title: "Product",
     items: [
-      { label: "Features", href: "/#features" },
-      { label: "Use cases", href: "/#use-cases" },
+      { label: "Product", href: "/#product" },
+      { label: "How it works", href: "/#live" },
+      { label: "Learn", href: "/#learn" },
       { label: "Pricing", href: "/#pricing" },
-      { label: "FAQ", href: "/#faq" },
+      { label: "Questions", href: "/#faq" },
     ],
   },
   {
     title: "Get started",
     items: [
+      { label: "Start free", href: "/sign-in" },
       { label: "Sign in", href: "/sign-in" },
-      { label: "Create an account", href: "/sign-in" },
     ],
   },
 ] as const;
 
 /**
- * Notion's footer anatomy kept, but trimmed to links that actually exist —
- * every anchor here resolves to a real page or section (no `#` dead ends,
- * no invented language selector or cookie settings).
+ * The ink footer. Wordmark only, real links only, no language selector or
+ * cookie theatre.
  */
 export function Footer() {
   return (
-    <footer className="border-t border-hairline bg-screen">
-      <div className="mx-auto max-w-screen-xl px-5 sm:px-8 py-10 md:py-16 flex flex-col gap-10 lg:flex-row lg:gap-8">
-        {/* Left block — brand + legal */}
-        <div className="flex flex-col gap-4 lg:w-1/4">
+    <footer className="bg-ink-field text-on-ink">
+      <div className="mx-auto grid max-w-[1280px] gap-12 px-5 py-14 sm:px-8 md:py-20 lg:grid-cols-12">
+        <div className="flex flex-col gap-4 lg:col-span-5">
           <Link
             href="/"
-            className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-ink w-fit"
+            className="flex w-fit items-center gap-2.5 font-sans text-[19px] font-semibold tracking-[-0.03em] text-on-ink"
+            aria-label="Budgie"
           >
             <Image
               src="/android-chrome-192x192.png"
@@ -46,27 +46,27 @@ export function Footer() {
             />
             Budgie
           </Link>
-          <p className="text-sm text-ink/45 max-w-xs">
-            A calm, minimal personal-finance app built around the rupiah.
+          <p className="max-w-xs text-sm leading-relaxed text-on-ink/60">
+            A personal finance app for balance, savings, and everyday
+            spending. Built for rupiah.
           </p>
-          <p className="text-sm text-ink/45">
+          <p className="text-sm text-on-ink/45">
             <Suspense fallback={<CopyrightYearFallback />}>
               <CopyrightYear />
             </Suspense>
           </p>
         </div>
 
-        {/* Link columns */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-10 lg:flex-1">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:col-span-6 lg:col-start-7">
           {FOOTER_COLUMNS.map((col) => (
             <div key={col.title} className="flex flex-col">
-              <p className="text-sm font-normal text-ink/40">{col.title}</p>
-              <ul className="mt-3 flex flex-col gap-2.5">
+              <p className="text-xs text-on-ink/40">{col.title}</p>
+              <ul className="mt-4 flex flex-col gap-2.5">
                 {col.items.map((item) => (
                   <li key={item.label}>
                     <Link
                       href={item.href}
-                      className="text-sm text-ink/45 hover:text-ink transition"
+                      className="text-sm text-on-ink/65 transition-colors hover:text-on-ink"
                     >
                       {item.label}
                     </Link>

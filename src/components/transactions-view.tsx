@@ -152,7 +152,7 @@ export function TransactionsView({
           <div className="flex flex-col gap-3">
             {grouped.map(({ label, items }) => (
               <div key={label} className="flex flex-col gap-1.5">
-                <p className="px-3.5 pt-2 pb-0.5 text-[11px] font-medium uppercase tracking-wide text-ink/35">
+                <p className="px-3.5 pt-2 pb-0.5 text-[11px] font-medium text-ink/35">
                   {label}
                 </p>
                 {items.map((t) => (

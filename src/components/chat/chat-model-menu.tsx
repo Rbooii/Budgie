@@ -57,7 +57,7 @@ export function ChatModelMenu({
                 onModelChange(m);
                 setOpen(false);
               }}
-              className="flex h-8 w-full items-center justify-between rounded-xl px-2.5 text-left text-xs font-medium text-ink/80 transition hover:bg-surface active:scale-[0.98]"
+              className="flex h-8 w-full items-center justify-between rounded-[10px] px-2.5 text-left text-xs font-medium text-ink/80 transition hover:bg-surface active:scale-[0.98]"
             >
               <span>{modelLabel(m)}</span>
               {m === model && <Check className="w-3.5 h-3.5 text-brand" />}

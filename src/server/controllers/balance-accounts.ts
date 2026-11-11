@@ -4,10 +4,12 @@ import {
   deleteBalanceAccount,
   getBalanceAccount,
   listBalanceAccounts,
+  reorderBalanceAccounts,
   updateBalanceAccount,
 } from "@/server/services/balance-accounts";
 import type {
   CreateBalanceAccount,
+  ReorderBalanceAccounts,
   UpdateBalanceAccount,
 } from "@/server/schemas/balance-account";
 import type { AppEnv } from "@/server/middleware/auth";
@@ -35,6 +37,16 @@ export async function create(c: ValidatedContext<CreateBalanceAccount>) {
   const body = c.req.valid("json");
   const created = await createBalanceAccount(user.id, body);
   return c.json(created, 201);
+}
+
+export async function reorder(c: ValidatedContext<ReorderBalanceAccounts>) {
+  const user = c.get("user");
+  try {
+    await reorderBalanceAccounts(user.id, c.req.valid("json").ids);
+    return c.json({ ok: true });
+  } catch {
+    return c.json({ error: "Invalid order" }, 400);
+  }
 }
 
 export async function update(c: ValidatedContext<UpdateBalanceAccount>) {

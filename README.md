@@ -14,13 +14,13 @@ Built as a testbed for **structured AI-agentic development**:
 `ARCHITECTURE.md` / `AGENTS.md`-driven workflows, multi-agent collaboration,
 CI/CD, and fast feature shipping with rigorous type-safety and testing.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-00C610?style=flat-square)](./LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-5ABB37?style=flat-square)](./LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Hono](https://img.shields.io/badge/Hono-4-FF6B35?style=flat-square)](https://hono.dev/)
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?style=flat-square&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![Bun](https://img.shields.io/badge/Bun-1.3-000000?style=flat-square&logo=bun&logoColor=white)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-1042%20passing-39CD6B?style=flat-square)](./tests/components/account-card.test.tsx)
+[![Tests](https://img.shields.io/badge/tests-1032%20passing-5ABB37?style=flat-square)](./tests/components/account-card.test.tsx)
 
 ### Demo
 
@@ -59,7 +59,7 @@ contribution — human or AI — follows the same structured workflow.
 ### Done
 
 - **Authentication** — Email/password + Google OAuth + GitHub OAuth via better-auth
-- **Dashboard** — Net worth hero with per-character balance reveal animation, account cards grid, cashflow donut chart (pure SVG), 12-month asset growth bar chart with hover tooltips, privacy-first balance masking
+- **Dashboard** — Net worth hero with per-character balance reveal animation, papery account cards with gridless paper sparklines, kanban-style drag reorder (persisted through `/api/balance-accounts/reorder`), a compact cashflow donut with one signed net value and quiet income/expense rows, asset growth with a signed change hero, text-only legend, period presets, and hover tooltips, plus privacy-first balance masking
 - **Balance Accounts** — Full CRUD (bank, digital wallet, cash, credit, investment) with edit dialog and **delete confirm dialog**
 - **Transactions** — 3-step add wizard (type -> details -> review), searchable grouped list by date, bottom-sheet detail view, create & delete with automatic balance reconciliation inside a Prisma `$transaction`
 - **Automatic balance reconciliation** — Income/expense/transfer auto-updates account balances; delete reverses the effect; insufficient-balance guard prevents negative balances
@@ -71,9 +71,9 @@ contribution — human or AI — follows the same structured workflow.
 - **Premade categories** — Per-type category lists (income/expense/transfer) — users pick from curated lists, no free-text chaos
 - **Responsive design** — Mobile-first with fixed bottom nav; desktop reveals a persistent sidebar. Calm minimal fintech aesthetic.
 - **Dark mode** — token-based light/dark themes with the exact iOS `Colors.swift` palette (`--brand/--income/--expense/--transfer`, adaptive surfaces/ink). System default with no flash (inline bootstrap script), Profile → Settings → Appearance picker (System/Light/Dark) plus a sidebar quick-toggle. See `UI_DESIGN.md` §19.
-- **Public landing page** — Root `/` (`src/app/page.tsx`) renders `<LandingPage/>` (server component, no auth gate): hero + animated stat counters, marquee, `<video>` "See it in motion" showcase (`AutoVideo` client component — mirrors the README demo, with the same Vercel-Blob mp4 source), feature grid, product vignettes, privacy spotlight, Plus pricing, FAQ, final CTA, footer. Rich SEO metadata + JSON-LD (WebApplication, BreadcrumbList, FAQPage, VideoObject). Video assets drop into `public/videos/` (see `public/videos/README.md`).
+- **Public landing page** — Root `/` (`src/app/page.tsx`) renders `<LandingPageView>` in an Anthropic-company register with Wise clarity: warm paper, ink, mixed sans/serif typography, the old Budgie logo, and the accent green sampled from its dollar sign (`#5ABB37`). The hero pairs the statement with a borderless theme-aware `MoneySnapshot` stage: a masked transparent field in light mode / `bg-ink-field` in dark mode, where a canvas `NaniteField` roams as independent dots with separation (no merging) and briefly searches toward a card, each with a thin outline and faint edges. Every 4.6s the stage builds a random 1 to 3 card composition from real app components scaled down (income and expense `TransactionItem` rows, `CashflowCard`, `BudgetSummaryCards`), with loose slots, jitter, per-card float paths, and spawn/hold/despawn. The nav is Product / Pricing / Questions. A sticky 3-step product story uses real app components (`BalanceSection`, `BudgetSummaryCards`, `SpendingStreamsChart`, `CashflowCard`) whose `inert` sheets cannot be clicked or focused, with a one-time balance reveal that does not change the saved preference. Animated sketch line charts (`SketchLine`) replace abstract images; cards use Apple-soft radii with `corner-shape: squircle`. There is no walkthrough video. Sections are separated by whitespace and type, not rules. No mascot, radial mark, badges, marquee, or stock imagery. Rich SEO metadata + JSON-LD (WebApplication, BreadcrumbList, FAQPage).
 - **Chat (AI financial assistant)** — `/chat` powered by Vercel AI SDK v7 + Google Gemini 2.5 Flash. Natural streaming responses with a collapsible Thinking state, quiet app-styled tool-calling widgets (accounts, transactions, budgets, subscriptions, insights), and the ability to record transactions from chat. **Free-tier friendly**: auto-downgrades to `gemini-3.5-flash-lite` when the primary model's daily quota runs out (per-model quota buckets) and persists the choice for 12h; token-lean by design (10-message window with old tool/reasoning parts pruned, 640 output tokens, capped thinking, compact tool results). Conversation + input draft survive tab switches via localStorage. Backend: dedicated Route Handler `src/app/api/chat/route.ts` + `src/server/chat/` tools that call the existing services directly (userId-scoped). See `ARCHITECTURE.md` §22.
-- **Testing** — Vitest + jsdom + Testing Library (1042 tests across 91 suites: component + service + controller + schema + mock midtrans + chat + landing layers)
+- **Testing** — Vitest + jsdom + Testing Library (1032 tests across 89 suites: component + service + controller + schema + mock midtrans + chat + landing layers)
 
 ### In Progress
 
@@ -97,6 +97,8 @@ contribution — human or AI — follows the same structured workflow.
 | Validation | Zod via `@hono/zod-validator` (auto-generated from Prisma) | 4.4.x |
 | Auth | better-auth (email/password + Google + GitHub) | 1.6.x |
 | Styling | Tailwind CSS v4 | ^4 |
+| Drag/drop | @dnd-kit/core + sortable + utilities | 6.x / 10.x / 3.x |
+| Select | @radix-ui/react-select | 2.x |
 | Testing | Vitest + jsdom + @testing-library/react | 4.x |
 | PDF | jsPDF + jsPDF-AutoTable | 4.x / 5.x |
 | QR codes | qrcode.react (Plus QRIS checkout) | 4.x |
@@ -206,6 +208,7 @@ src/lib/api-client.ts              hc<App>(baseURL) -> api.resource.$post({ json
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Full architecture reference — request lifecycle, layer contracts, type-safety chain, RPC client usage (SSR gotchas), mounting Hono in Next.js, Prisma 7 + driver adapter, Zod auto-generation, adding a new resource (8-step checklist), gotchas & breaking-change notes; frontend UI sections §18 dashboard, §19 budgets, §20 profile & Plus, §21 landing page, §22 chat, §23 performance & serverless optimization |
 | [`AGENTS.md`](./AGENTS.md) | AI agent rules — build commands, stack conventions, resource specs, backend/frontend patterns, formatting helpers, public landing page, UI checklist pointer |
 | [`UI_DESIGN.md`](./UI_DESIGN.md) | UI/UX design reference — design philosophy, color tokens, component library, type scale, radius system, layout patterns, motion rules, accessibility; §16 landing page, §17 chat UI, §18 app shell (mobile tab bar, graph draw-in, skeletons) |
+| [`ANTI_SLOP.md`](./ANTI_SLOP.md) | Canonical anti-AI-slop guardrails — banned symbols, blinking dots, badges/pills, uppercase labels, copy tokens, layout chrome, chart rules, and the enforcement tests |
 
 ## Project Structure
 
@@ -224,9 +227,9 @@ budgie/
 │  │     ├─ chat/route.ts         # AI SDK streamText handler (Gemini 2.5 Flash)
 │  │     ├─ [[...route]]/         # catch-all -> Hono
 │  │     └─ auth/[...all]/        # better-auth handler
-│  ├─ components/                 # React UI (incl. chat/ subfolder, plus-payment-wizard, upgradePlusButton)
+│  ├─ components/                 # React UI (incl. chat/ subfolder, account-grid, quick-insight, plus-payment-wizard, upgradePlusButton)
 │  │  ├─ chat/                    # ChatView, ChatMessage, ChatThinking, ChatToolCard/Status/Result, ChatInput, ChatEmptyState
-│  │  └─ landing/                 # AutoVideo (<video>), HeroHeadline, HeroPill, Bento, UseCases, Pricing, Faq, FactsMarquee, LandingNav, CopyrightYear, Footer, …
+│  │  └─ landing/                 # Hero + MoneySnapshot + NaniteField, ProductStory (real components), SketchLine, FeatureCards, EditorialSection, LearnSection, Pricing, Faq, Endcap, Footer
 │  ├─ lib/                        # auth, session (cached getSession), auth-client, prisma (lazy, host-aware), api-client, limits, format, categories, category-icon, budget, midtrans (mock QRIS), dashboard, font-size, chat-models, chat-storage
 │  └─ server/                     # ALL backend logic
 │     ├─ chat/                    # buildSystemPrompt, tool schemas, createChatTools(userId)
@@ -236,18 +239,18 @@ budgie/
 │     ├─ schemas/                 # Zod (.pick + .extend on deep-imported generated schema file)
 │     ├─ queries.ts               # React-cache'd RSC reads (no self-fetch)
 │     └─ middleware/              # auth.ts (requireAuth/AppEnv) + cache.ts (etag + privateNoCache)
-├─ public/videos/                 # landing video drop-in (brand.mp4/.webm + vignettes) — see public/videos/README.md
 ├─ prisma/schema.prisma           # datasource + 2 generators (client, zod) + 9 models (User…PlusOrder)
 ├─ ARCHITECTURE.md                # architecture reference (§18 dashboard, §19 budgets, §20 profile & Plus, §21 landing, §22 chat)
 ├── AGENTS.md                     # AI agent rules
 ├── UI_DESIGN.md                   # UI/UX design reference (§16 landing, §17 chat UI, §18 app shell)
+├── ANTI_SLOP.md                   # canonical anti-AI-slop guardrails
 └─ vitest.config.ts               # test config (jsdom + Testing Library)
 ```
 
 ## Testing
 
 ```bash
-bun run test          # 1042 tests, 91 suites (one-shot)
+bun run test          # 1032 tests, 89 suites (one-shot)
 bun run test:watch    # watch mode for development
 ```
 
@@ -261,20 +264,25 @@ bun run test:watch    # watch mode for development
 | `tests/server/schemas/subscription.test.ts` | Schema — defaults (IDR, active), every expense category, non-positive/non-int/NaN rejection | 30 |
 | `tests/server/controllers/subscriptions.test.ts` | Controller — 400/404/409/204 mapping, error rethrow | 15 |
 | `tests/server/services/transactions.test.ts` | Service — atomic balance math (conditional `updateMany` guards), pagination windowing, filters, insufficient-balance + missing-account mapping (create + delete) | 30 |
-| `tests/server/services/balance-accounts.test.ts` | Service — ownership scoping, cross-user delete prevention | 8 |
+| `tests/server/services/balance-accounts.test.ts` | Service — ownership scoping, create append order, reorder validation/transaction, cross-user delete prevention | 13 |
 | `tests/server/services/plus.test.ts` | Service — checkout, status polling, simulate-payment, webhook settlement | 15 |
-| `tests/components/account-card.test.tsx` | Component — confirm dialog flow, delete safety, error paths | 9 |
+| `tests/components/account-card.test.tsx` | Component — paper card face, sparkline, confirm dialog flow, delete safety, error paths | 9 |
+| `tests/components/account-grid.test.tsx` | Component — sortable account cards with drag handles | 1 |
+| `tests/components/quick-insight.test.tsx` | Component — Cashflow and Asset Growth period selectors | 2 |
+| `tests/components/sparkline.test.tsx` | Component — plain/paper variants, no-grid/end dot, measured width | 8 |
+| `tests/components/asset-growth-card.test.tsx` | Component — bars, labels, tooltip, empty state, no Sparkles | 15 |
 | `tests/components/budgets-list.test.tsx` | Component — empty state, progress bars (over/under), detail-sheet delete flow | 12 |
 | `tests/components/add-budget-dialog.test.tsx` | Component — 3-step wizard gating, custom-period sanitization, submit payload/error paths | 21 |
 | `tests/components/budget-detail-sheet.test.tsx` | Component — detail rows, over-budget Remaining, delete confirm/loading/error | 15 |
-| `tests/components/budget-summary-cards.test.tsx` | Component — with/without budget, over-budget labels, bar width/color | 13 |
+| `tests/components/budget-summary-cards.test.tsx` | Component — with/without budget, over-budget labels, bar width/color | 11 |
 | `tests/components/subscription-list.test.tsx` | Component — rows, next-billing dates, inactive badge, sheet delete flow | 10 |
 | `tests/components/subscription-detail-sheet.test.tsx` | Component — detail rows, Active/Inactive, delete confirm/error paths | 11 |
 | `tests/components/add-subscription-dialog.test.tsx` | Component — validation gating, payload shape, ISO start date, success/error | 19 |
 | `tests/components/spending-streams-chart.test.tsx` | Component — sorting, zero-spend filtering, budget markers, hover/click tooltips | 20 |
 | `tests/components/plus-payment-wizard.test.tsx` | Component — 3-step QRIS wizard flow, simulate payment, status polling (settlement/expire/cancel) | 14 |
 | `tests/components/upgradePlusButton.test.tsx` | Component — upgrade (opens wizard) vs downgrade (PATCH) flows | 8 |
-| `tests/components/landing/*.test.tsx` + `mock-data.test.ts` | Landing — full-page composition via `LandingPageView` (session-conditional nav, section order, CTA copy), IO/reduced-motion behavior (auto-video, animated-counter, scroll-progress, reveal, hero-preview), CSS-var interaction primitives (spotlight, tilt, magnetic, hero-headline), content suites, mock-data integrity | 151 |
+| `tests/components/landing/*.test.tsx` | Landing — full-page composition via `LandingPageView` (session-conditional nav, section order, CTA copy), MoneySnapshot random 1-3 floating real-component compositions, NaniteField random dots/separation/reduced-motion, real-component ProductStory with inert sheets, SketchLine charts, editorial/learn/pricing/FAQ/footer suites, anti-slop guard | 67 |
+| `tests/anti-slop.test.ts` | Global guard — no Sparkles, badges, status dots, uppercase labels, pulse outside the loading skeleton, or raw hex outside the identity card | 3 |
 | `tests/server/controllers/*.test.ts` + `schemas/*.test.ts` + `routes/transactions.test.ts` | Server — budgets/balance-accounts/plus/user 3-layer, route handler, auth middleware, transactions pagination headers + `ETag`/`304` contract | ~130 |
 | `tests/server/chat/tools.test.ts` | Chat tools — each tool calls the right service with `userId`, transaction filtering + limit cap, create_transaction ok/error paths (insufficient balance, category/type mismatch, transfer refine) | 17 |
 | `tests/server/chat/schemas.test.ts` | Chat tool schemas — filter validation, transfer refines, category/type matching, unknown-key rejection | 14 |
@@ -374,11 +382,12 @@ committed to `prisma/migrations/`, and applied automatically on the next deploy.
 ## Contributing
 
 This project is designed for **AI-agent-assisted development**. Before writing
-any code — human or AI — read these three documents:
+any code — human or AI — read these documents:
 
 1. **[`AGENTS.md`](./AGENTS.md)** — build commands, stack conventions, layer rules
 2. **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — full architecture reference, gotchas
 3. **[`UI_DESIGN.md`](./UI_DESIGN.md)** — visual language, component patterns, UI checklist
+4. **[`ANTI_SLOP.md`](./ANTI_SLOP.md)** — anti-AI-slop guardrails for every surface
 
 ### Workflow
 

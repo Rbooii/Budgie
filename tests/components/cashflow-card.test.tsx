@@ -13,14 +13,21 @@ describe("CashflowCard", () => {
     expect(screen.getByText("July 2026")).toBeInTheDocument();
   });
 
-  it("computes net as income - expense and shows it in millions", () => {
+  it("shows the signed net in Rupiah", () => {
     render(<CashflowCard title="T" date="D" income={3000000} expense={1000000} />);
-    expect(screen.getByText(/\+.*2\.0 mil/)).toBeInTheDocument();
+    expect(screen.getByText("+Rp 2.000.000.00")).toBeInTheDocument();
   });
 
-  it("shows negative net when expense > income", () => {
+  it("shows a negative net when expense > income", () => {
     render(<CashflowCard title="T" date="D" income={500000} expense={1500000} />);
-    expect(screen.getByText(/-.*1\.0 mil/)).toBeInTheDocument();
+    expect(screen.getByText("-Rp 1.000.000.00")).toBeInTheDocument();
+  });
+
+  it("renders income and expense rows without status dots", () => {
+    const { container } = render(
+      <CashflowCard title="T" date="D" income={1000} expense={500} />,
+    );
+    expect(container.querySelectorAll(".rounded-full")).toHaveLength(0);
   });
 
   it("shows income percentage", () => {

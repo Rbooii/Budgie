@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import * as controller from "@/server/controllers/balance-accounts";
 import {
   CreateBalanceAccountSchema,
+  ReorderBalanceAccountsSchema,
   UpdateBalanceAccountSchema,
 } from "@/server/schemas/balance-account";
 import type { AppEnv } from "@/server/middleware/auth";
@@ -15,6 +16,11 @@ export const balanceAccounts = new Hono<AppEnv>()
   .get("/", etag(), privateNoCache, controller.list)
   .get("/:id", etag(), privateNoCache, controller.getOne)
   .post("/", zValidator("json", CreateBalanceAccountSchema), controller.create)
+  .post(
+    "/reorder",
+    zValidator("json", ReorderBalanceAccountsSchema),
+    (c) => controller.reorder(c),
+  )
   .patch(
     "/:id",
     zValidator("json", UpdateBalanceAccountSchema),

@@ -217,21 +217,10 @@ export function ChatView({
                 {status === "submitted" && (
                   <div
                     role="status"
-                    aria-label="Budgie is typing"
-                    className="flex w-fit items-center gap-1.5 rounded-[20px] rounded-tl-[6px] bg-card px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
+                    aria-label="Budgie is thinking"
+                    className="flex w-fit items-center rounded-[20px] rounded-tl-[6px] bg-card px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.05)]"
                   >
-                    <span
-                      className="w-[7px] h-[7px] rounded-full bg-ink/30 animate-[typingPulse_1s_ease-in-out_infinite]"
-                      style={{ animationDelay: "0ms" }}
-                    />
-                    <span
-                      className="w-[7px] h-[7px] rounded-full bg-ink/30 animate-[typingPulse_1s_ease-in-out_infinite]"
-                      style={{ animationDelay: "200ms" }}
-                    />
-                    <span
-                      className="w-[7px] h-[7px] rounded-full bg-ink/30 animate-[typingPulse_1s_ease-in-out_infinite]"
-                      style={{ animationDelay: "400ms" }}
-                    />
+                    <span className="text-sm text-ink/40">Thinking</span>
                   </div>
                 )}
               </>

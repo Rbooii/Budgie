@@ -10,6 +10,11 @@ import {
   computeNetWorthDelta,
   computeSparklineTrend,
   computeTodayChangePercent,
+  netEffect,
+  sumCashflow,
+  sumNetEffect,
+  monthlyNetBetween,
+  activeMonthsBetween,
   type YearTxn,
 } from "@/lib/dashboard";
 
@@ -410,5 +415,106 @@ describe("computeTodayChangePercent", () => {
     });
     expect(computeTodayChangePercent([transfer], "a1", 1450)).toBeCloseTo(-27.5, 5);
     expect(computeTodayChangePercent([transfer], "a2", 1500)).toBeCloseTo(50, 5);
+  });
+});
+
+describe("netEffect", () => {
+  it("adds income and subtracts expenses and transfer fees", () => {
+    expect(netEffect(txn({ type: "income", amount: 1000, date: new Date(2026, 0, 1) }))).toBe(1000);
+    expect(netEffect(txn({ type: "expense", amount: 400, date: new Date(2026, 0, 1) }))).toBe(-400);
+    expect(
+      netEffect(
+        txn({
+          type: "transfer",
+          amount: 5000,
+          adminFee: 250,
+          date: new Date(2026, 0, 1),
+        }),
+      ),
+    ).toBe(-250);
+  });
+});
+
+describe("sumCashflow", () => {
+  it("sums income and expense including transfer fees inside the range", () => {
+    const result = sumCashflow(
+      [
+        txn({ type: "income", amount: 1000, date: new Date(2026, 0, 2) }),
+        txn({ type: "expense", amount: 400, date: new Date(2026, 0, 3) }),
+        txn({
+          type: "transfer",
+          amount: 5000,
+          adminFee: 250,
+          date: new Date(2026, 0, 4),
+        }),
+        txn({ type: "income", amount: 9999, date: new Date(2026, 1, 1) }),
+      ],
+      new Date(2026, 0, 1),
+      new Date(2026, 1, 1),
+    );
+    expect(result).toEqual({ income: 1000, expense: 650 });
+  });
+
+  it("returns zeros for an empty range", () => {
+    expect(
+      sumCashflow([], new Date(2026, 0, 1), new Date(2026, 1, 1)),
+    ).toEqual({ income: 0, expense: 0 });
+  });
+});
+
+describe("sumNetEffect", () => {
+  it("sums net worth effects inside the range only", () => {
+    const result = sumNetEffect(
+      [
+        txn({ type: "income", amount: 1000, date: new Date(2026, 0, 2) }),
+        txn({ type: "expense", amount: 400, date: new Date(2026, 0, 3) }),
+        txn({
+          type: "transfer",
+          amount: 5000,
+          adminFee: 250,
+          date: new Date(2026, 0, 4),
+        }),
+        txn({ type: "income", amount: 9999, date: new Date(2026, 1, 1) }),
+      ],
+      new Date(2026, 0, 1),
+      new Date(2026, 1, 1),
+    );
+    expect(result).toBe(350);
+  });
+});
+
+describe("monthlyNetBetween", () => {
+  it("buckets net effects across a year boundary", () => {
+    const result = monthlyNetBetween(
+      [
+        txn({ type: "income", amount: 500, date: new Date(2025, 11, 15) }),
+        txn({ type: "expense", amount: 200, date: new Date(2026, 0, 10) }),
+        txn({ type: "income", amount: 300, date: new Date(2026, 1, 5) }),
+        txn({ type: "income", amount: 999, date: new Date(2026, 2, 5) }),
+      ],
+      new Date(2025, 11, 1),
+      3,
+    );
+    expect(result).toEqual([500, -200, 300]);
+  });
+
+  it("returns zeros for an empty window", () => {
+    expect(
+      monthlyNetBetween([], new Date(2026, 0, 1), 12),
+    ).toEqual(new Array(12).fill(0));
+  });
+});
+
+describe("activeMonthsBetween", () => {
+  it("marks months with at least one transaction", () => {
+    const result = activeMonthsBetween(
+      [
+        txn({ date: new Date(2025, 11, 15) }),
+        txn({ date: new Date(2026, 1, 5) }),
+      ],
+      new Date(2025, 11, 1),
+      3,
+    );
+    expect(result).toEqual([true, false, true]);
   });
 });

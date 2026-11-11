@@ -54,7 +54,7 @@ type BalanceVisibilityContextValue = {
   toggleCount: number;
 };
 
-const BalanceVisibilityContext = createContext<BalanceVisibilityContextValue>({
+export const BalanceVisibilityContext = createContext<BalanceVisibilityContextValue>({
   hidden: HIDDEN_DEFAULT,
   toggle: () => {},
   toggleCount: 0,

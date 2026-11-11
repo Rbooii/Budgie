@@ -1,106 +1,82 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
-import { Reveal } from "./reveal";
 import { formatRupiah } from "@/lib/format";
 
 const FIRST_MONTH = 24_500;
 const REGULAR = 49_000;
 
-const PLUS_PERKS = [
-  "Unlimited accounts, budgets, and subscriptions",
-  "Asset-growth and cashflow insights",
-  "Priority PDF exports",
-  "Cancel anytime — no lock-in",
-];
+const PLUS_INCLUDES = [
+  "A Plus badge on your profile",
+  "Support independent development",
+  "Cancel anytime. No lock-in.",
+] as const;
 
+/**
+ * Honest pricing: every feature is free; Plus is optional support, not a
+ * paywall. Plain ruled columns, no cards, no badges.
+ */
 export function Pricing() {
   return (
-    <section id="pricing" className="mx-auto max-w-screen-xl px-5 sm:px-8 py-20 sm:py-28 scroll-mt-24">
-      <Reveal className="max-w-2xl">
-        <p className="text-sm font-semibold text-brand">Simple pricing</p>
-        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-ink mt-2">
-          Free forever. Plus when you grow.
-        </h2>
-        <p className="text-base text-ink/45 mt-3 leading-relaxed">
-          Start with everything you need to track your money. Upgrade to Plus
-          for deeper insights whenever you like.
-        </p>
-      </Reveal>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-12">
-        {/* Free tier */}
-        <Reveal className="h-full">
-          <div className="h-full flex flex-col rounded-[35px] border border-hairline bg-card shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6 sm:p-8 transition-shadow duration-200 ease-out hover:shadow-[0_12px_36px_-12px_rgba(0,0,0,0.14)] motion-reduce:transition-none motion-reduce:hover:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)]">
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums tracking-tight text-ink">
-              {formatRupiah(0)}
-            </span>
-            <span className="text-sm text-ink/40">/month</span>
-          </div>
-          <p className="text-base font-semibold text-ink mt-3">Free</p>
-          <p className="text-sm text-ink/45 mt-1.5">Everything you need to start.</p>
-          <ul className="mt-6 flex flex-col gap-3 flex-1">
-            {[
-              "Up to 3 accounts",
-              "Unlimited transactions",
-              "Budgets and subscriptions",
-            ].map((p) => (
-              <li key={p} className="flex items-start gap-3">
-                <Check className="w-4 h-4 text-income shrink-0 mt-0.5" />
-                <span className="text-sm text-ink/70 leading-relaxed">{p}</span>
-              </li>
-            ))}
-          </ul>
-          <Link
-            href="/sign-in"
-            className="mt-8 inline-flex items-center justify-center text-sm font-semibold py-[10px] px-[20px] rounded-[35px] bg-card text-ink border border-hairline hover:bg-surface active:scale-[0.98] transition transform duration-150"
-          >
-            Start free
-          </Link>
-          </div>
-        </Reveal>
-
-        {/* Plus tier */}
-        <Reveal
-          delay={90}
-          className="h-full"
-        >
-          <div className="h-full flex flex-col rounded-[35px] border border-income/40 bg-card shadow-[0_8px_30px_-12px_rgba(0,198,16,0.18)] p-6 sm:p-8">
-          <div className="flex items-center justify-between">
-            <p className="text-base font-semibold text-ink">Budgie Plus</p>
-            <span className="rounded-full bg-income-tint text-income text-xs font-semibold px-2.5 py-1">
-              50% off first month
-            </span>
-          </div>
-          <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl font-bold tabular-nums tracking-tight text-income">
-              {formatRupiah(FIRST_MONTH)}
-            </span>
-            <span className="text-sm text-ink/30 line-through tabular-nums">
-              {formatRupiah(REGULAR)}
-            </span>
-            <span className="text-sm text-ink/40">/month</span>
-          </div>
-          <p className="text-xs text-ink/40 mt-1.5">
-            Then {formatRupiah(REGULAR)} per month. Cancel anytime.
+    <section id="pricing">
+      <div className="mx-auto max-w-[1280px] px-5 py-20 sm:px-8 sm:py-28">
+        <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
+          <h2 className="max-w-[12ch] font-serif text-[clamp(2.5rem,5.6vw,5rem)] font-light leading-[1.05] tracking-[-0.02em] text-ink lg:col-span-7">
+            Free to use. Plus if you want to keep it going.
+          </h2>
+          <p className="max-w-md text-[17px] leading-[26px] text-ink/60 lg:col-span-5 lg:justify-self-end">
+            Every feature is free. Plus is optional support.
           </p>
+        </div>
 
-          <ul className="mt-6 flex flex-col gap-3 flex-1">
-            {PLUS_PERKS.map((p) => (
-              <li key={p} className="flex items-start gap-3">
-                <Check className="w-4 h-4 text-income shrink-0 mt-0.5" />
-                <span className="text-sm text-ink/70 leading-relaxed">{p}</span>
-              </li>
-            ))}
-          </ul>
-          <Link
-            href="/sign-in"
-            className="mt-8 inline-flex items-center justify-center text-lg font-semibold px-[20px] py-[6px] h-11 rounded-[35px] bg-brand text-white hover:bg-brand/90 active:scale-[0.98] transition transform duration-150"
-          >
-            Get Budgie Plus
-          </Link>
+        <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-16">
+          <div className="pt-8">
+            <h3 className="font-serif text-2xl text-ink">Free</h3>
+            <p className="mt-5 font-serif text-5xl leading-none tracking-[-0.03em] text-ink">
+              {formatRupiah(0)}
+            </p>
+            <p className="mt-5 max-w-sm text-[17px] leading-[26px] text-ink/60">
+              Every Budgie feature: accounts, transactions, budgets, savings,
+              the assistant, and PDF export.
+            </p>
+            <Link
+              href="/sign-in"
+              className="mt-8 inline-flex h-10 items-center justify-center rounded-full border border-ink/20 px-4 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
+            >
+              Start free
+            </Link>
           </div>
-        </Reveal>
+
+          <div className="pt-8">
+            <h3 className="font-serif text-2xl text-brand">Plus</h3>
+            <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <p className="font-serif text-5xl leading-none tracking-[-0.03em] text-ink">
+                {formatRupiah(FIRST_MONTH)}
+              </p>
+              <p className="text-sm text-ink/35 line-through tabular-nums">
+                {formatRupiah(REGULAR)}
+              </p>
+            </div>
+            <p className="mt-2 text-xs text-ink/45">
+              First month, then {formatRupiah(REGULAR)} per month.
+            </p>
+            <p className="mt-5 max-w-sm text-[17px] leading-[26px] text-ink/60">
+              A Plus badge on your profile, and the knowledge that you are
+              supporting independent development. Cancel anytime.
+            </p>
+            <ul className="mt-6 space-y-2.5">
+              {PLUS_INCLUDES.map((item) => (
+                <li key={item} className="text-sm text-ink/70">
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/sign-in"
+              className="mt-8 inline-flex h-10 items-center justify-center rounded-full bg-brand px-4 text-sm font-medium text-white transition-colors hover:bg-brand/90"
+            >
+              Support Budgie
+            </Link>
+          </div>
+        </div>
       </div>
     </section>
   );

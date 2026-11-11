@@ -15,7 +15,7 @@ interface ButtonProps extends ComponentProps<"button"> {
 
 const VARIANT_CLASS: Record<Variant, string> = {
   primary:
-    "bg-[#000000] text-white hover:bg-black/85 active:scale-[0.98]",
+    "bg-scrim text-white hover:bg-scrim/85 active:scale-[0.98]",
   outline:
     "bg-card text-ink border border-hairline hover:bg-surface active:scale-[0.98]",
   icon: "bg-card text-ink hover:bg-surface active:scale-95",

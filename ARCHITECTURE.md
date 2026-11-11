@@ -81,9 +81,9 @@ budgie/
    │  ├─ layout.tsx                  # root layout (bg-white body)
    │  ├─ page.tsx                    # PUBLIC landing page (RSC) — <LandingPage/>, SEO metadata + JSON-LD — see §21
    │  ├─ globals.css                 # color-scheme: light, html bg-white, keyframes
-   │  ├─ budget/                      # budget page (RSC, force-dynamic) — see §19
+   │  ├─ budget/                      # budget page (RSC inside PageShell + Suspense) — see §19
    │  ├─ chat/                       # chat page (RSC auth gate → <ChatView/>) — see §22
-   │  ├─ dashboard/                  # main dashboard (RSC, force-dynamic)
+   │  ├─ dashboard/                  # main dashboard (RSC inside PageShell + Suspense)
    │  ├─ profile/                    # profile & Plus membership page (RSC) — see §20
    │  ├─ transactions/               # transactions page + add sub-route
    │  │  ├─ page.tsx                 # list (RSC, fetch via api.transactions.$get)
@@ -96,13 +96,14 @@ budgie/
    │     └─ [[...route]]/
    │        └─ route.ts              # catch-all Route Handler → Hono (strips /api prefix)
     ├─ components/                     # React UI (see §16 transactions, §18 dashboard, §19 budgets, §21 landing)
-    │  ├─ account-card.tsx           # add-account-dialog, sidebar, …
+    │  ├─ account-card.tsx           # papery account card + paper Sparkline + GripVertical handle
+    │  ├─ account-grid.tsx           # "use client" dnd-kit sortable grid → reorder API
     │  ├─ add-transaction-wizard.tsx # 3-step flow (type → details → review), CategorySelect
     │  ├─ transaction-item.tsx       # minimalist list row (tap → detail sheet)
     │  ├─ transactions-view.tsx      # search + list + date grouping + delete
      │  ├─ transaction-detail-sheet.tsx # bottom sheet with full info + confirm Dialog before delete
-     │  ├─ cashflow-card.tsx          # donut chart (income/expense), title prop, radius 64
-     │  ├─ asset-growth-card.tsx      # Apple-style bar chart (12-month asset trajectory), "use client" hover tooltip
+     │  ├─ cashflow-card.tsx          # compact donut + net, quiet header, period data via props
+     │  ├─ asset-growth-card.tsx      # 12-slot asset growth bars, signed change hero, text-only legend, hover tooltip
      │  ├─ account-tab.tsx           # async RSC: fetches api.user.$get (plus status) → renders <AccountTabView> (sync presentational, testable)
      │  ├─ upgradePlusButton.tsx      # "use client" — !plus → opens <PlusPaymentWizard>; plus=true → PATCH api.user downgrade
      │  ├─ plus-payment-wizard.tsx   # "use client" — 3-step QRIS checkout Dialog (package → QR → success), polls api.plus.status
@@ -114,6 +115,7 @@ budgie/
     │  ├─ subscription-list.tsx      # §7.2 rounded list rows + empty state; exports SubscriptionRow type; owns SubscriptionDetailSheet state
     │  ├─ add-subscription-dialog.tsx # single Dialog form (name, category, cycle, start, amount)
     │  ├─ subscription-detail-sheet.tsx # bottom sheet + confirm Dialog before delete
+    │  ├─ quick-insight.tsx          # "use client" Cashflow/Asset Growth period selects + cards
     │  ├─ quick-insight-empty-state.tsx # "use client" empty state when user has no transactions
     │  ├─ page-shell.tsx            # shared authenticated shell (Sidebar + max-w-screen-2xl content wrapper)
     │  ├─ chat/                     # AI assistant UI (see §22 + UI_DESIGN.md §17)
@@ -1205,7 +1207,7 @@ bun run dev                 # next dev  (http://localhost:3000)
 bun run build               # prisma migrate deploy && prisma generate && next build
 bun run lint                # eslint
 bun run typecheck           # tsc --noEmit
-bun run test                # vitest run — 954 tests / 86 suites (one-shot)
+bun run test                # vitest run — 1032 tests / 89 suites (one-shot)
 bun run test:watch          # vitest watch mode
 bun run db:generate         # regenerate Prisma client + Zod schemas
 bun run db:migrate          # prisma migrate dev (create + apply)
@@ -1227,7 +1229,7 @@ curl localhost:3000/api/budgets -b 'better-auth.session_token=<token>'
 
 ## 12.4 Testing
 
-**954 tests / 86 suites** (`bun run test`, Vitest + jsdom + @testing-library).
+**1032 tests / 89 suites** (`bun run test`, Vitest + jsdom + @testing-library).
 Fully deterministic — no database, no HTTP server: Prisma is mocked via
 `vi.hoisted` module mocks, the typed RPC client (`@/lib/api-client`) is mocked
 per component suite, and `next/navigation` (`useRouter`/`usePathname`) is
@@ -1248,12 +1250,11 @@ Coverage layers (all tests live in a dedicated `tests/` tree mirroring `src/`):
 - **Components** (`tests/components/*.test.tsx`) — dialogs/wizards/lists/sheets
   incl. budget & subscription feature sets and the Plus QRIS wizard's status
   polling (settlement/expire/cancel via fake timers).
-- **Landing** (`tests/components/landing/*.test.tsx`) — `IntersectionObserver` /
-  reduced-motion / rAF / scroll behavior for `auto-video`, `animated-counter`,
-  `scroll-progress`, `reveal`, `hero-preview`; the CSS-var interaction
-  primitives (`spotlight`, `tilt`, `magnetic`, `hero-headline` — vars/classes,
-  not computed styles); content suites for the static sections;
-  `mock-data.ts` integrity checks.
+- **Landing** (`tests/components/landing/*.test.tsx`) — full-page composition
+  via `LandingPageView`, the borderless `MoneySnapshot` stage, the real-component
+  `ProductStory` with `inert` sheets and the demo-local balance reveal,
+  `SketchLine` intersection behavior, `HeroStatement` reduced motion, the
+  editorial/pricing/FAQ/footer suites, and the anti-slop guard.
 
 Browser-API stubs live in `src/test-utils/browser-mocks.ts`
 (`stubIntersectionObserver`, `stubMatchMedia`, `stubRequestAnimationFrame`,
@@ -1636,42 +1637,43 @@ Both `createTransaction` and `deleteTransaction` guard against pushing a
 
 ## 18. Dashboard UI (frontend)
 
-The dashboard (`src/app/dashboard/page.tsx`, RSC, `force-dynamic`) is the main
-authenticated landing page. It fetches data via a mix of `prisma` direct reads
-(SSR, no cookie forwarding) and the typed RPC client (`api["balance-accounts"].$get`
-with cookie forwarding).
+The dashboard (`src/app/dashboard/page.tsx`, RSC inside `PageShell` +
+`Suspense`) is the main authenticated landing page. It reads in-process through
+`prisma` (no self-fetch, no cookie forwarding) and passes compact serializable
+props to the client account grid and Quick Insight cards.
 
 ### Data flow
 
 1. **Accounts + net worth**: `getAccountsForUser(userId)` (React-cached
-   in-process service call) → `accounts[]`, `netWorth = sum(account.balance)`.
-2. **Current month cashflow**: three `prisma.transaction.aggregate` calls
-   (income `_sum.amount`, expense `_sum.amount`, transfer `_sum.adminFee`) →
-   `monthIncome`, `monthExpense` (expense + fees), `monthLabel`.
-3. **Transactions (all-time)**: one `prisma.transaction.findMany({ where: {
+   in-process service call) → `accounts[]` ordered by `sortOrder ASC,
+   createdAt DESC`, `netWorth = sum(account.balance)`.
+2. **Transactions (all-time)**: one `prisma.transaction.findMany({ where: {
    userId } })` with a minimal select (`type, amount, adminFee, date,
    balanceAccountId, toBalanceAccountId`) ordered `date ASC, id ASC` →
    `allTxns`. `yearTxns = allTxns.filter(date ≥ yearStart)` feeds the
-   year-scoped chart math below; `allTxns` feeds the per-account sparklines.
-4. **Asset growth trajectory**: JS computation over `yearTxns`:
-   `monthlyNet[12]` (income `+amount`, expense `−amount`, transfer
-   `−adminFee`), `startingAssets = netWorth − yearNetEffect`, cumulative asset
-   value per month → `growthData[]`.
+   year-scoped math; `allTxns` feeds period presets and account sparklines.
+3. **Cashflow presets**: `sumCashflow(allTxns, start, end)` for This month,
+   Last month, Last 3 months, This year, and Last year. Income sums amounts;
+   expense sums expense amounts + transfer admin fees. The dashboard sends a
+   compact `CashflowPeriod[]` to `QuickInsightView`, which switches instantly
+   without another request.
+4. **Asset growth presets**: `computeMonthlyNet` for calendar years,
+   `monthlyNetBetween` for rolling 12 months, `sumNetEffect` to reconstruct
+   net worth at period boundaries, then `computeGrowthData` for the cumulative
+   series. `activeMonths`/`activeMonthsBetween` distinguish "no activity" from
+   "active flat". The three presets (This year, Last year, Last 12 months) are
+   precomputed in the RSC and passed to `QuickInsightView`.
 5. **Net worth delta**: per-account net effect for current month
    (`accountNetThisMonth`), `lastMonthEndNetWorth = sum(a.balance −
    accountNetThisMonth[a.id])` for **all** accounts (back-dated transactions on
    a new account reconstruct a last-month baseline). `deltaPct` = percentage
    change (null when base ≤ 0 → display absolute instead).
-6. **Active months**: `activeMonths[12]` — `true` if that month had ≥1
-   transaction this year (computed from `yearTxns`). Passed to
-   `AssetGrowthCard` to distinguish "no activity" (grey placeholder bars) from
-   "active flat" (brown Stable bars).
-7. **Account sparklines + today change**: per account,
+6. **Account sparklines + today change**: per account,
    `computeAccountSeries(allTxns, id, balance)` reconstructs the running
    balance backwards from the current balance and downsamples to 24 points;
    `computeTodayChangePercent(allTxns, id, balance)` yields the day's % change
    (null when no activity today or the previous balance ≤ 0). Passed to
-   `AccountCard` as `series` / `todayChangePct`.
+   `AccountGrid` → `AccountCard` as `series` / `todayChangePct`.
 
 ### Layout
 
@@ -1681,34 +1683,41 @@ with cookie forwarding).
 [Details] [Add Account]
 
 <h1>Your Accounts</h1>
-grid (1 col mobile / 2 sm / 3 lg) → <AccountCard> per account
+<AccountGrid> — dnd-kit sortable grid (1 col mobile / 2 sm / 3 lg)
+  → sortable <AccountCard> per account, GripVertical drag handle
+  → POST /api/balance-accounts/reorder on drop
 (empty message when accounts.length === 0)
 
 <h1>Quick Insight</h1>
-if yearTxns.length > 0:
-  grid (1 col mobile / 2 md) → <CashflowCard> + <AssetGrowthCard>
+if allTxns.length > 0:
+  <QuickInsightView> — two Radix period selects inside the cards:
+    Cashflow: This month / Last month / Last 3 months / This year / Last year
+    Asset Growth: This year / Last year / Last 12 months
 else:
-  <QuickInsightEmptyState>  (Sparkles icon + "No insight yet" + Add transaction CTA)
+  <QuickInsightEmptyState>  ("No insight yet" + Add transaction CTA, no icon)
 ```
 
 ### Components
 
 | File | Role |
 | ---- | ---- |
-| `src/components/balance-section.tsx` | Net worth hero **card** (iOS-parity). `rounded-[35px] bg-[#00C610] p-6 text-white`. Header: "Balance" label + delta (white `text-xs font-semibold tabular-nums`) + eye-toggle (28px white circle, `eyeFlip` animation). Delta: `deltaPct` as `+X.X% From last Month`, or `+Rp … this month` (absolute fallback when last month's base was 0) — always white on the green fill, no green/red text. Amount: `text-3xl md:text-4xl font-bold tracking-tight` + `<MaskedBalance mask="long" />`. |
-| `src/components/account-card.tsx` | **`"use client"`**. iOS-parity account card (`rounded-[35px]` white card, `min-h-[180px] flex flex-col gap-3`, hover shadow, whole card opens the edit dialog). Face: name + `ChevronRight`, then the account sparkline (`h-11`), then `MaskedBalance mask="short"` + "↑/↓ x.x% today" (`text-xs text-black/50`) for `investment`/`stocks` only. No type Badge / "Available Balance" label on the face (the Badge still appears inside the dialog). |
-| `src/components/sparkline.tsx` | **`"use client"`** (measures its container). iOS `Sparkline.swift` parity: a `ResizeObserver` measures the wrapper and the path is drawn in **real pixel geometry** (`viewBox 0 0 w 44`, `inset = 2.5`, `width` defaults to 100 for SSR/jsdom), 2.5px round stroke, `aria-hidden`. >1 point → a line through `values`; 0–1 points → a dashed flat line at 60% height, 30% opacity. Draw-in via the `.spark-reveal` **`clip-path` wipe** on the `<svg>` (0.7s ease-out, reduced-motion gated) — never `stroke-dasharray`/`pathLength` here (host-space dashes under `non-scaling-stroke` rendered it dotted). The color is chosen by the caller (`computeSparklineTrend` → `#00C610` up / `#D8000C` down / `#B0B0B0` flat). |
-| `src/components/cashflow-card.tsx` | Donut chart (pure SVG, no library). `title` prop (default "Today's Cashflow"). Two arcs (income green gradient, expense red gradient) with 20° gap, `radius=64`, rendered `w-56 h-56`. Center: `+/- N mil` (color by sign) + rupiah. Breakdown rows: `bg-[#F2F2F2] rounded-[20px]` tiles. |
-| `src/components/asset-growth-card.tsx` | iOS-parity bar chart (pure SVG). **`"use client"`** (hover state). Always 12 slots with single-letter labels (`J F M A M J J A S O N D`), `barW=16px`, gap ≈8px. **Zero-baseline scale**: `height = value / max(starting, all growth) * chartH`; recorded active bars min 12px, inactive min 6px, future months a 6px `#E5E5E5` bar at 35% opacity. Colors: `#00C610` up / `#B25B00` flat / `#D8000C` down (vs previous month); inactive `#E5E5E5`. `rx` capped at `renderedH/2`. **YTD pill**: `Sparkles` + "YTD" + signed **absolute Rupiah** (`+Rp …`) on a `#F2F2F2` capsule, green/red by sign. Hover/click tooltip (`rounded-[12px]`, month-year + `formatRupiah`), tap toggles on mobile; future months ignore hover. Bars animate in via the `.bar-grow` class (0.6s ease-out, reduced-motion gated). No hero total — net worth lives in the balance card. Legend (Growth/Stable/Decline, 7px dots). Empty state: "No transactions yet" caption. |
-| `src/components/quick-insight-empty-state.tsx` | `"use client"`. §7.5 "Nothing exists yet" empty state shown when the user has no transactions. `Sparkles` icon + "No insight yet" + helper desc + `success` "Add transaction" CTA → `/transactions/add`. |
-| `src/components/sidebar.tsx` | Desktop: `md:sticky md:top-0 self-start` — pins to viewport top while content scrolls (stays in flex flow, no layout break). Mobile: fixed bottom tab bar at `h-[var(--app-tabbar-h)]` (`calc(3.5rem + env(safe-area-inset-bottom, 0px))`, frosted `bg-white/90 backdrop-blur-xl`, `data-mobile-tabbar`) with a `bg-[#00C610]/10` pill + green icon/label for the active tab and `aria-current="page"`. `viewportFit: "cover"` in `src/app/layout.tsx` is what makes the `env()` inset non-zero on iOS; pages clear the bar with the shared token (never a hardcoded padding). |
+| `src/components/balance-section.tsx` | Net worth hero **card** (iOS-parity). `rounded-[35px] bg-brand p-6 text-white`. Header: "Balance" label + delta (white `text-xs font-semibold tabular-nums`) + eye-toggle (28px white circle, `eyeFlip` animation). Delta: `deltaPct` as `+X.X% From last Month`, or `+Rp … this month` (absolute fallback when last month's base was 0) — always white on the green fill, no green/red text. Amount: `text-3xl md:text-4xl font-bold tracking-tight` + `<MaskedBalance mask="long" />`. |
+| `src/components/account-card.tsx` | **`"use client"`**. Papery account card (`rounded-[28px] border border-hairline bg-card`, no shadow, `min-h-[180px] flex flex-col gap-3`). Face: name + optional `GripVertical` drag handle + `ChevronRight`, paper `Sparkline` (`h-11`), then `MaskedBalance mask="short"` + "↑/↓ x.x% today" (`text-xs text-ink/50`) for `investment`/`stocks` only. Whole card opens the edit dialog unless `isDragging`; the handle stops propagation. No type Badge / "Available Balance" label on the face. |
+| `src/components/sparkline.tsx` | **`"use client"`** (measures its container). iOS `Sparkline.swift` parity: a `ResizeObserver` measures the wrapper and the path is drawn in **real pixel geometry** (`viewBox 0 0 w 44`, `inset = 2.5`, `width` defaults to 100 for SSR/jsdom), 2.5px round stroke, `aria-hidden`. `variant="plain"` (default) keeps the linear path; `variant="paper"` adds a jittered cubic curve and an end dot (no grid). >1 point → a line through `values`; 0–1 points → a dashed flat line at 60% height, 30% opacity. Draw-in via the `.spark-reveal` **`clip-path` wipe** on the `<svg>` (0.7s ease-out, reduced-motion gated). The caller maps the trend to `var(--income)` up / `var(--expense)` down / `var(--stagnant)` flat. |
+| `src/components/cashflow-card.tsx` | Presentational donut chart (pure SVG, no library). `title`/`date`/`income`/`expense`/`actions` props; the dashboard passes the selected period data and the Radix period select. Quiet header: `text-sm font-semibold text-ink/50` title + `text-xs text-ink/30` date, actions on the right. Two arcs (income/expense semantic strokes) with 12° gap, `radius=64`, rendered `h-36 w-36`, 14px strokes, no shadow. Center: `Net` + one signed Rupiah value. Breakdown rows are single-line text rows with semantic labels, muted percentages, and neutral amounts; no tinted blocks, no status dots. |
+| `src/components/asset-growth-card.tsx` | iOS-parity bar chart (pure SVG). **`"use client"`** (hover state). Always 12 slots with `shortLabels`/`fullLabels` props, `barW=13px`, gap ≈12px. **Zero-baseline scale**: `height = value / max(starting, all growth) * chartH`; recorded active bars min 12px, inactive min 6px, future months a 6px `var(--chart-placeholder)` bar at 35% opacity. Colors: `var(--income)` up / `var(--stagnant)` flat / `var(--expense)` down (vs previous month); inactive `var(--chart-placeholder)`. `rx` capped at `barH/2` (max 6). **Signed change hero**: `text-2xl font-semibold` + quiet `changeLabel` (`YTD` / `Year` / `12M`); no pill, no Sparkles. Hover/click tooltip (`rounded-[10px]`, hairline, no heavy shadow), tap toggles on mobile; future months ignore hover. Bars animate via `.bar-grow` (0.6s ease-out, reduced-motion gated). Text-only legend (`Growth` / `Stable` / `Decline`, semantic text colors, no dots). Empty state caption with no icon. |
+| `src/components/quick-insight.tsx` | **`"use client"`**. Holds the Cashflow and Asset Growth period state and renders a shadcn-style Radix Select (`@radix-ui/react-select`, `src/components/select.tsx`) in each card's top row via `actions`. Receives precomputed `CashflowPeriod[]` / `GrowthPeriod[]` from the dashboard RSC, so switching is instant and never refetches. |
+| `src/components/account-grid.tsx` | **`"use client"`**. dnd-kit `DndContext` + `SortableContext` (`rectSortingStrategy`, pointer/keyboard sensors). Each `AccountCard` gets `GripVertical` listeners; drop optimistically reorders and POSTs the full id list to `/api/balance-accounts/reorder`, reverting with an inline error if the request fails. |
+| `src/components/quick-insight-empty-state.tsx` | `"use client"`. §7.5 "Nothing exists yet" empty state shown only when the user has no transactions. Plain "No insight yet" + helper desc + `success` "Add transaction" CTA → `/transactions/add`; no sparkles or decorative icon tile. |
+| `src/components/sidebar.tsx` | Desktop: `md:sticky md:top-0 self-start` — pins to viewport top while content scrolls (stays in flex flow, no layout break). Mobile: fixed bottom tab bar at `h-[var(--app-tabbar-h)]` (`calc(3.5rem + env(safe-area-inset-bottom, 0px))`, frosted `bg-white/90 backdrop-blur-xl`, `data-mobile-tabbar`) with a `bg-brand/10` pill + green icon/label for the active tab and `aria-current="page"`. `viewportFit: "cover"` in `src/app/layout.tsx` is what makes the `env()` inset non-zero on iOS; pages clear the bar with the shared token (never a hardcoded padding). |
 | `src/components/page-skeleton.tsx` | Per-route `Suspense` fallback with a `variant` prop (`dashboard` / `transactions` / `budget` / `profile` / `chat` / `add-transaction`) that mirrors that page's real geometry (AccountTab row, green balance card, account-card grid, list rows, chat header/thread/composer). `bg-[#F2F2F2] animate-pulse motion-reduce:animate-none`, whole tree `aria-hidden`. |
 
 ---
 
 ## 19. Budgets UI (frontend)
 
-The budgets feature (`src/app/budget/page.tsx`, RSC, `force-dynamic`) covers
+The budgets feature (`src/app/budget/page.tsx`, RSC inside `PageShell` +
+`Suspense`) covers
 a **single iOS-style budget summary hero** (monthly group preferred, daily
 fallback), a **spending streams bar chart**
 (per-category expense this month with budget markers), a **budgets list** with
@@ -1767,10 +1776,10 @@ confirm-dialog-gated delete.
 
 | File | Role |
 | ---- | ---- |
-| `src/components/budget-summary-cards.tsx` | RSC-presentational. Renders **one iOS-style summary hero** for the preferred group — monthly when `monthly.total > 0`, else daily, else `null`. Hero: `rounded-[35px] p-6` filled `#00C610` (or `#D8000C` when over), white text — title ("Monthly budget"/"Daily budget") + `{count} budgets` (singular-aware), `formatRupiah(abs(remaining))` (`text-3xl font-bold tracking-tight tabular-nums`), "Left to spend"/"Over budget", progress track (`h-1.5 bg-white/25`, white fill clamped 0–100%, `transition-all duration-300`), and "{spent} spent of {limit}" caption. Props: `monthly`/`daily` as `{ total, spent, count }`. Also exports `periodBadgeLabel`. |
-| `src/components/spending-streams-chart.tsx` | **`"use client"`** (hover state). Pure-HTML horizontal bar chart — one row per expense category with spend this month, sorted desc. Each row: 24-char category label + `h-3 bg-black/[0.04] rounded-full` track + `#FFBABA` (under) / `#D8000C` (over) fill + right-aligned `formatRupiah(spent)`. Budget limit marked with a vertical `w-0.5 h-4 bg-black/40` tick at the category's budget `amount` position (if a budget exists). Hover/tap tooltip (`bg-white rounded-[20px] shadow border px-3 py-2`): category + spent + budget + remaining/over. Legend (Spent / Over budget / Budget limit). Empty state: `TrendingUp` icon + "No spending this month yet". Container `rounded-[35px] border border-black/10 shadow p-6`. |
-| `src/components/budgets-list.tsx` | **`"use client"`**. iOS-style white cards (`rounded-[35px] bg-white border border-black/10 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-4`, hover shadow, `active:scale-[0.98]`, no chevron). Each card: 40px round red-tinted icon (`bg-[#FFBABA]/40 text-[#D8000C]`, icon from `categoryIcon(b.category, "w-5 h-5")`) + category `text-base font-semibold` + period (`periodLabel(b.periodDays)`, `text-xs text-black/50`); right side limit + "`Rp X left`" / "`Over Rp X`" (red when over); full-width `h-1.5` progress track below (`bg-black/[0.06]`, green `#00C610` / red `#D8000C` fill clamped 0–100%). Tap → `BudgetDetailSheet`. Exports `BudgetRow` type. Empty state is the same white card with a brand-tinted `Wallet` tile + `success` CTA (the `addTrigger` prop renders the `AddBudgetDialog` inline). |
-| `src/components/add-budget-dialog.tsx` | **`"use client"`**. 3-step wizard inside `Dialog` (model on `AddTransactionWizard`'s step pattern but compact). **Step 1**: period cards (Daily=1 / Weekly=7 / Monthly=30 / Custom → days input) — active card uses `border-[#A0FFA8] bg-[#A0FFA8]/15` ring + trailing `<Check>`. **Step 2**: category `<select>` (only `EXPENSE_CATEGORIES` not in `usedCategories`) + hero amount (`dynamicFontSize` + `formatBalanceInput`, currency prefix `IDR`). **Step 3**: review rows (Category / Period / Limit) + "Confirm and Add" → `api.budgets.$post({ json: { category, amount, periodDays } })`. Slim 2px progress track (`bg-[#00C610]` fill, `transition-all duration-300 ease-out`, width = `(step/3)*100%`). 409 "Budget for this category already exists" rendered as error pill. On success → close dialog + `router.refresh()`. Trigger is `success`/`md` Button. |
+| `src/components/budget-summary-cards.tsx` | RSC-presentational. Renders **one iOS-style summary hero** for the preferred group — monthly when `monthly.total > 0`, else daily, else `null`. Hero: `rounded-[35px] p-6` filled `bg-brand` (or `bg-expense` when over), white text — title ("Monthly budget"/"Daily budget") + `{count} budgets` (singular-aware), `formatRupiah(abs(remaining))` (`text-3xl font-bold tracking-tight tabular-nums`), "Left to spend"/"Over budget", progress track (`h-1.5 bg-white/25`, white fill clamped 0–100%, `transition-all duration-300`), and "{spent} spent of {limit}" caption. Props: `monthly`/`daily` as `{ total, spent, count }`. |
+| `src/components/spending-streams-chart.tsx` | **`"use client"`** (hover state). Pure-HTML horizontal bar chart — one row per expense category with spend this month, sorted desc. Each row: 24-char category label + `h-3 bg-black/[0.04] rounded-full` track + `#FFBABA` (under) / `#D8000C` (over) fill + right-aligned `formatRupiah(spent)`. Budget limit marked with a vertical `w-0.5 h-4 bg-black/40` tick at the category's budget `amount` position (if a budget exists). Hover/tap tooltip (`bg-card rounded-[20px] border border-hairline px-3 py-2`): category + spent + budget + remaining/over. Text-only legend (Spent / Over budget / Budget limit, no dots). Empty state: `TrendingUp` icon + "No spending this month yet". Container `rounded-[35px] border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6`. |
+| `src/components/budgets-list.tsx` | **`"use client"`**. iOS-style cards (`rounded-[35px] bg-card border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-4`, hover shadow, `active:scale-[0.98]`, no chevron). Each card: 40px round expense-tinted icon (`bg-expense-tint text-expense`, icon from `categoryIcon(b.category, "w-5 h-5")`) + category `text-base font-semibold` + period (`periodLabel(b.periodDays)`, `text-xs text-ink/50`); right side limit + "`Rp X left`" / "`Over Rp X`" (red when over); full-width `h-1.5` progress track below (`bg-hairline-track`, `bg-brand` / `bg-expense` fill clamped 0–100%). Tap → `BudgetDetailSheet`. Exports `BudgetRow` type. Empty state is the same white card with a brand-tinted `Wallet` tile + `success` CTA (the `addTrigger` prop renders the `AddBudgetDialog` inline). |
+| `src/components/add-budget-dialog.tsx` | **`"use client"`**. 3-step wizard inside `Dialog` (model on `AddTransactionWizard`'s step pattern but compact). **Step 1**: period cards (Daily=1 / Weekly=7 / Monthly=30 / Custom → days input) — active card uses `border-[#A0FFA8] bg-[#A0FFA8]/15` ring + trailing `<Check>`. **Step 2**: category `<select>` (only `EXPENSE_CATEGORIES` not in `usedCategories`) + hero amount (`dynamicFontSize` + `formatBalanceInput`, currency prefix `IDR`). **Step 3**: review rows (Category / Period / Limit) + "Confirm and Add" → `api.budgets.$post({ json: { category, amount, periodDays } })`. Slim 2px progress track (`bg-brand` fill, `transition-all duration-300 ease-out`, width = `(step/3)*100%`). 409 "Budget for this category already exists" rendered as error pill. On success → close dialog + `router.refresh()`. Trigger is `success`/`md` Button. |
 | `src/components/budget-detail-sheet.tsx` | **`"use client"`**. Bottom sheet (mobile `rounded-t-[28px]` + drag handle) / centered (desktop `sm:rounded-[28px]`). Sections: category pill (`bg-[#FFBABA] text-[#D8000C]` + `categoryIcon`) + `✕` close → hero "Budget limit" + `formatRupiah(amount)` + spent caption + progress bar (green/red by over) → inset detail card (`rounded-[20px] bg-[#FAFAFA] divide-y divide-black/[0.04]`) with DetailRows (Period / Limit / Spent / Remaining) → full-width delete trigger (`h-11 rounded-[35px] bg-[#FFBABA] text-[#D8000C]`) → confirm `Dialog` (sibling fragment, `softred` Delete + `outline` Cancel, `loading`-gated `onOpenChange`) → `api.budgets[":id"].$delete` → `router.refresh()`. `sheetIn` animation (12px slide-up + fade, 200ms). |
 | `src/components/subscription-list.tsx` | **`"use client"`**. Same §7.2 row pattern as `budgets-list`. Each row: 40px round icon (transfer orange `bg-[#FFD9A0]/40 text-[#B25B00]`, since subscriptions are recurring outflows) + name + `categoryLabel(category) · periodLabel(periodDays)` subtitle + "Next {date}" caption (via `nextBillingDate`) + amount + "Inactive" tag when `!active` + chevron. Tap → `SubscriptionDetailSheet`. Exports `SubscriptionRow` type. Empty state with `Repeat` icon + `success` CTA. |
 | `src/components/add-subscription-dialog.tsx` | **`"use client"`**. Single `Dialog` form (not a wizard — subscriptions are simpler than budgets). Fields: name (`AuthInput`), category `<select>` (`EXPENSE_CATEGORIES`), billing cycle `<select>` (Weekly=7 / Monthly=30 / Yearly=365), start date (`<input type="date">`), hero amount (`dynamicFontSize` + `formatBalanceInput`). Submit → `api.subscriptions.$post({ json: { name, amount, category, periodDays, startDate, active: true } })`. 409 "Subscription with this name already exists" → error pill. On success → `router.refresh()`. Trigger is `success`/`md` Button. |
@@ -1784,7 +1793,7 @@ confirm-dialog-gated delete.
 | ------- | ----- | ------- |
 | Budget icon tile | `bg-[#FFBABA]/40 text-[#D8000C]` | Budget list rows, budget detail pill |
 | Subscription icon tile | `bg-[#FFD9A0]/40 text-[#B25B00]` | Subscription list rows, subscription detail pill |
-| Under-budget progress | `bg-[#00C610]` (brand green) | Summary cards, list mini-bars, detail sheet bar |
+| Under-budget progress | `bg-brand` (brand green) | Summary cards, list mini-bars, detail sheet bar |
 | Over-budget progress | `bg-[#D8000C]` (expense red) | Summary cards, list mini-bars, detail sheet bar |
 | Spending-streams bar fill | `bg-[#FFBABA]` (under) / `bg-[#D8000C]` (over) | `spending-streams-chart` |
 | Budget limit tick | `bg-black/40` | `spending-streams-chart` |
@@ -1876,7 +1885,7 @@ touching the frontend.
 The conditional rendering ensures **one `variant="success"` CTA per surface**
 (§12): the upgrade card shows the wizard trigger (success variant), the Plus
 card shows an outline Downgrade button — never two greens at once. Both cards
-use the §4.6 AccountCard shape (`rounded-[35px] border border-black/10 shadow-
+use the profile card shape (`rounded-[35px] border border-hairline shadow-
 [0_4px_24px_-8px_rgba(0,0,0,0.08)]`) — no saturated green background (the
 sign-in screen is the only saturated surface per §9). Real pricing (Rp 24.500
 first month / Rp 49.000 regular) — no placeholders. Entrance animations use
@@ -1994,116 +2003,131 @@ model PlusOrder {
 ## 21. Landing Page (frontend) — public marketing surface
 
 `src/app/page.tsx` is the **public, unauthenticated** root route (`/`). It is a
-React Server Component (RSC) and deliberately stands **outside** the 3-layer
-backend and the type-safety chain — it imports neither `requireAuth`, nor
-Prisma, nor the Hono `App`, nor the `api` RPC client. Its sole job is marketing
-copy + SEO, so that an anonymous visitor lands on `/` and sees the product
-before auth, while `/dashboard`, `/budget`, `/transactions`, `/profile`, and
-`/chat` remain auth-gated and untouched.
+React Server Component and deliberately stands **outside** the 3-layer backend
+and the type-safety chain: no `requireAuth`, no Prisma, no Hono `App`, no `api`
+RPC client. It renders marketing copy + SEO only; the auth-gated app routes
+(`/dashboard`, `/budget`, `/transactions`, `/profile`, `/chat`) are separate.
 
 ### Composition
 
-`page.tsx` renders `<LandingPage/>` (re-exported from `src/components/landing/`,
-21 components) wrapped with four `<script type="application/ld+json">` blobs:
-
 ```
-src/app/page.tsx                       # public RSC — metadata + JSON-LD + <LandingPage/>
+src/app/page.tsx                       # public RSC — metadata + JSON-LD + <LandingPageView/>
 src/components/landing/
   ├─ index.tsx                         # <LandingPage/> (async RSC) → <LandingPageView session> (sync, testable)
-  ├─ reveal.tsx                        # "use client" — IntersectionObserver fade/translate (≤300ms)
-  ├─ scroll-progress.tsx               # "use client" — top reading-progress bar
-  ├─ landing-nav.tsx                   # sticky translucent nav (Get started / Sign in)
-  ├─ smooth-scroll.tsx                 # "use client" — Lenis smooth scroll + hash-click gliding
-  ├─ hero-headline.tsx                 # "use client" — staggered line-mask reveal H1 (green accent)
-  ├─ hero-preview.tsx                  # hero net-worth mockup, wrapped in <TiltCard>
-  ├─ animated-counter.tsx              # "use client" — count-up on reveal
-  ├─ marquee.tsx                       # infinite logos strip (green-fill pill hover)
-  ├─ video-showcase.tsx                # "See it in motion" — wraps <AutoVideo>
-  ├─ auto-video.tsx                    # "use client" — the ONLY <video> in the repo
-  ├─ spotlight.tsx                     # "use client" — mouse-follow green radial glow (CSS vars)
-  ├─ tilt.tsx                          # "use client" — 3D perspective tilt (±6°, perspective:1200px)
-  ├─ magnetic.tsx                      # "use client" — cursor-follow CTA nudge (≤4px, 150ms)
-  ├─ feature-grid.tsx                  # 3-up feature cards (SpotlightCard + hover lift)
-  ├─ showcase.tsx                      # alternating image/text feature rows
-  ├─ vignettes.tsx                     # 3× 9:16 silent vignettes (AutoVideo per slot)
-  ├─ privacy-spotlight.tsx             # balance-masking marketing copy
-  ├─ pricing.tsx                       # Plus pricing tiers (SpotlightCard, green-glow hover)
-  ├─ faq.tsx                           # animated FAQ accordion + FAQ_ITEMS constant
-  ├─ footer.tsx                        # links + copyright
-  └─ mock-data.ts                      # stat/feature copy
+  ├─ landing-nav.tsx                   # sticky paper nav, green logo + wordmark, one green pill
+  ├─ hero.tsx                          # mixed statement + CTA + borderless nanite stage
+  ├─ hero-statement.tsx                # "use client" — sans lead + serif statement, word reveal
+  ├─ money-snapshot.tsx                # "use client" — masked theme-aware stage + random 1-3 real-component composition
+  ├─ nanite-field.tsx                  # "use client" — roaming/search nanite field, tone ink/paper, reduced-motion static
+  ├─ product-story.tsx                 # sticky 3-step story, real components, inert sheets, auto-reveal balance
+  ├─ sketch-line.tsx                   # "use client" — animated sketch line chart
+  ├─ use-in-view.ts                    # one-shot IntersectionObserver
+  ├─ feature-cards.tsx                 # 3 sketch-line cards
+  ├─ editorial-section.tsx             # pull statement + savings line chart
+  ├─ learn-section.tsx                 # spending line chart + static note
+  ├─ pricing.tsx                       # honest supporter tier, plain columns
+  ├─ faq.tsx                           # borderless <details> + FAQ_ITEMS
+  ├─ endcap.tsx                        # paper CTA
+  ├─ footer.tsx                        # ink field, real links
+  └─ copyright-year.tsx
 ```
 
-`<LandingPage/>` order: `ScrollProgress` → `LandingNav` → hero (`HeroPreview`)
-→ `Marquee` → `VideoShowcase` → `FeatureGrid` →
-`Showcase` → `Vignettes` → `PrivacySpotlight` → `Pricing` → `Faq` → final CTA
-→ `Footer`. (The animated stat strip is currently commented out in `index.tsx`.)
-Anchor navigation uses `/#section` hrefs (nav, footer, hero) glided by
-`SmoothScroll` — a Lenis-powered "use client" layer in `LandingPageView`
-(eased rAF loop, −88px offset for the sticky nav, deep-link hash settling +
-`replaceState` cleanup). It never mounts under `prefers-reduced-motion`, and
-`globals.css` carries Lenis's recommended `.lenis` styles.
+`<LandingPageView>` order: `LandingNav` → `Hero` (with `MoneySnapshot`) →
+`ProductStory` → `FeatureCards` → `EditorialSection` → `LearnSection` →
+`Pricing` → `Faq` → `Endcap` → `Footer`. There is no video section.
 
-### `AutoVideo` — the only `<video>` in the repo
+### Register
 
-`src/components/landing/auto-video.tsx` is a `"use client"` component that
-renders an HTML `<video>` with `muted`, `loop`, `playsInline`, and a poster tint
-that fades out once the media can play. Props (see `video-showcase.tsx`):
+The landing follows **anthropic.com's company register, not Claude's product
+register**:
 
-```tsx
-<AutoVideo
-  webm="/videos/brand.webm"                       // local drop-in (public/videos/brand.webm)
-  mp4="https://…vercel-storage.com/budgieDemo.mp4"  // hosted Vercel-Blob fallback (same clip as README.md)
-  label="Budgie app walkthrough, sixty seconds, silent"
-  glyphSize="w-16 h-16"
-  posterClassName="bg-[#FAFAFA]"
-  frameClassName="mt-10 aspect-[16/9] rounded-[35px] …"
-/>
-```
+- Warm paper, ink, hairline borders only on cards/frames, no section
+  separators, no image plates, no shadows, no gradients.
+- **Budgie green + ink** are the accents. The brand green is sampled from the
+  logo dollar sign (`#5ABB37`), with `#41802A` for stronger text and hover
+  states. No clay/terracotta.
+- Wise clarity, Anthropic register: a borderless theme-aware nanite stage that builds
+  a random 1 to 3 card composition every 4.6s from real app components (income
+  and expense `TransactionItem` rows, `CashflowCard`, `BudgetSummaryCards`),
+  scaled down, plus a minimalist nav. The nanites roam and search toward a
+  card like a physical form of Budgie AI; there is no orbit or ring.
+- Mixed typography: hero sans lead 600 + serif statement 400, section headings
+  serif 300, body sans 17/26. Landing cards use Apple-soft radii
+  (`20/24px`, `corner-shape: squircle`), not rigid 12px.
+- Feature and editorial visuals are **animated sketch line charts**
+  (`sketch-line.tsx`), not abstract images. The product story uses the real
+  `BalanceSection`, `BudgetSummaryCards`, `SpendingStreamsChart`, and
+  `CashflowCard` components with sample props. The sheets are `inert` (no
+  clicks, focus, or tooltips); `AutoRevealBalance` supplies a demo-local
+  visibility state so the balance reveals once without touching the saved
+  preference. **Never copy Anthropic or Claude
+  assets.**
+- No mascot, radial mark, badges, blinking dots, uppercase labels, em/en dashes, middle dots,
+  or fake product claims.
+- Plus is optional support, not a gated feature.
 
-The `<video>` lists `webm` first, `mp4` second; the browser picks the first it
-supports (modern Chromium/Firefox use `.webm`, Safari falls back to `.mp4`).
-Under `prefers-reduced-motion: reduce` the video does **not** autoplay and the
-poster stays — the surrounding text carries the message. `budgieDemo.mp4` is
-the exact same hosted Vercel-Blob clip embedded as the demo `<video>` in
-`README.md`, so the landing page and the README demo never drift apart.
+### Motion
 
-### Video asset drop-in — `public/videos/`
-
-`public/videos/` is a **drop-in** directory: it ships only a `README.md`
-specifying filenames (`brand.webm` + `brand.mp4` for the 16:9 main walkthrough;
-`vignette-1..3.webm`/`.mp4` for 9:16 vignettes). Until the files land, the page
-never looks broken — `AutoVideo` keeps its poster layer up and the `<video>`
-silently no-ops. The moment a matching file exists at `/videos/brand.webm` (or
-is resolved via the Vercel-Blob `mp4` URL), the section lights up. See
-`public/videos/README.md` for compression targets (≤8MB brand, ≤3MB vignettes,
-silent, loopable).
+- Hero word reveal, once.
+- `NaniteField`: 100 to 140 dots in a canvas. Each dot wanders on its own
+  smooth phase and keeps a minimum distance from its neighbors; there is no
+  cohesion or alignment, so the field never merges. A short search pull toward
+  a card fades before dispersing. Every dot has a thin outline, plus faint
+  connection edges to nearby dots. No orbit, no ring, no random per-frame
+  jitter. Pause offscreen, DPR capped at 2, reduced motion draws a single
+  static field. The stage mask contains it without a card edge.
+- `MoneySnapshot`: every 4.6s it builds a random composition of 1 to 3 real
+  app components (`TransactionItem`, `CashflowCard`, `BudgetSummaryCards`),
+  scaled down and placed in loose slots with jitter. The three-card composition
+  uses the compact pool so the tall summary card is not stacked three times.
+  Each card floats on its own CSS path (direction, 5 to 8 second duration,
+  negative delay, tiny rotation). Cards spawn with opacity, scale, and blur,
+  hold, then despawn. Reduced motion shows the initial income and summary cards
+  statically with no float or cycle. The slot is `inert`, so no real control is
+  clickable.
+- Product story: active title/body cross-fades, and the active panel reveals
+  with a paper-sheet clip-path wipe. The balance auto-reveals once through a
+  demo-local state; the panels are inert.
+- `SketchLine`: left-to-right clip-path draw-in on view. No dash-based draws,
+  no fake live counters.
+- No per-section fade-slide, marquee, or scroll-progress bar.
 
 ### SEO surface
 
-`page.tsx` exports a full Next.js `metadata` export (title/description/keywords,
-`openGraph.videos` for both `brand.mp4` and `brand.webm` at 1920×1080, twitter
-card) plus four JSON-LD blocks injected as raw `<script type="application/ld+json">`:
-
-- `WebApplication` — `applicationCategory: "FinanceApplication"`, free `Offer` in IDR.
-- `BreadcrumbList` — Home → Pricing (`#pricing`) → FAQ (`#faq`).
-- `FAQPage` — generated from the `FAQ_ITEMS` constant in `src/components/landing/faq.tsx`.
-- `VideoObject` — `contentUrl` = the Vercel-Blob `brand.mp4`, `duration: "PT1M0S"`.
-
-Supporting files in `src/app/`: `sitemap.ts`, `robots.ts`, `opengraph-image.tsx`.
+`page.tsx` exports Next.js `metadata` (title/description/keywords, OpenGraph,
+Twitter card) plus JSON-LD blocks: `WebApplication` (FinanceApplication, free
+IDR offer), `BreadcrumbList` (Home → Pricing → FAQ), and `FAQPage` generated
+from `FAQ_ITEMS`. Supporting files: `sitemap.ts`, `robots.ts`,
+`opengraph-image.tsx`, and the restored `public/favicon.ico` + app icons.
 
 ### Gotchas
 
-- **Do not add auth, Prisma, or Hono to the landing page.** It is intentionally
-  public and static. Any data needs belong to the auth-gated routes or the
-  `/api` Hono app — the landing page reads nothing from the DB.
-- **`AutoVideo` is the only `<video>` in the repo.** Don't reach for a second
-  video primitive; extend this one. If you need a new vignette slot, reuse
-  `AutoVideo` with different `webm`/`mp4`/`label` props (see `vignettes.tsx`).
-- **The README demo `<video>` and the landing `AutoVideo` share one mp4 URL.**
-  Keep them in sync — swap the Vercel-Blob asset in both `auto-video.tsx`'s
-  usage site (`video-showcase.tsx`) and `README.md` together.
-- **Missing video assets must never break the page.** The poster stays up by
-  design; do not "fix" the silent failure into an error state.
+- **Do not add auth, Prisma, or Hono to the landing page.** It is public and
+  static.
+- **Do not add abstract images or stock photos.** Use `SketchLine` for data
+  visuals or a real app component for product demos.
+- **Do not reintroduce the walkthrough video.** The borderless
+  `MoneySnapshot` stage in the hero is the replacement; there is no
+  `DemoSection`, `HeroMedia`, `AutoVideo`, or `public/videos/`.
+- **Do not fake live data.** The product story renders real components with
+  sample props, and the hero account values are static; no count-up or timer
+  simulations.
+- **The hero stage is borderless by design.** It is a masked theme-aware layer
+  (`bg-transparent` in light, `bg-ink-field` in dark), not a card. Keep the nanites
+  in that layer and the real-component card
+  cycle above it so the cards stay crisp and no dots show through their
+  surfaces. The card slot stays `inert`; the real controls are only there for
+  visual fidelity.
+- **The showcase is non-interactive by design.** Keep `inert` on every
+  `.paper-sheet`; if a component needs motion, drive it through a wrapper like
+  `AutoRevealBalance`, never by leaving a control clickable.
+- **No section separators or list rules.** Card/frame borders are allowed;
+  `border-t`/`border-b`/`divide-y` between sections or rows are not.
+- **No badges or dashes in UI copy.** See [`ANTI_SLOP.md`](./ANTI_SLOP.md).
+  `tests/components/landing/anti-slop.test.ts`
+  enforces this.
+- **Plus claims must stay honest.** Every feature is free; Plus is optional
+  support.
 
 ---
 

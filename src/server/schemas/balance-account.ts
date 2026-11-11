@@ -23,5 +23,12 @@ export const UpdateBalanceAccountSchema =
     type: z.string(),
   });
 
+export const ReorderBalanceAccountsSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+});
+
 export type CreateBalanceAccount = z.infer<typeof CreateBalanceAccountSchema>;
 export type UpdateBalanceAccount = z.infer<typeof UpdateBalanceAccountSchema>;
+export type ReorderBalanceAccounts = z.infer<
+  typeof ReorderBalanceAccountsSchema
+>;

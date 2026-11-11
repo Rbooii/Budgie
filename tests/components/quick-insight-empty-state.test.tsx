@@ -15,6 +15,11 @@ describe("QuickInsightEmptyState", () => {
     expect(screen.getByText("No insight yet")).toBeInTheDocument();
   });
 
+  it("does not render a sparkles icon", () => {
+    const { container } = render(<QuickInsightEmptyState />);
+    expect(container.querySelector(".lucide-sparkles")).toBeNull();
+  });
+
   it("renders the helper description", () => {
     render(<QuickInsightEmptyState />);
     expect(

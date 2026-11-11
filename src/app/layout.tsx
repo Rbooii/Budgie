@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import { ThemeProvider, ThemeScript } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -13,12 +13,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Notion-style Inter — applied to the public landing page only (the app keeps
-// Geist). Loaded alongside Geist so the landing surface can opt in via
-// `font-[family-name:var(--font-inter)]`.
-const inter = Inter({
-  variable: "--font-inter",
+// Editorial serif for the landing and page titles. Anthropic Serif is
+// proprietary; Newsreader is the closest open-source transitional serif.
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
   subsets: ["latin"],
+  style: ["normal", "italic"],
+  display: "swap",
 });
 
 // `viewport-fit=cover` is what makes `env(safe-area-inset-*)` non-zero on iOS,
@@ -28,16 +29,16 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f7f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#101014" },
+    { media: "(prefers-color-scheme: light)", color: "#faf9f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#141413" },
   ],
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
-  title: "Budgie",
+  title: "Budgie, a clearer way to see your money",
   description:
-    "A calm, minimal personal-finance app for tracking accounts, transactions, budgets, and subscriptions. Built around the rupiah.",
+    "See your balance, plan your savings, and learn where your spending goes. A personal finance app built for rupiah and everyday money.",
 };
 
 export default function RootLayout({
@@ -49,7 +50,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-screen text-ink">
         <ThemeScript />

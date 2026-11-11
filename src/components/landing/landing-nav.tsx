@@ -5,17 +5,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
-  { label: "Use cases", href: "/#use-cases" },
-  { label: "Features", href: "/#features" },
+  { label: "Product", href: "/#live" },
   { label: "Pricing", href: "/#pricing" },
-  { label: "FAQ", href: "/#faq" },
+  { label: "Questions", href: "/#faq" },
 ] as const;
 
-export function LandingNav({
-  session
-}:{
-  session : boolean
-}) {
+export function LandingNav({ session }: { session: boolean }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -29,15 +24,14 @@ export function LandingNav({
   return (
     <header
       className={`sticky top-0 z-50 transition-colors duration-200 ${
-        scrolled
-          ? "bg-screen/80 backdrop-blur-sm border-b border-hairline"
-          : "bg-transparent border-b border-transparent"
+        scrolled ? "bg-paper/85 backdrop-blur-md" : "bg-transparent"
       }`}
     >
-      <nav className="mx-auto max-w-screen-xl flex items-center justify-between px-5 sm:px-8 py-3.5">
+      <nav className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-4 sm:px-8">
         <Link
           href="/"
-          className="flex items-center gap-2 font-bold text-xl tracking-tight text-ink"
+          className="flex items-center gap-2.5 font-sans text-[19px] font-semibold tracking-[-0.03em] text-ink"
+          aria-label="Budgie"
         >
           <Image
             src="/android-chrome-192x192.png"
@@ -48,39 +42,35 @@ export function LandingNav({
           />
           Budgie
         </Link>
-        <div className="hidden sm:flex items-center gap-8">
+
+        <div className="hidden items-center gap-6 md:flex">
           {NAV_LINKS.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-ink/60 hover:text-ink transition"
+              className="text-[13px] text-ink/60 transition-colors hover:text-ink"
             >
               {item.label}
             </a>
           ))}
         </div>
-        {!session && <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-4">
+          {!session && (
+            <Link
+              href="/sign-in"
+              className="hidden text-[13px] text-ink/60 transition-colors hover:text-ink sm:block"
+            >
+              Sign in
+            </Link>
+          )}
           <Link
-            href="/sign-in"
-            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-card text-ink border border-hairline hover:bg-surface active:scale-[0.98] transition transform duration-150"
+            href={session ? "/dashboard" : "/sign-in"}
+            className="inline-flex h-9 items-center justify-center rounded-full bg-brand px-4 text-[13px] font-medium text-white transition-colors hover:bg-brand/90"
           >
-            Sign in
+            {session ? "Open Budgie" : "Start free"}
           </Link>
-          <Link
-            href="/sign-in"
-            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-brand text-white hover:bg-brand/90 active:scale-[0.98] transition transform duration-150"
-          >
-            Get started
-          </Link>
-        </div>}
-        {session && <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center text-sm font-normal py-[10px] px-[20px] rounded-[35px] bg-brand text-white hover:bg-brand/90 active:scale-[0.98] transition transform duration-150"
-          >
-            Dashboard
-          </Link>
-        </div>}
+        </div>
       </nav>
     </header>
   );

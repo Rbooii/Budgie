@@ -4,7 +4,7 @@ import type { CreateBalanceAccount, UpdateBalanceAccount } from "@/server/schema
 export async function listBalanceAccounts(userId: string) {
   return prisma.balanceAccount.findMany({
     where: { userId },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
   });
 }
 
@@ -16,7 +16,45 @@ export async function createBalanceAccount(
   userId: string,
   input: CreateBalanceAccount,
 ) {
-  return prisma.balanceAccount.create({ data: { ...input, userId } });
+  return prisma.$transaction(async (tx) => {
+    const max = await tx.balanceAccount.aggregate({
+      where: { userId },
+      _max: { sortOrder: true },
+    });
+    return tx.balanceAccount.create({
+      data: {
+        ...input,
+        userId,
+        sortOrder: (max._max.sortOrder ?? -1) + 1,
+      },
+    });
+  });
+}
+
+export async function reorderBalanceAccounts(userId: string, ids: string[]) {
+  const owned = await prisma.balanceAccount.findMany({
+    where: { userId },
+    select: { id: true },
+  });
+  const ownedIds = new Set(owned.map((account) => account.id));
+  const uniqueIds = new Set(ids);
+
+  if (
+    ids.length !== ownedIds.size ||
+    uniqueIds.size !== ids.length ||
+    ids.some((id) => !ownedIds.has(id))
+  ) {
+    throw new Error("Invalid order");
+  }
+
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.balanceAccount.update({
+        where: { id },
+        data: { sortOrder: index },
+      }),
+    ),
+  );
 }
 
 export async function updateBalanceAccount(

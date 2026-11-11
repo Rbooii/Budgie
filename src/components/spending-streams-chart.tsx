@@ -22,26 +22,16 @@ interface SpendingStreamsChartProps {
   /** `card` (default) renders the full app card chrome; `bare` drops the
    *  background/border/shadow so the chart can sit on a marketing surface. */
   variant?: "card" | "bare";
-  /** Marketing previews mark genuinely live data with a quiet dot + caption. */
-  live?: boolean;
 }
 
 const CARD_CLASS =
   "w-full bg-card rounded-[35px] border border-hairline shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] p-6";
 
-function ChartHeader({ monthLabel, live }: { monthLabel: string; live: boolean }) {
+function ChartHeader({ monthLabel }: { monthLabel: string }) {
   return (
     <div className="flex items-center justify-between">
       <h2 className="text-sm font-semibold text-ink/50">Spending Streams</h2>
-      <span className="flex items-center gap-2.5">
-        {live && (
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-income uppercase tracking-wide">
-            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-brand" />
-            Live
-          </span>
-        )}
-        <span className="text-xs text-ink/30">{monthLabel}</span>
-      </span>
+      <span className="text-xs text-ink/30">{monthLabel}</span>
     </div>
   );
 }
@@ -51,7 +41,6 @@ export function SpendingStreamsChart({
   budgets,
   monthLabel,
   variant = "card",
-  live = false,
 }: SpendingStreamsChartProps) {
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -72,7 +61,7 @@ export function SpendingStreamsChart({
   if (!hasData) {
     return (
       <div className={variant === "bare" ? "w-full" : CARD_CLASS}>
-        <ChartHeader monthLabel={monthLabel} live={live} />
+        <ChartHeader monthLabel={monthLabel} />
         <p className="text-2xl font-bold tracking-tight tabular-nums text-ink mt-2">
           {formatRupiah(0)}
         </p>
@@ -82,7 +71,7 @@ export function SpendingStreamsChart({
           </div>
         </div>
         <p className="text-sm text-ink/40 text-center -mt-4">
-          No spending this month yet — your streams will appear here.
+          No spending this month yet. Your streams will appear here.
         </p>
       </div>
     );
@@ -90,7 +79,7 @@ export function SpendingStreamsChart({
 
   return (
     <div className={variant === "bare" ? "w-full" : CARD_CLASS}>
-      <ChartHeader monthLabel={monthLabel} live={live} />
+      <ChartHeader monthLabel={monthLabel} />
       <p className="text-2xl font-bold tracking-tight tabular-nums text-ink mt-2">
         {formatRupiah(totalSpent)}
       </p>
@@ -156,8 +145,8 @@ export function SpendingStreamsChart({
                     <p className="text-[10px] text-ink/40 tabular-nums mt-1">
                       Budget {formatRupiah(budget as number)}
                       {over
-                        ? " · over"
-                        : ` · ${formatRupiah(remaining as number)} left`}
+                        ? ", over"
+                        : `, ${formatRupiah(remaining as number)} left`}
                     </p>
                   )}
                 </div>
@@ -167,19 +156,10 @@ export function SpendingStreamsChart({
         })}
       </div>
 
-      <div className="flex items-center gap-4 mt-4">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-expense-tint" />
-          <span className="text-[10px] text-ink/40">Spent</span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-expense" />
-          <span className="text-[10px] text-ink/40">Over budget</span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-0.5 h-3 bg-ink/40 rounded-full" />
-          <span className="text-[10px] text-ink/40">Budget limit</span>
-        </span>
+      <div className="mt-4 flex items-center gap-4 text-[10px] font-medium">
+        <span className="text-ink/40">Spent</span>
+        <span className="text-expense">Over budget</span>
+        <span className="text-ink/50">Budget limit</span>
       </div>
     </div>
   );

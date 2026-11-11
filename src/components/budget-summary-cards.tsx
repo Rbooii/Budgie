@@ -1,5 +1,4 @@
 import { formatRupiah } from "@/lib/format";
-import { periodLabel } from "@/lib/budget";
 
 interface BudgetGroupSummary {
   total: number;
@@ -58,8 +57,4 @@ export function BudgetSummaryCards({ monthly, daily }: BudgetSummaryCardsProps) 
       </p>
     </div>
   );
-}
-
-export function periodBadgeLabel(periodDays: number): string {
-  return periodLabel(periodDays);
 }

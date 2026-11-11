@@ -124,8 +124,13 @@ category already exists" }`. `category` must be an `EXPENSE_CATEGORIES` value,
 | GET | `/api/balance-accounts/:id` | — | `200 BalanceAccount` | 400, 401, 404 |
 | POST | `/api/balance-accounts` | `{ name, type, balance?, currency? }` | `201 BalanceAccount` | 400, 401 |
 | PATCH | `/api/balance-accounts/:id` | `{ name, balance, currency, type }` (all required) | `200 BalanceAccount` | 400, 401, 404 |
+| POST | `/api/balance-accounts/reorder` | `{ ids: string[] }` (the full ordered account id list) | `200 { ok: true }` | 400, 401 |
 | DELETE | `/api/balance-accounts/:id` | — | `204` | 400, 401, 404 |
 
+`GET /api/balance-accounts` returns accounts ordered by `sortOrder ASC,
+createdAt DESC`. `POST /reorder` validates that `ids` is the complete,
+duplicate-free set of the user's accounts, then writes `sortOrder = index` in
+one `$transaction`. New accounts are appended with `max(sortOrder) + 1`.
 `DELETE` runs in one `$transaction`: it removes the account's **source-side**
 transactions and then the account. Transfers *into* the account keep their
 history (`toBalanceAccount` → `SetNull`).
@@ -139,6 +144,7 @@ history (`toBalanceAccount` → `SetNull`).
   "balance": 1500000,
   "currency": "IDR",
   "type": "bank",
+  "sortOrder": 0,
   "userId": "user-id",
   "createdAt": "2026-01-01T00:00:00.000Z",
   "updatedAt": "2026-01-01T00:00:00.000Z"

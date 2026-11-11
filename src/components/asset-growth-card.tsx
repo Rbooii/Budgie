@@ -1,11 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, TrendingUp } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { formatRupiah } from "@/lib/format";
-
-const MONTH_LABELS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
-const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 const GROWTH_COLORS = {
   up: "var(--income)",
@@ -16,13 +12,17 @@ const GROWTH_COLORS = {
 const PLACEHOLDER_COLOR = "var(--chart-placeholder)";
 
 interface AssetGrowthCardProps {
-  year: number;
   data: { month: number; value: number }[];
   startingValue: number;
   currentTotal: number;
   currentMonth: number;
   hasTransactions: boolean;
   activeMonths: boolean[];
+  shortLabels: string[];
+  fullLabels: string[];
+  rangeLabel: string;
+  changeLabel: string;
+  actions?: ReactNode;
 }
 
 function signedRupiah(value: number) {
@@ -30,18 +30,22 @@ function signedRupiah(value: number) {
 }
 
 export default function AssetGrowthCard({
-  year,
   data,
   startingValue,
   currentTotal,
   currentMonth,
   hasTransactions,
   activeMonths,
+  shortLabels,
+  fullLabels,
+  rangeLabel,
+  changeLabel,
+  actions,
 }: AssetGrowthCardProps) {
   const [hovered, setHovered] = useState<number | null>(null);
 
-  const ytd = currentTotal - startingValue;
-  const ytdColor = ytd >= 0 ? "text-brand" : "text-expense";
+  const change = currentTotal - startingValue;
+  const changeColor = change >= 0 ? "text-brand" : "text-expense";
 
   const chartW = 300;
   const chartH = 100;
@@ -49,13 +53,14 @@ export default function AssetGrowthCard({
   const svgH = chartH + labelH;
   const padX = 4;
   const slot = (chartW - padX * 2) / 12;
-  const barW = 16;
+  const barW = 13;
 
   const valueByMonth = new Map(data.map((d) => [d.month, d.value]));
   const maxValue = Math.max(startingValue, ...data.map((d) => d.value), 0.01);
 
   function barColor(month: number, value: number) {
-    const prev = month === 0 ? startingValue : valueByMonth.get(month - 1) ?? startingValue;
+    const prev =
+      month === 0 ? startingValue : valueByMonth.get(month - 1) ?? startingValue;
     const delta = value - prev;
     if (Math.abs(delta) < 0.005) return GROWTH_COLORS.flat;
     return delta > 0 ? GROWTH_COLORS.up : GROWTH_COLORS.down;
@@ -68,25 +73,36 @@ export default function AssetGrowthCard({
       : 0;
 
   return (
-    <div className="w-full h-fit bg-card rounded-[35px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.08)] border border-hairline p-6">
-      {/* Label + YTD pill */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-baseline gap-1.5 min-w-0">
-          <h2 className="text-base font-semibold text-ink truncate">Asset Growth</h2>
-          <span className="text-sm text-ink/30 tabular-nums">{year}</span>
+    <div className="w-full h-fit bg-card rounded-[35px] border border-hairline p-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-sm font-semibold text-ink/50">
+            Asset Growth
+          </h2>
+          <p className="mt-0.5 text-xs text-ink/30 tabular-nums">{rangeLabel}</p>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-1 shrink-0">
-          <Sparkles className="w-3 h-3 text-ink/60" />
-          <span className="text-[11px] font-semibold text-ink/60">YTD</span>
-          <span className={`text-[11px] font-semibold tabular-nums ${ytdColor}`}>
-            {signedRupiah(ytd)}
-          </span>
+        {actions && <div className="shrink-0">{actions}</div>}
+      </div>
+
+      <div className="mt-3 flex items-baseline gap-2">
+        <p
+          className={`text-2xl font-semibold tracking-tight tabular-nums ${changeColor}`}
+        >
+          {signedRupiah(change)}
+        </p>
+        <span className="text-[11px] font-medium text-ink/40">
+          {changeLabel}
         </span>
       </div>
 
-      {/* Bar chart — always 12 slots, baseline 0 */}
       <div className="relative mt-4">
-        <svg viewBox={`0 0 ${chartW} ${svgH}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+        <svg
+          viewBox={`0 0 ${chartW} ${svgH}`}
+          className="w-full h-auto"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label={`Asset growth ${rangeLabel}: ${signedRupiah(change)} ${changeLabel}`}
+        >
           {Array.from({ length: 12 }, (_, m) => m).map((m) => {
             const x = padX + slot * m + (slot - barW) / 2;
             const value = valueByMonth.get(m);
@@ -113,14 +129,16 @@ export default function AssetGrowthCard({
             }
 
             const y = chartH - barH;
-            const rx = Math.min(8, barH / 2);
+            const rx = Math.min(6, barH / 2);
 
             return (
               <g
                 key={m}
                 onMouseEnter={() => isRecorded && setHovered(m)}
                 onMouseLeave={() => setHovered(null)}
-                onClick={() => isRecorded && setHovered((prev) => (prev === m ? null : m))}
+                onClick={() =>
+                  isRecorded && setHovered((prev) => (prev === m ? null : m))
+                }
                 style={{ cursor: isRecorded ? "pointer" : "default" }}
               >
                 <rect
@@ -146,17 +164,16 @@ export default function AssetGrowthCard({
                   }
                   style={{ fontSize: 9 }}
                 >
-                  {MONTH_LABELS[m]}
+                  {shortLabels[m] ?? ""}
                 </text>
               </g>
             );
           })}
         </svg>
 
-        {/* Hover tooltip */}
         {hovered !== null && hoveredValue !== undefined && (
           <div
-            className="absolute pointer-events-none bg-card rounded-[12px] shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12)] border border-hairline px-2 py-1.5 whitespace-nowrap z-10"
+            className="absolute pointer-events-none bg-card rounded-[10px] border border-hairline px-2 py-1.5 whitespace-nowrap z-10"
             style={{
               left: `${(((padX + slot * hovered + slot / 2)) / chartW) * 100}%`,
               top: `${((chartH - hoveredBarH) / svgH) * 100}%`,
@@ -164,7 +181,7 @@ export default function AssetGrowthCard({
             }}
           >
             <p className="text-[10px] font-semibold text-ink/50 leading-none">
-              {MONTH_FULL[hovered]} {year}
+              {fullLabels[hovered] ?? ""}
             </p>
             <p className="text-[10px] font-bold tabular-nums text-ink leading-none mt-1">
               {formatRupiah(hoveredValue)}
@@ -173,29 +190,17 @@ export default function AssetGrowthCard({
         )}
       </div>
 
-      {/* Empty state caption */}
       {!hasTransactions && (
-        <div className="flex items-center gap-2 justify-center mt-3">
-          <TrendingUp className="w-4 h-4 text-ink/30" />
-          <p className="text-xs text-ink/40">No transactions yet — your growth will appear here</p>
-        </div>
+        <p className="mt-3 text-center text-xs text-ink/40">
+          No transactions yet. Your growth will appear here.
+        </p>
       )}
 
-      {/* Legend */}
       {hasTransactions && (
-        <div className="flex items-center gap-3.5 mt-3">
-          <span className="flex items-center gap-1.5">
-            <span className="w-[7px] h-[7px] rounded-full bg-brand" />
-            <span className="text-[11px] text-ink/45">Growth</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-[7px] h-[7px] rounded-full bg-stagnant" />
-            <span className="text-[11px] text-ink/45">Stable</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-[7px] h-[7px] rounded-full bg-expense" />
-            <span className="text-[11px] text-ink/45">Decline</span>
-          </span>
+        <div className="mt-2 flex items-center gap-3.5 text-[10px] font-medium">
+          <span className="text-brand">Growth</span>
+          <span className="text-stagnant">Stable</span>
+          <span className="text-expense">Decline</span>
         </div>
       )}
     </div>

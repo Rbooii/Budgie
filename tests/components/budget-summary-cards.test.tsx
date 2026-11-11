@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { BudgetSummaryCards, periodBadgeLabel } from "@/components/budget-summary-cards";
+import { BudgetSummaryCards } from "@/components/budget-summary-cards";
 
 function heroCard(title: string): HTMLElement {
   return screen.getByText(title).parentElement!.parentElement as HTMLElement;
@@ -100,18 +100,5 @@ describe("BudgetSummaryCards", () => {
     );
     const bar = heroCard("Monthly budget").querySelector('[style*="width"]') as HTMLElement;
     expect(bar.style.width).toBe("100%");
-  });
-});
-
-describe("periodBadgeLabel", () => {
-  it("delegates to periodLabel for known periods", () => {
-    expect(periodBadgeLabel(1)).toBe("Daily");
-    expect(periodBadgeLabel(7)).toBe("Weekly");
-    expect(periodBadgeLabel(30)).toBe("Monthly");
-    expect(periodBadgeLabel(365)).toBe("Yearly");
-  });
-
-  it("delegates to periodLabel for custom periods", () => {
-    expect(periodBadgeLabel(14)).toBe("Every 14 days");
   });
 });

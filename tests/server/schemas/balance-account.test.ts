@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CreateBalanceAccountSchema,
+  ReorderBalanceAccountsSchema,
   UpdateBalanceAccountSchema,
 } from "@/server/schemas/balance-account";
 
@@ -66,6 +67,24 @@ describe("UpdateBalanceAccountSchema", () => {
   it("rejects missing balance on update", () => {
     expect(() =>
       UpdateBalanceAccountSchema.parse({ name: "X", currency: "IDR", type: "bank" }),
+    ).toThrow();
+  });
+});
+
+describe("ReorderBalanceAccountsSchema", () => {
+  it("accepts a non-empty id order", () => {
+    expect(
+      ReorderBalanceAccountsSchema.parse({ ids: ["acc-2", "acc-1"] }),
+    ).toEqual({ ids: ["acc-2", "acc-1"] });
+  });
+
+  it("rejects an empty order", () => {
+    expect(() => ReorderBalanceAccountsSchema.parse({ ids: [] })).toThrow();
+  });
+
+  it("rejects empty ids", () => {
+    expect(() =>
+      ReorderBalanceAccountsSchema.parse({ ids: ["acc-1", ""] }),
     ).toThrow();
   });
 });

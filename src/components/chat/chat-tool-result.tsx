@@ -79,7 +79,7 @@ function ToolWidget({
 }) {
   return (
     <div className="flex w-full max-w-[440px] flex-col rounded-[20px] border border-hairline p-2 animate-[stepReveal_0.2s_ease-out] motion-reduce:animate-none">
-      <p className="px-2 pt-1 pb-0.5 text-[11px] font-medium uppercase tracking-wide text-ink/35">
+      <p className="px-2 pt-1 pb-0.5 text-[11px] font-medium text-ink/35">
         {title}
       </p>
       {children}

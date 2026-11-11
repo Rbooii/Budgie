@@ -8,7 +8,7 @@ describe("Footer", () => {
     expect(screen.getByRole("link", { name: "Budgie" })).toHaveAttribute("href", "/");
   });
 
-  it("shows the app-icon logo next to the wordmark", () => {
+  it("renders the old Budgie logo next to the wordmark", () => {
     const { container } = render(<Footer />);
     const logo = container.querySelector("img");
     expect(logo?.getAttribute("src")).toContain("android-chrome-192x192");
@@ -17,19 +17,19 @@ describe("Footer", () => {
 
   it("links every product section that actually exists", () => {
     render(<Footer />);
-    expect(screen.getByRole("link", { name: "Features" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Product" })).toHaveAttribute(
       "href",
-      "/#features",
+      "/#product",
     );
-    expect(screen.getByRole("link", { name: "Use cases" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute(
       "href",
-      "/#use-cases",
+      "/#live",
     );
     expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
       "href",
       "/#pricing",
     );
-    expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Questions" })).toHaveAttribute(
       "href",
       "/#faq",
     );
@@ -37,11 +37,11 @@ describe("Footer", () => {
 
   it("links the auth entry points", () => {
     render(<Footer />);
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Start free" })).toHaveAttribute(
       "href",
       "/sign-in",
     );
-    expect(screen.getByRole("link", { name: "Create an account" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/sign-in",
     );
@@ -52,7 +52,6 @@ describe("Footer", () => {
     expect(screen.queryByRole("combobox", { name: "Language" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Cookie settings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "About us" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Web Clipper" })).not.toBeInTheDocument();
   });
 
   it("shows the current copyright year", () => {

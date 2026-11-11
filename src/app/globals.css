@@ -2,43 +2,55 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Design tokens — same palette as the iOS app (`Budgie/Core/DesignSystem/Colors.swift`).
-   Semantic hues stay constant per scheme; surfaces/ink flip on the `.dark` class
-   set by the no-flash script in `theme-provider.tsx`. */
+/* Design tokens — warm paper, ink, and one grass-green accent.
+   The palette follows the Anthropic print/editorial register: warm neutrals,
+   the Budgie logo green as the single accent, and low-saturation earth tones
+   for finance semantics. Surfaces/ink flip on the `.dark` class set by the
+   no-flash script in `theme-provider.tsx`. */
 :root {
   color-scheme: light;
 
-  /* Brand & semantic */
-  --brand: #39cd6b;
-  --income: #39cd6b;
-  --expense: #ff2600;
-  --transfer: #ff9f33;
-  --stagnant: #b0b0b0;
+  /* Brand & semantic. The accent is sampled from the logo dollar sign. */
+  --brand: #5abb37;
+  --brand-strong: #41802a;
+  --income: #2f9e44;
+  --expense: #a94e32;
+  --transfer: #4f7fa8;
+  --stagnant: #87867f;
 
-  /* Surfaces */
-  --background: #f7f7f7;
-  --screen: #ffffff;
-  --card: #ffffff;
-  --surface: #f2f2f2;
-  --chat: #fcfaf7;
-  --ink: #171717;
-  --ink-soft: #3d3d3d;
-  --ink-contrast: #ffffff;
-  --chip: rgb(0 0 0 / 0.06);
-  --hover: rgb(0 0 0 / 0.03);
-  --skeleton: rgb(255 255 255 / 0.7);
-  --scrim: #000000;
+  /* Surfaces — warm paper, never pure white. */
+  --background: #f5f4ed;
+  --screen: #faf9f5;
+  --paper: #faf9f5;
+  --card: #fffdf8;
+  --surface: #f0eee6;
+  --surface-alt: #e8e6dc;
+  --surface-warm: #e3dacc;
+  --chat: #faf9f5;
+  --hud: #141413;
+  --ink: #141413;
+  --ink-soft: #3d3d3a;
+  --ink-contrast: #faf9f5;
+  --muted: #5e5d59;
+  --subtle: #87867f;
+  --ink-field: #141413;
+  --on-ink: #faf9f5;
+  --chip: rgb(20 20 19 / 0.06);
+  --hover: rgb(20 20 19 / 0.04);
+  --skeleton: rgb(255 253 248 / 0.7);
+  --scrim: #141413;
 
   /* Lines & charts */
-  --hairline: rgb(0 0 0 / 0.06);
-  --hairline-track: rgb(0 0 0 / 0.06);
-  --chart-placeholder: #e5e5e5;
+  --hairline: #dedcd1;
+  --hairline-track: #e8e6dc;
+  --chart-placeholder: #e3dacc;
+  --nanite-dot: var(--ink);
 
-  /* Tint fills — derive from the semantic hue so they adapt with the theme */
-  --brand-tint: color-mix(in oklab, var(--brand) 12%, transparent);
-  --income-tint: color-mix(in oklab, var(--income) 15%, transparent);
-  --expense-tint: color-mix(in oklab, var(--expense) 12%, transparent);
-  --transfer-tint: color-mix(in oklab, var(--transfer) 16%, transparent);
+  /* Tint fills — derive from the semantic hue so they adapt with the theme. */
+  --brand-tint: color-mix(in oklab, #5abb37 14%, transparent);
+  --income-tint: color-mix(in oklab, #5abb37 17%, transparent);
+  --expense-tint: color-mix(in oklab, #c6613f 12%, transparent);
+  --transfer-tint: color-mix(in oklab, #6a9bcc 15%, transparent);
 
   /* Mobile bottom tab bar height incl. the iOS home-indicator inset.
      Keep in sync with the `h-[var(--app-tabbar-h)]` in sidebar.tsx. */
@@ -48,41 +60,69 @@
 .dark {
   color-scheme: dark;
 
+  --brand: #5abb37;
+  --brand-strong: #6fd24a;
   --income: #3ddc74;
-  --expense: #ff5a4d;
-  --transfer: #ffb454;
-  --stagnant: #8e8e93;
+  --expense: #e07a5f;
+  --transfer: #8fb8de;
+  --stagnant: #8e8b84;
 
-  --background: #101014;
-  --screen: #101014;
-  --card: #1c1c1e;
-  --surface: rgb(255 255 255 / 0.1);
-  --chat: #16151a;
-  --ink: #ffffff;
-  --ink-soft: #f2f2f2;
-  --ink-contrast: #171717;
-  --chip: rgb(255 255 255 / 0.12);
-  --hover: rgb(255 255 255 / 0.06);
-  --skeleton: rgb(255 255 255 / 0.14);
+  --background: #141413;
+  --screen: #171614;
+  --paper: #141413;
+  --card: #1f1e1b;
+  --surface: #2a2824;
+  --surface-alt: #302e2a;
+  --surface-warm: #3a342c;
+  --chat: #1a1918;
+  --hud: #1a1918;
+  --ink: #f5f2ea;
+  --ink-soft: #d8d4ca;
+  --ink-contrast: #141413;
+  --muted: #a8a49a;
+  --subtle: #87867f;
+  --ink-field: #141413;
+  --on-ink: #faf9f5;
+  --chip: rgb(245 242 234 / 0.12);
+  --hover: rgb(245 242 234 / 0.06);
+  --skeleton: rgb(245 242 234 / 0.14);
 
-  --hairline: rgb(255 255 255 / 0.12);
-  --hairline-track: rgb(255 255 255 / 0.16);
-  --chart-placeholder: rgb(255 255 255 / 0.16);
+  --hairline: rgb(245 242 234 / 0.14);
+  --hairline-track: rgb(245 242 234 / 0.18);
+  --chart-placeholder: rgb(245 242 234 / 0.16);
+  --nanite-dot: var(--on-ink);
+
+  --brand-tint: color-mix(in oklab, #5abb37 18%, transparent);
+  --income-tint: color-mix(in oklab, #5abb37 18%, transparent);
+  --expense-tint: color-mix(in oklab, #e07a5f 18%, transparent);
+  --transfer-tint: color-mix(in oklab, #8fb8de 18%, transparent);
 }
 
 html {
   background-color: var(--background);
 }
 
+::selection {
+  background: color-mix(in oklab, var(--brand) 28%, transparent);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-screen: var(--screen);
+  --color-paper: var(--paper);
   --color-card: var(--card);
   --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-warm: var(--surface-warm);
   --color-chat: var(--chat);
+  --color-hud: var(--hud);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-ink-contrast: var(--ink-contrast);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-ink-field: var(--ink-field);
+  --color-on-ink: var(--on-ink);
   --color-chip: var(--chip);
   --color-hover: var(--hover);
   --color-skeleton: var(--skeleton);
@@ -91,6 +131,7 @@ html {
   --color-hairline-track: var(--hairline-track);
   --color-chart-placeholder: var(--chart-placeholder);
   --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
   --color-brand-tint: var(--brand-tint);
   --color-income: var(--income);
   --color-income-tint: var(--income-tint);
@@ -101,11 +142,19 @@ html {
   --color-stagnant: var(--stagnant);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-newsreader);
+  /* Radii — an editorial scale: cards sit at 16px, rows at 8px. */
+  --radius-card: 1rem;
+  --radius-tile: 0.625rem;
+  --radius-row: 0.5rem;
+  --radius-sheet: 1.25rem;
 }
 
 body {
   color: var(--ink);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-feature-settings: "pnum" on, "lnum" on, "liga" on;
+  text-rendering: optimizeLegibility;
 }
 
 @keyframes balanceReveal {
@@ -159,37 +208,6 @@ body {
   }
 }
 
-@keyframes qrPulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes typingPulse {
-  0%, 100% {
-    opacity: 0.25;
-    transform: translateY(0);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-2px);
-  }
-}
-
-@keyframes fadeZoomIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 .chat-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -197,24 +215,6 @@ body {
 
 .chat-scroll::-webkit-scrollbar {
   display: none;
-}
-
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-@keyframes floatSoft {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
 }
 
 @keyframes barGrow {
@@ -230,20 +230,6 @@ body {
   transform-box: fill-box;
   transform-origin: bottom;
   animation: barGrow 0.6s ease-out 0.1s both;
-}
-
-@keyframes caretBlink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-}
-
-.chat-caret {
-  animation: caretBlink 1s steps(1, end) infinite;
 }
 
 @keyframes sparkReveal {
@@ -265,10 +251,6 @@ body {
   }
 
   .spark-reveal {
-    animation: none;
-  }
-
-  .chat-caret {
     animation: none;
   }
 }

@@ -4,6 +4,7 @@ vi.mock("@/server/services/balance-accounts", () => ({
   listBalanceAccounts: vi.fn(),
   getBalanceAccount: vi.fn(),
   createBalanceAccount: vi.fn(),
+  reorderBalanceAccounts: vi.fn(),
   updateBalanceAccount: vi.fn(),
   deleteBalanceAccount: vi.fn(),
 }));
@@ -12,6 +13,7 @@ import {
   listBalanceAccounts,
   getBalanceAccount,
   createBalanceAccount,
+  reorderBalanceAccounts,
   updateBalanceAccount,
   deleteBalanceAccount,
 } from "@/server/services/balance-accounts";
@@ -87,6 +89,32 @@ describe("create controller", () => {
 
     expect(createBalanceAccount).toHaveBeenCalledWith(USER_ID, body);
     expect(c.json).toHaveBeenCalledWith(created, 201);
+  });
+});
+
+describe("reorder controller", () => {
+  it("passes the id order to the service and returns ok", async () => {
+    vi.mocked(reorderBalanceAccounts).mockResolvedValue(undefined as never);
+    const c = mockContext({}, { ids: ["acc-2", "acc-1"] });
+
+    await controller.reorder(c);
+
+    expect(reorderBalanceAccounts).toHaveBeenCalledWith(USER_ID, [
+      "acc-2",
+      "acc-1",
+    ]);
+    expect(c.json).toHaveBeenCalledWith({ ok: true });
+  });
+
+  it("returns 400 when the service rejects the order", async () => {
+    vi.mocked(reorderBalanceAccounts).mockRejectedValue(
+      new Error("Invalid order") as never,
+    );
+    const c = mockContext({}, { ids: ["acc-1"] });
+
+    await controller.reorder(c);
+
+    expect(c.json).toHaveBeenCalledWith({ error: "Invalid order" }, 400);
   });
 });
 

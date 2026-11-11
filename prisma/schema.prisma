@@ -87,6 +87,7 @@ model BalanceAccount {
   balance          Float         @default(0)
   currency         String        @default("IDR")
   type             String
+  sortOrder        Int           @default(0)
   userId           String
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactionsFrom Transaction[] @relation("TransactionFromAccount")
@@ -94,7 +95,8 @@ model BalanceAccount {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  // Covers `where userId orderBy createdAt desc` (list page).
+  // Covers `where userId orderBy sortOrder asc, createdAt desc` (list page).
+  @@index([userId, sortOrder])
   @@index([userId, createdAt(sort: Desc)])
   @@map("balance_account")
 }

@@ -4,6 +4,8 @@
 
 **Source of truth:** the web app at `https://budgiez.vercel.app/` (Next.js 16 + Hono REST + Prisma/Postgres + better-auth + Vercel AI SDK chat). This document is a complete, self-contained handoff: every feature, every API contract, the auth wire protocol, the AI chat wire protocol, the Swift data layer, and the iOS 26 **Liquid Glass** design system ("Budgie Glass") that uses Budgie's color palette.
 
+**Design guardrails:** follow [`ANTI_SLOP.md`](./ANTI_SLOP.md) on every screen. No Sparkles or AI-coded symbols, no blinking or typing dots, no status dots or decorative badges/pills, no uppercase labels, no em/en dashes or middle dots in UI copy.
+
 ---
 
 ## Table of Contents
@@ -355,6 +357,7 @@ GET    /api/balance-accounts        → 200 [ BalanceAccount ]
 GET    /api/balance-accounts/:id    → 200 | 404
 POST   /api/balance-accounts        body { name, balance?, currency?, type } → 201 | 400
 PATCH  /api/balance-accounts/:id    body { name, balance, currency, type } (all required) → 200 | 404
+POST   /api/balance-accounts/reorder body { ids: [String] } (full ordered id list) → 200 { ok: true } | 400
 DELETE /api/balance-accounts/:id    → 204 | 404
 ```
 
@@ -471,7 +474,8 @@ struct SessionInfo: Codable { var session: RawSession?; var user: AuthUser? }   
 
 struct BalanceAccount: Codable, Identifiable {
     var id: String; var name: String; var balance: Double; var currency: String
-    var type: String; var userId: String; var createdAt: String; var updatedAt: String
+    var type: String; var sortOrder: Int
+    var userId: String; var createdAt: String; var updatedAt: String
 }
 
 struct AccountRef: Codable { var id: String; var name: String; var currency: String }
@@ -770,7 +774,7 @@ The server builds a system prompt that: names the user, gives today's date, dema
 ### 8.3 Typography
 
 - **Font:** SF Pro (system). Body `#171717`. Keep the mono/serif out of the app (Geist Mono was a web/landing quirk; the chat **thinking** block may use `.monospaced()` for the reasoning text).
-- **Type scale:** page `h1` 28–34pt semibold `tracking-tight`; section `h2` 20–22pt semibold; row title 17pt medium; subtitle 15pt (`black/45`); caption 12pt (`black/35`); eyebrow labels 11pt uppercase `tracking-wide` `black/35`.
+- **Type scale:** page `h1` 28–34pt semibold `tracking-tight`; section `h2` 20–22pt semibold; row title 17pt medium; subtitle 15pt (`black/45`); caption 12pt (`black/35`); section labels 11pt medium `black/35`.
 - **All money/amounts:** `.monospacedDigit()`, semibold/bold, `tracking-tight`.
 - **Hero amounts:** net worth `text-3xl/4xl` equivalent (28–34pt); sheet hero 30pt bold; card hero 22pt bold.
 
@@ -778,7 +782,7 @@ The server builds a system prompt that: names the user, gives today's date, dema
 
 - Micro-interactions ≤200ms ease-out; reveals ≤300ms ease-out. No bounce.
 - Screen transitions: use the **iOS 26 glass push/scale** (reduced-motion-safe). Lists: subtle fade/rise 200ms.
-- Pulse/typing: typing dots (3 dots, `black/30`, stagger 200ms); QR "waiting" pulse (opacity 0.5↔1); spinner = system `ProgressView`.
+- Submitted state: static "Thinking" text, no typing dots or blinking status dots. QR waiting: static caption plus system `ProgressView`; spinner = system `ProgressView`.
 - Button press: scale 0.98 (like `active:scale-[0.98]`).
 - Respect `@Environment(\.accessibilityReduceMotion)`.
 
@@ -799,7 +803,7 @@ The server builds a system prompt that: names the user, gives today's date, dema
 | Dashboard / Home | `house.fill` / `house` |
 | Transactions | `arrow.right.arrow.left` / `list.bullet.rectangle` |
 | Budget | `target` / `chart.pie` |
-| Chat | `message` / `sparkles` |
+| Chat | `message` |
 | Profile | `person.crop.circle` |
 | Income type | `arrow.down.left` |
 | Expense type | `arrow.up.right` |
@@ -813,7 +817,6 @@ The server builds a system prompt that: names the user, gives today's date, dema
 | Search | `magnifyingglass` |
 | Error | `exclamationmark.triangle` / `xmark.circle` |
 | Success | `checkmark.circle` |
-| Sparkles (AI/Plus) | `sparkles` |
 | QR | `qrcode` |
 
 **Per-category icons (from `src/lib/category-icon.tsx`):**
@@ -851,17 +854,17 @@ The server builds a system prompt that: names the user, gives today's date, dema
 
 ### 9.1 Dashboard
 
-Data needed: `GET /api/balance-accounts` (accounts + net worth), `GET /api/transactions` (this year for charts — or reuse for monthly cashflow), `GET /api/user` (plus status → "Get Budgie Plus" chip).
+Data needed: `GET /api/balance-accounts` (accounts + net worth, ordered by `sortOrder`), `GET /api/transactions` (all-time for the cashflow/growth period presets), `GET /api/user` (plus status → "Get Budgie Plus" chip).
 
 **Layout (top → bottom):**
 1. Account chip (top-right): avatar (initials) + name → Profile. When `plus == false`, show a "Get Budgie Plus" green chip → Profile.
 2. **Net worth hero** — "Your Net Worth", eye-toggle (masks balance; `eye`/`eye.slash`, flip animation), `formatRupiah(netWorth)` big `.monospacedDigit()`. Delta line: `+X.X% From last Month` (green `#00C610` if up / red `#D8000C` if down) — or `+Rp … this month` absolute when last month's base ≤ 0. Privacy: masked by default per web (`MaskedBalance` reveal-on-hover → on iOS default mask ON, tap eye to reveal).
-3. "Your Accounts" — grid of account glass cards: tinted icon tile (type icon), name, type (capitalized), balance `formatRupiah`. Empty state: "No accounts yet" + Add Account CTA. Add/Edit/Delete via dialog/sheet → `POST/PATCH/DELETE /api/balance-accounts`.
-4. "Quick Insight" — if any transactions this year: **CashflowCard** (donut income vs expense, current month) + **AssetGrowthCard** (12-month bars, hover/tap tooltip, YTD pill, legend Growth/Stable/Decline). Else: empty state (Sparkles + "No insight yet" + "Add transaction" CTA → transactions add flow).
+3. "Your Accounts" — grid of papery account cards: hairline border, no shadow, name, drag handle, paper-grid sparkline, balance `formatRupiah`. Long-press/drag the handle to reorder; persist with `POST /api/balance-accounts/reorder`. Empty state: "No accounts yet" + Add Account CTA. Add/Edit/Delete via dialog/sheet → `POST/PATCH/DELETE /api/balance-accounts`.
+4. "Quick Insight" — if any transactions exist: **CashflowCard** with a period select (This month / Last month / Last 3 months / This year / Last year) + **AssetGrowthCard** with a period select (This year / Last year / Last 12 months), 12-month bars, hover/tap tooltip, signed change hero with a quiet YTD/Year/12M label, text-only legend Growth/Stable/Decline. No Sparkles, no change pill, no status or legend dots, no shadows. Else: plain empty state ("No insight yet" + "Add transaction" CTA → transactions add flow), no sparkles or icon tile.
 
 **Chart data (compute on-device from `GET /api/transactions`):**
-- Donut: month income sum vs month expense sum (+ transfer fees as expense). See §10.1.
-- Asset growth: from all transactions this year → `monthlyNet[12]`, `startingAssets`, cumulative `growthData`, `activeMonths`. See §10.2.
+- Donut: income vs expense for the selected period (+ transfer fees as expense). See §10.1.
+- Asset growth: calendar-year or rolling-12-month `monthlyNet[]`, `startingAssets`, cumulative `growthData`, `activeMonths`. See §10.2.
 - Net-worth delta: `accountNetThisMonth` per account + `lastMonthEndNetWorth`. See §10.4.
 
 ### 9.2 Transactions
@@ -904,10 +907,10 @@ Data needed: `GET /api/balance-accounts` (accounts + net worth), `GET /api/trans
 
 Mirror the web chat anatomy (Claude-style, light):
 - **Column** centered, max width ~768pt; the message list is the only scroll area; composer **sticky at bottom** with a frosted glass card (`ultraThinMaterial`, hairline + soft shadow) and a caption below: "Budgie can make mistakes. Double-check the important numbers."
-- **Messages:** user bubble right-aligned, max 85%, 20px radius, `#F2F2F2` fill; assistant text full-width, no bubble, `whitespacePreWrap`, 15pt; gap ~20pt; typing indicator = 3 pulsing dots in a gray pill.
+- **Messages:** user bubble right-aligned, max 85%, 20px radius, `#F2F2F2` fill; assistant text full-width, no bubble, `whitespacePreWrap`, 15pt; gap ~20pt; submitted state = static "Thinking" text in a gray pill, no pulsing dots.
 - **Thinking row:** while `reasoning` streams → spinner + "Thinking…"; when done → collapse to "Thought for a moment" toggle revealing the reasoning text in a 14px mono block.
 - **Tool cards** (from `tool-*` parts): running → pill with spinner + per-tool label ("Looking up your accounts…", "Adding the transaction…"); result → a 20px glass card (`max-w ~85%`): Accounts (total hero + rows), Transactions (up to 8 rows + "+N more", empty "No transactions found."), Budgets (progress bars), Subscriptions (rows + next date), Insights (net worth hero + income/expense tint tiles + top-category bars), create_transaction (success green check + row, or red error + reason). Error → `softred` callout.
-- **Composer:** auto-growing text area (Enter sends, Shift+Enter newline), bottom row: model chip (Sparkles + model label) left, circular green send button (swaps to Stop while streaming) right.
+- **Composer:** auto-growing text area (Enter sends, Shift+Enter newline), bottom row: model chip (model label only, no Sparkles) left, circular green send button (swaps to Stop while streaming) right.
 - **Slim top row:** "Switched to a lighter model…" notice (left, when downgraded) · Clear chat (right, `trash` circle).
 - **Empty state:** 12×12 `#F2F2F2` circle + `message` icon, "Hi {name}, ask me anything about your money", up to 4 suggestion chips that send immediately.
 - **Error surface:** softred callout above input + outline "Retry" → `regenerate()` (re-send the same last user message).

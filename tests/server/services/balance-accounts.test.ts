@@ -8,6 +8,7 @@ const { mockPrisma } = vi.hoisted(() => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      aggregate: vi.fn(),
     },
     $transaction: vi.fn(),
     transaction: {
@@ -16,6 +17,7 @@ const { mockPrisma } = vi.hoisted(() => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      aggregate: vi.fn(),
       deleteMany: vi.fn()
     }
   },
@@ -29,6 +31,7 @@ import {
   listBalanceAccounts,
   getBalanceAccount,
   createBalanceAccount,
+  reorderBalanceAccounts,
   updateBalanceAccount,
   deleteBalanceAccount,
 } from "@/server/services/balance-accounts";
@@ -44,6 +47,7 @@ const mockAccount = {
   balance: 1500000,
   currency: "IDR",
   type: "bank",
+  sortOrder: 0,
   userId: USER_ID,
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
@@ -52,7 +56,10 @@ const mockAccount = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockPrisma.$transaction.mockImplementation(
-    async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma),
+    async (arg: ((tx: typeof mockPrisma) => Promise<unknown>) | Promise<unknown>[]) => {
+      if (typeof arg === "function") return arg(mockPrisma);
+      return Promise.all(arg);
+    },
   );
 });
 
@@ -62,7 +69,7 @@ describe("listBalanceAccounts", () => {
     await listBalanceAccounts(USER_ID);
     expect(mockPrisma.balanceAccount.findMany).toHaveBeenCalledWith({
       where: { userId: USER_ID },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
   });
 });
@@ -78,13 +85,20 @@ describe("getBalanceAccount", () => {
 });
 
 describe("createBalanceAccount", () => {
-  it("injects userId from the session, never trusts the input", async () => {
+  it("injects userId and appends the new account after the current order", async () => {
+    mockPrisma.balanceAccount.aggregate.mockResolvedValue({
+      _max: { sortOrder: 2 },
+    });
     mockPrisma.balanceAccount.create.mockResolvedValue(mockAccount);
     await createBalanceAccount(USER_ID, {
       name: "BCA",
       balance: 1500000,
       currency: "IDR",
       type: "bank",
+    });
+    expect(mockPrisma.balanceAccount.aggregate).toHaveBeenCalledWith({
+      where: { userId: USER_ID },
+      _max: { sortOrder: true },
     });
     expect(mockPrisma.balanceAccount.create).toHaveBeenCalledWith({
       data: {
@@ -93,8 +107,63 @@ describe("createBalanceAccount", () => {
         currency: "IDR",
         type: "bank",
         userId: USER_ID,
+        sortOrder: 3,
       },
     });
+  });
+});
+
+describe("reorderBalanceAccounts", () => {
+  it("persists the full id order in one transaction", async () => {
+    mockPrisma.balanceAccount.findMany.mockResolvedValue([
+      { id: "acc-1" },
+      { id: "acc-2" },
+    ]);
+    mockPrisma.balanceAccount.update.mockResolvedValue(mockAccount);
+
+    await reorderBalanceAccounts(USER_ID, ["acc-2", "acc-1"]);
+
+    expect(mockPrisma.balanceAccount.findMany).toHaveBeenCalledWith({
+      where: { userId: USER_ID },
+      select: { id: true },
+    });
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.balanceAccount.update).toHaveBeenNthCalledWith(1, {
+      where: { id: "acc-2" },
+      data: { sortOrder: 0 },
+    });
+    expect(mockPrisma.balanceAccount.update).toHaveBeenNthCalledWith(2, {
+      where: { id: "acc-1" },
+      data: { sortOrder: 1 },
+    });
+  });
+
+  it("rejects a missing account id", async () => {
+    mockPrisma.balanceAccount.findMany.mockResolvedValue([
+      { id: "acc-1" },
+      { id: "acc-2" },
+    ]);
+    await expect(
+      reorderBalanceAccounts(USER_ID, ["acc-1"]),
+    ).rejects.toThrow("Invalid order");
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects duplicate ids", async () => {
+    mockPrisma.balanceAccount.findMany.mockResolvedValue([
+      { id: "acc-1" },
+      { id: "acc-2" },
+    ]);
+    await expect(
+      reorderBalanceAccounts(USER_ID, ["acc-1", "acc-1"]),
+    ).rejects.toThrow("Invalid order");
+  });
+
+  it("rejects an account that belongs to another user", async () => {
+    mockPrisma.balanceAccount.findMany.mockResolvedValue([{ id: "acc-1" }]);
+    await expect(
+      reorderBalanceAccounts(USER_ID, ["acc-1", "acc-2"]),
+    ).rejects.toThrow("Invalid order");
   });
 });
 

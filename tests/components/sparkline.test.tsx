@@ -66,6 +66,23 @@ describe("Sparkline", () => {
     expect(container.querySelector("path")!.getAttribute("d")).toContain("237.50");
   });
 
+  it("renders a paper cubic line and end dot without a grid", () => {
+    const { container } = render(
+      <Sparkline
+        variant="paper"
+        values={[10, 20, 15]}
+        color="var(--income)"
+        className="h-11"
+      />,
+    );
+    expect(container.querySelectorAll("line")).toHaveLength(0);
+    const path = container.querySelector("path")!;
+    expect(path.getAttribute("d")).toContain("C");
+    expect(path.getAttribute("d")).not.toContain("NaN");
+    expect(path.getAttribute("stroke")).toBe("var(--income)");
+    expect(container.querySelector("circle")).not.toBeNull();
+  });
+
   it("is hidden from assistive tech", () => {
     const { container } = render(<Sparkline values={[1, 2]} color="#00C610" />);
     expect(container.querySelector("svg")!.getAttribute("aria-hidden")).toBe("true");

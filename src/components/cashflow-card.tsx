@@ -1,16 +1,22 @@
-import React from "react";
+import type { ReactNode } from "react";
 import { formatRupiah } from "@/lib/format";
+
+function signedRupiah(value: number) {
+  return `${value >= 0 ? "+" : "-"}${formatRupiah(Math.abs(value))}`;
+}
 
 export default function CashflowCard({
   title = "Today's Cashflow",
   date = "12 December 2026",
   income = 3424500,
   expense = 1141500,
+  actions,
 }: {
   title?: string;
   date?: string;
   income?: number;
   expense?: number;
+  actions?: ReactNode;
 }) {
   const total = income + expense;
   const incomePct = total > 0 ? (income / total) * 100 : 0;
@@ -19,7 +25,7 @@ export default function CashflowCard({
 
   const radius = 64;
   const circumference = 2 * Math.PI * radius;
-  const gapDeg = 20;
+  const gapDeg = 12;
   const gapLen = (gapDeg / 360) * circumference;
 
   const incomeLen = Math.max((incomePct / 100) * circumference - gapLen, 0);
@@ -29,73 +35,76 @@ export default function CashflowCard({
   const expenseOffset = -(incomeLen + gapLen);
 
   return (
-    <div className="w-full bg-card rounded-[35px] shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)] border border-hairline p-6">
-      {/* Header */}
-      <div className="text-center mb-4">
-        <h2 className="text-xl font-bold text-ink">{title}</h2>
-        <p className="text-sm text-ink/40 mt-1">{date}</p>
+    <div className="w-full bg-card rounded-[35px] border border-hairline p-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-sm font-semibold text-ink/50">{title}</h2>
+          <p className="mt-0.5 text-xs text-ink/30">{date}</p>
+        </div>
+        {actions && <div className="shrink-0">{actions}</div>}
       </div>
 
-      {/* Donut chart */}
-      <div className="relative flex items-center justify-center my-4">
-        <svg viewBox="0 0 160 160" className="w-56 h-56 -rotate-90 drop-shadow-[0_4px_8px_rgba(0,0,0,0.06)]">
-          {/* Expense arc */}
+      <div className="relative mt-4 flex items-center justify-center">
+        <svg
+          viewBox="0 0 160 160"
+          className="h-36 w-36 -rotate-90"
+          aria-hidden="true"
+        >
           <circle
             cx="80"
             cy="80"
             r={radius}
             fill="none"
             stroke="var(--expense)"
-            strokeWidth="18"
+            strokeWidth="14"
             strokeLinecap="round"
             strokeDasharray={`${expenseLen} ${circumference - expenseLen}`}
             strokeDashoffset={expenseOffset}
           />
-          {/* Income arc */}
           <circle
             cx="80"
             cy="80"
             r={radius}
             fill="none"
             stroke="var(--income)"
-            strokeWidth="18"
+            strokeWidth="14"
             strokeLinecap="round"
             strokeDasharray={`${incomeLen} ${circumference - incomeLen}`}
             strokeDashoffset={incomeOffset}
           />
         </svg>
 
-        {/* Center label */}
-        <div className="absolute flex flex-col items-center">
-          <span className={`font-bold text-lg ${net >= 0 ? "text-brand" : "text-expense"}`}>
-            {net >= 0 ? "+" : "-"} {(Math.abs(net) / 1_000_000).toFixed(1)} mil
-          </span>
-          <span className="text-ink font-medium text-sm mt-0.5">
-            {formatRupiah(Math.abs(net))}
+        <div className="absolute flex flex-col items-center px-4 text-center">
+          <span className="text-[10px] font-medium text-ink/40">Net</span>
+          <span
+            className={`mt-0.5 max-w-[104px] text-[11px] font-semibold leading-tight tabular-nums ${
+              net >= 0 ? "text-brand" : "text-expense"
+            }`}
+          >
+            {signedRupiah(net)}
           </span>
         </div>
       </div>
 
-      {/* Income row */}
-      <div className="flex items-center justify-between bg-income-tint rounded-[20px] px-5 py-4 mb-3">
-        <div>
-          <p className="text-income text-xs font-semibold">Income</p>
-          <p className="text-income text-2xl font-bold">
+      <div className="mt-4 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-income">Income</span>
+          <span className="text-[11px] tabular-nums text-ink/30">
             {Math.round(incomePct)}%
-          </p>
+          </span>
+          <span className="ml-auto text-sm font-medium tabular-nums text-ink">
+            {formatRupiah(income)}
+          </span>
         </div>
-        <p className="text-income text-lg font-semibold">{formatRupiah(income)}</p>
-      </div>
-
-      {/* Expense row */}
-      <div className="flex items-center justify-between bg-expense-tint rounded-[20px] px-5 py-4">
-        <div>
-          <p className="text-expense text-xs font-semibold">Expense</p>
-          <p className="text-expense text-2xl font-bold">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-expense">Expense</span>
+          <span className="text-[11px] tabular-nums text-ink/30">
             {Math.round(expensePct)}%
-          </p>
+          </span>
+          <span className="ml-auto text-sm font-medium tabular-nums text-ink">
+            {formatRupiah(expense)}
+          </span>
         </div>
-        <p className="text-expense text-lg font-semibold">{formatRupiah(expense)}</p>
       </div>
     </div>
   );
