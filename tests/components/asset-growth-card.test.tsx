@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import AssetGrowthCard from "@/components/asset-growth-card";
+import { BalanceVisibilityProvider } from "@/components/balance-visibility";
 
 const SHORT_LABELS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 const FULL_LABELS = [
@@ -155,6 +156,31 @@ describe("AssetGrowthCard", () => {
       />,
     );
     expect(screen.queryByText("Growth")).not.toBeInTheDocument();
+  });
+
+  it("masks the signed change and the tooltip when balance visibility is hidden", () => {
+    const { container } = render(
+      <BalanceVisibilityProvider>
+        <AssetGrowthCard {...defaultProps} />
+      </BalanceVisibilityProvider>,
+    );
+    expect(screen.queryByText("+Rp 150.000.00")).not.toBeInTheDocument();
+    expect(container.textContent).toContain("•");
+
+    fireEvent.click(container.querySelectorAll("g")[0]);
+    expect(screen.queryByText("Rp 1.000.000.00")).not.toBeInTheDocument();
+    expect(screen.getByText("January 2026")).toBeInTheDocument();
+  });
+
+  it("drops the amount from the chart label when balance visibility is hidden", () => {
+    const { container } = render(
+      <BalanceVisibilityProvider>
+        <AssetGrowthCard {...defaultProps} />
+      </BalanceVisibilityProvider>,
+    );
+    expect(container.querySelector("svg")?.getAttribute("aria-label")).toBe(
+      "Asset growth 2026",
+    );
   });
 
   it("renders an SVG bar chart", () => {

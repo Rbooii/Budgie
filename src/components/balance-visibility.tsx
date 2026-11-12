@@ -54,8 +54,13 @@ type BalanceVisibilityContextValue = {
   toggleCount: number;
 };
 
+/**
+ * Outside the dashboard provider (landing demos, tests) values stay visible:
+ * there is no persisted preference to honor, and the demo cards must show
+ * their sample numbers. The dashboard provider owns the real default (hidden).
+ */
 export const BalanceVisibilityContext = createContext<BalanceVisibilityContextValue>({
-  hidden: HIDDEN_DEFAULT,
+  hidden: false,
   toggle: () => {},
   toggleCount: 0,
 });
@@ -84,14 +89,20 @@ export function MaskedBalance({
   value,
   className,
   mask = "long",
+  signed = false,
 }: {
   value: number;
   className?: string;
   mask?: "long" | "short";
+  /** Prefix the revealed value with + / - (cashflow net, growth change). */
+  signed?: boolean;
 }) {
   const { hidden, toggleCount } = useBalanceVisibility();
   const bullets = mask === "long" ? "Rp\u00A0••••••••" : "Rp\u00A0••••••";
-  const text = hidden ? bullets : formatRupiah(value);
+  const revealed = signed
+    ? `${value >= 0 ? "+" : "-"}${formatRupiah(Math.abs(value))}`
+    : formatRupiah(value);
+  const text = hidden ? bullets : revealed;
 
   if (toggleCount === 0) {
     return (

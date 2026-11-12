@@ -327,15 +327,32 @@ never reuse the generic rows shape.
   Last month / Last 3 months / This year / Last year. Asset Growth presets are
   This year / Last year / Last 12 months. The dashboard precomputes the compact
   period data in the RSC, so switching is instant.
-- **Cashflow**: compact 144px donut, 14px strokes, 12 degree gap, no shadow.
-  Center shows `Net` plus one signed Rupiah value. Income and expense are
-  single-line rows with semantic text labels, muted percentages, and neutral
-  amounts. No tinted blocks, no status dots, no pills.
+- **Cashflow**: `Net` is the single focal number under the header
+  (`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight tabular-nums`,
+  brand or expense). The 160px donut below it uses 16px strokes and a real
+  10px hole between arcs: round caps paint `STROKE / 2` past each dash end, so
+  the dash-space is `GAP_PX + STROKE` (26px). A zero period renders a quiet
+  `var(--chart-placeholder)` ring and two `0%` rows. Income and expense are
+  full-width rows with semantic labels, muted percentages, and
+  `text-lg sm:text-xl font-bold` amounts. No center label, no tinted blocks,
+  no status dots, no pills. Both cards stretch to the shared grid row height
+  (`h-full flex flex-col`); Cashflow anchors its rows with `mt-auto`.
 - **Asset Growth**: no `Sparkles`, no pill, no dots. The signed change is the
   hero (`text-2xl font-semibold`), `changeLabel` (`YTD` / `Year` / `12M`) is a
   quiet caption, the chart keeps 12 slots with slimmer bars, and the legend is
   text-only (`Growth`, `Stable`, `Decline`). Month labels and tooltip labels
-  come from the selected period. No shadow.
+  come from the selected period. The chart wrapper is `flex-1` so the card
+  fills the shared row height; an inner `relative w-full` wrapper keeps the
+  tooltip percentages aligned with the SVG. No shadow.
+- **Balance visibility**: `MaskedBalance` (from `balance-visibility.tsx`)
+  masks every monetary value on the dashboard. The context default outside the
+  dashboard provider is visible, so landing demos and tests still show sample
+  numbers; `BalanceVisibilityProvider` owns the persisted default (hidden).
+  Cashflow masks the net (`mask="long" signed`) and both amounts
+  (`mask="short"`). Asset Growth masks the signed change and the hover tooltip,
+  and drops the amount from the chart `aria-label` while hidden. Percentages,
+  the donut, and the bars stay visible: they show ratios and trend, not
+  nominal values.
 - **Empty state**: Quick Insight renders only when there are no transactions at
   all, not merely none this year. The empty state is plain text plus the real
   Add transaction CTA, with no sparkles or decorative icon tile.

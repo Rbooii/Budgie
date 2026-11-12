@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { stubResizeObserver } from "@/test-utils/browser-mocks";
 import { QuickInsightView } from "@/components/quick-insight";
+import { BalanceVisibilityProvider } from "@/components/balance-visibility";
 
 const SHORT = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 const FULL = SHORT.map((_, index) => `Month ${index + 1} 2026`);
@@ -85,6 +86,18 @@ describe("QuickInsightView", () => {
 
     expect(screen.getByText("October 2026")).toBeInTheDocument();
     expect(screen.queryByText("November 2026")).not.toBeInTheDocument();
+  });
+
+  it("masks cashflow and growth values when balance visibility is hidden", () => {
+    stubResizeObserver();
+    const { container } = render(
+      <BalanceVisibilityProvider>
+        <QuickInsightView cashflowPeriods={CASHFLOW} growthPeriods={GROWTH} />
+      </BalanceVisibilityProvider>,
+    );
+    expect(container.textContent).not.toContain("8.000.000");
+    expect(container.textContent).not.toContain("+Rp 200.00");
+    expect(container.textContent).toContain("•");
   });
 
   it("switches the asset growth period", async () => {

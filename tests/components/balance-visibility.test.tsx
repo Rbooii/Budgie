@@ -130,4 +130,18 @@ describe("MaskedBalance", () => {
     await user.click(screen.getByTestId("toggleBtn"));
     expect(container.textContent).toContain("1.500.000");
   });
+
+  it("stays visible when no provider is mounted (landing demos)", async () => {
+    const mod = await importComponents();
+    const { container } = render(<mod.MaskedBalance value={1500000} />);
+    expect(container.textContent).toContain("1.500.000");
+  });
+
+  it("formats signed values when visible", async () => {
+    const mod = await importComponents();
+    const { container } = render(
+      <mod.MaskedBalance value={-1500} signed />,
+    );
+    expect(container.textContent).toContain("-Rp 1.500.00");
+  });
 });

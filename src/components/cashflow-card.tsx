@@ -1,9 +1,16 @@
 import type { ReactNode } from "react";
-import { formatRupiah } from "@/lib/format";
+import { MaskedBalance } from "@/components/balance-visibility";
 
-function signedRupiah(value: number) {
-  return `${value >= 0 ? "+" : "-"}${formatRupiah(Math.abs(value))}`;
-}
+const STROKE = 16;
+const RADIUS = 64;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+/**
+ * Round caps paint STROKE / 2 past each dash end, so the dash-space has to
+ * include the full stroke width to leave a real GAP_PX hole between arcs.
+ */
+const GAP_PX = 10;
+const GAP_LEN = GAP_PX + STROKE;
 
 export default function CashflowCard({
   title = "Today's Cashflow",
@@ -19,23 +26,19 @@ export default function CashflowCard({
   actions?: ReactNode;
 }) {
   const total = income + expense;
-  const incomePct = total > 0 ? (income / total) * 100 : 0;
-  const expensePct = 100 - incomePct;
+  const incomeRatio = total > 0 ? income / total : 0;
+  const expenseRatio = total > 0 ? expense / total : 0;
+  const incomePct = incomeRatio * 100;
+  const expensePct = expenseRatio * 100;
   const net = income - expense;
 
-  const radius = 64;
-  const circumference = 2 * Math.PI * radius;
-  const gapDeg = 12;
-  const gapLen = (gapDeg / 360) * circumference;
-
-  const incomeLen = Math.max((incomePct / 100) * circumference - gapLen, 0);
-  const expenseLen = Math.max((expensePct / 100) * circumference - gapLen, 0);
-
-  const incomeOffset = 0;
-  const expenseOffset = -(incomeLen + gapLen);
+  const incomeLen = Math.max(incomeRatio * CIRCUMFERENCE - GAP_LEN, 0);
+  const expenseLen = Math.max(expenseRatio * CIRCUMFERENCE - GAP_LEN, 0);
+  const expenseOffset = -(incomeRatio * CIRCUMFERENCE);
+  const netColor = net >= 0 ? "text-brand" : "text-expense";
 
   return (
-    <div className="w-full bg-card rounded-[35px] border border-hairline p-6">
+    <div className="w-full h-full flex flex-col bg-card rounded-[35px] border border-hairline p-6">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-ink/50">{title}</h2>
@@ -44,65 +47,76 @@ export default function CashflowCard({
         {actions && <div className="shrink-0">{actions}</div>}
       </div>
 
-      <div className="relative mt-4 flex items-center justify-center">
-        <svg
-          viewBox="0 0 160 160"
-          className="h-36 w-36 -rotate-90"
-          aria-hidden="true"
+      <div className="mt-5">
+        <p className="text-xs font-medium text-ink/40">Net</p>
+        <p
+          className={`mt-1 text-2xl font-bold tracking-tight tabular-nums sm:text-3xl lg:text-4xl ${netColor}`}
         >
-          <circle
-            cx="80"
-            cy="80"
-            r={radius}
-            fill="none"
-            stroke="var(--expense)"
-            strokeWidth="14"
-            strokeLinecap="round"
-            strokeDasharray={`${expenseLen} ${circumference - expenseLen}`}
-            strokeDashoffset={expenseOffset}
-          />
-          <circle
-            cx="80"
-            cy="80"
-            r={radius}
-            fill="none"
-            stroke="var(--income)"
-            strokeWidth="14"
-            strokeLinecap="round"
-            strokeDasharray={`${incomeLen} ${circumference - incomeLen}`}
-            strokeDashoffset={incomeOffset}
-          />
-        </svg>
-
-        <div className="absolute flex flex-col items-center px-4 text-center">
-          <span className="text-[10px] font-medium text-ink/40">Net</span>
-          <span
-            className={`mt-0.5 max-w-[104px] text-[11px] font-semibold leading-tight tabular-nums ${
-              net >= 0 ? "text-brand" : "text-expense"
-            }`}
-          >
-            {signedRupiah(net)}
-          </span>
-        </div>
+          <MaskedBalance value={net} mask="long" signed />
+        </p>
       </div>
 
-      <div className="mt-4 space-y-2.5">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-income">Income</span>
-          <span className="text-[11px] tabular-nums text-ink/30">
+      <div className="mt-5 flex items-center justify-center">
+        <svg
+          viewBox="0 0 160 160"
+          className="h-40 w-40 -rotate-90"
+          aria-hidden="true"
+        >
+          {total === 0 && (
+            <circle
+              cx="80"
+              cy="80"
+              r={RADIUS}
+              fill="none"
+              stroke="var(--chart-placeholder)"
+              strokeWidth={STROKE}
+            />
+          )}
+          {expenseLen > 0 && (
+            <circle
+              cx="80"
+              cy="80"
+              r={RADIUS}
+              fill="none"
+              stroke="var(--expense)"
+              strokeWidth={STROKE}
+              strokeLinecap="round"
+              strokeDasharray={`${expenseLen} ${CIRCUMFERENCE - expenseLen}`}
+              strokeDashoffset={expenseOffset}
+            />
+          )}
+          {incomeLen > 0 && (
+            <circle
+              cx="80"
+              cy="80"
+              r={RADIUS}
+              fill="none"
+              stroke="var(--income)"
+              strokeWidth={STROKE}
+              strokeLinecap="round"
+              strokeDasharray={`${incomeLen} ${CIRCUMFERENCE - incomeLen}`}
+            />
+          )}
+        </svg>
+      </div>
+
+      <div className="mt-auto pt-4 space-y-3">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-semibold text-income">Income</span>
+          <span className="text-xs tabular-nums text-ink/35">
             {Math.round(incomePct)}%
           </span>
-          <span className="ml-auto text-sm font-medium tabular-nums text-ink">
-            {formatRupiah(income)}
+          <span className="ml-auto text-lg font-bold tabular-nums text-ink sm:text-xl">
+            <MaskedBalance value={income} mask="short" />
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-expense">Expense</span>
-          <span className="text-[11px] tabular-nums text-ink/30">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-semibold text-expense">Expense</span>
+          <span className="text-xs tabular-nums text-ink/35">
             {Math.round(expensePct)}%
           </span>
-          <span className="ml-auto text-sm font-medium tabular-nums text-ink">
-            {formatRupiah(expense)}
+          <span className="ml-auto text-lg font-bold tabular-nums text-ink sm:text-xl">
+            <MaskedBalance value={expense} mask="short" />
           </span>
         </div>
       </div>
