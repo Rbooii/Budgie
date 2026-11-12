@@ -28,6 +28,8 @@ model User {
   budgets         Budget[]
   subscriptions   Subscription[]
   plusOrders      PlusOrder[]
+  chatThreads     ChatThread[]
+  chatProvider    ChatProviderConfig?
 
   @@unique([email])
   @@map("user")
@@ -163,6 +165,42 @@ model Subscription {
 
   @@unique([userId, name])
   @@map("subscription")
+}
+
+/// One AI conversation. Messages are stored as UIMessage[] JSON so a thread can
+/// be restored exactly (text, reasoning and tool parts). Threads are retained
+/// for CHAT_HISTORY_DAYS (2) and pruned lazily.
+model ChatThread {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  model        String?
+  messages     Json     @default("[]")
+  messageCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("chat_thread")
+}
+
+/// Optional user-supplied OpenAI-compatible provider. The API key is encrypted
+/// (AES-256-GCM) and never returned to the client.
+model ChatProviderConfig {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  baseUrl   String
+  model     String
+  label     String?
+  keyCipher String
+  keyIv     String
+  keyTag    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("chat_provider_config")
 }
 
 model PlusOrder {

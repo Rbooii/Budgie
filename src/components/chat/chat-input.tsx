@@ -44,7 +44,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="rounded-[24px] border border-hairline bg-card shadow-[0_10px_30px_-16px_rgba(0,0,0,0.25)] transition focus-within:border-ink/20 focus-within:ring-4 focus-within:ring-ink/[0.04]">
+    <div className="rounded-[28px] border border-hairline bg-card shadow-[0_12px_34px_-22px_rgba(0,0,0,0.3)] transition focus-within:border-ink/20 focus-within:ring-4 focus-within:ring-ink/[0.04]">
       <textarea
         ref={textareaRef}
         value={input}
@@ -55,7 +55,7 @@ export function ChatInput({
             submit();
           }
         }}
-        placeholder="Ask about your money…"
+        placeholder="Ask Budgie about your money…"
         aria-label="Prompt"
         rows={1}
         disabled={status === "error"}

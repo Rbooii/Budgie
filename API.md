@@ -249,12 +249,53 @@ name already exists" }`. `startDate` accepts any `Date`-parsable string
 Not a Hono route — a dedicated Route Handler (`src/app/api/chat/route.ts`)
 streaming a Vercel AI SDK UI message stream.
 
-- `POST /api/chat` with `{ messages: UIMessage[], model?: string }`.
+- `POST /api/chat` with
+  `{ messages: UIMessage[], model?: string, threadId?: string }`.
+  `model` is a built-in id (`gemini-2.5-flash` | `gemini-3.5-flash-lite`) or
+  the sentinel `"custom"`. When `threadId` is present it must be owned by the
+  session user (404 otherwise) and the finished `UIMessage[]` is persisted.
 - `200` → SSE-ish UI message stream (`result.toUIMessageStreamResponse()`).
-- `400` when `messages` is missing/not an array; `401` (plain text) without a
-  session.
+- `400` when `messages` is missing/not an array, or when a custom model is
+  requested but not connected; `404` for an unknown `threadId`; `401` (plain
+  text) without a session.
 - `maxDuration = 30`. Tools call the same services as the REST API, so their
-  output shapes mirror the endpoints above.
+  output shapes mirror the endpoints above. The assistant opts into a compact
+  financial snapshot in the system prompt on every request.
+
+### 2.9 `/api/chat/threads`
+
+Hono router, all owner-scoped and authenticated. Threads are retained for
+**2 days** (`CHAT_HISTORY_DAYS = 2`) and pruned lazily.
+
+| Method | Path | Body | Success |
+| ------ | ---- | ---- | ------- |
+| GET | `/api/chat/threads` | — | `{ threads: ChatThreadSummary[] }` (48h, non-empty) |
+| POST | `/api/chat/threads` | `{ title?: string, model?: string }` | `201 { thread }` |
+| GET | `/api/chat/threads/:id` | — | `{ thread: ChatThreadDetail }` |
+| PATCH | `/api/chat/threads/:id` | `{ title?: string, messages?: UIMessage[] }` | `{ ok: true }` |
+| DELETE | `/api/chat/threads/:id` | — | `204` |
+| DELETE | `/api/chat/threads` | — | `204` (clear all) |
+
+`ChatThreadSummary = { id, title, model, messageCount, createdAt, updatedAt }`.
+Messages are capped at 200 and stored as JSON. A message-only PATCH is the
+client fallback (the stream's `onFinish` is authoritative).
+
+### 2.10 `/api/chat-provider`
+
+Optional OpenAI-compatible provider, encrypted at rest. The API key is
+write-only.
+
+| Method | Path | Body | Success |
+| ------ | ---- | ---- | ------- |
+| GET | `/api/chat-provider` | — | `{ configured, baseUrl, model, label, hasKey }` |
+| PUT | `/api/chat-provider` | `{ baseUrl, model, label?, apiKey? }` | public config |
+| DELETE | `/api/chat-provider` | — | `204` |
+| POST | `/api/chat-provider/test` | `{ baseUrl, model, apiKey? }` | `{ ok: true }` |
+
+`apiKey` may be omitted on PUT/test to reuse the stored key. Invalid URLs
+(HTTP in production, private/localhost hosts, credentials in the URL) return
+`400 { error }`. The production guard is an SSRF boundary: the server, not the
+browser, performs the provider request.
 
 See `HANDSOFF_IOS.md` §7 for chunk-by-chunk SSE framing and the tool schemas.
 

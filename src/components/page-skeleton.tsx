@@ -148,32 +148,48 @@ function ProfileSkeleton() {
 
 function ChatSkeleton() {
   return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
-      <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-3 sm:px-6">
-        <Bar className="h-[30px] w-[30px] rounded-[9px]" />
-        <div className="flex flex-col gap-2">
-          <Bar className="h-3.5 w-32 rounded-full" />
-          <Bar className="h-3 w-44 rounded-full" />
+    <div
+      className="flex h-[calc(100dvh-var(--app-tabbar-h))] min-h-0 w-full md:h-[100dvh]"
+      aria-hidden="true"
+    >
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center gap-3 px-4 pb-3 pt-4 sm:px-6">
+          <Bar className="h-[30px] w-[30px] rounded-[9px]" />
+          <div className="flex flex-col gap-2">
+            <Bar className="h-3.5 w-32 rounded-full" />
+            <Bar className="h-3 w-44 rounded-full" />
+          </div>
+          <div className="ml-auto flex items-center gap-1">
+            <Bar className="h-9 w-9 rounded-full lg:hidden" />
+            <Bar className="h-9 w-9 rounded-full" />
+          </div>
         </div>
-        <Bar className="ml-auto h-9 w-9 rounded-full" />
-      </div>
 
-      <div className="flex flex-1 min-h-0 flex-col gap-4 px-4 pt-6 sm:px-6">
-        <Bar className="ml-auto h-11 w-2/3 max-w-[340px] rounded-[20px]" />
-        <div className="flex items-start gap-3">
-          <Bar className="h-6 w-6 rounded-full" />
+        <div className="mx-auto flex w-full max-w-3xl flex-1 min-h-0 flex-col gap-4 px-4 pt-6 sm:px-6">
+          <Bar className="ml-auto h-11 w-2/3 max-w-[340px] rounded-[20px]" />
           <div className="flex flex-1 flex-col gap-2">
             <Bar className="h-4 w-full rounded-full" />
             <Bar className="h-4 w-5/6 rounded-full" />
             <Bar className="h-4 w-3/5 rounded-full" />
           </div>
+          <Bar className="h-24 w-full max-w-[440px] rounded-[20px]" />
         </div>
-        <Bar className="h-24 w-full max-w-[440px] rounded-[20px]" />
+
+        <div className="mx-auto w-full max-w-3xl shrink-0 px-4 pb-3 sm:px-6">
+          <Bar className="h-[92px] w-full rounded-[28px]" />
+          <Bar className="mx-auto mt-2 h-3 w-64 rounded-full" />
+        </div>
       </div>
 
-      <div className="shrink-0 px-4 pb-3 sm:px-6">
-        <Bar className="h-[92px] w-full rounded-[24px]" />
-        <Bar className="mx-auto mt-2 h-3 w-64 rounded-full" />
+      <div className="hidden w-[268px] shrink-0 flex-col gap-3 border-l border-hairline p-3 lg:flex">
+        <div className="flex items-center px-1 pt-1">
+          <Bar className="h-3 w-12 rounded-full" />
+        </div>
+        <Bar className="h-3 w-10 rounded-full" />
+        <Bar className="h-9 w-full rounded-[12px]" />
+        <Bar className="h-9 w-5/6 rounded-[12px]" />
+        <Bar className="h-3 w-10 rounded-full" />
+        <Bar className="h-9 w-2/3 rounded-[12px]" />
       </div>
     </div>
   );

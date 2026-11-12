@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { ALL_CATEGORIES, CATEGORIES_BY_TYPE } from "@/lib/categories";
+import {
+  ALL_CATEGORIES,
+  CATEGORIES_BY_TYPE,
+  EXPENSE_CATEGORIES,
+} from "@/lib/categories";
+
+const dateOnly = (label: string) =>
+  z.string().describe(`Inclusive ${label} date as YYYY-MM-DD`);
 
 export const GetTransactionsToolSchema = z
   .object({
@@ -15,8 +22,8 @@ export const GetTransactionsToolSchema = z
       .string()
       .optional()
       .describe("Keyword to match against the transaction name or category label"),
-    from: z.string().optional().describe("Inclusive start date as YYYY-MM-DD"),
-    to: z.string().optional().describe("Inclusive end date as YYYY-MM-DD"),
+    from: dateOnly("start").optional(),
+    to: dateOnly("end").optional(),
     limit: z
       .number()
       .int()
@@ -26,6 +33,118 @@ export const GetTransactionsToolSchema = z
       .describe("Maximum number of rows to return (default 10)"),
   })
   .strict();
+
+export const GetCashflowTrendToolSchema = z
+  .object({
+    months: z
+      .number()
+      .int()
+      .min(1)
+      .max(12)
+      .optional()
+      .describe("Rolling window in months (default 6)"),
+  })
+  .strict();
+
+export const GetSpendingBreakdownToolSchema = z
+  .object({
+    from: dateOnly("start").optional(),
+    to: dateOnly("end").optional(),
+    groupBy: z
+      .enum(["category", "merchant"])
+      .optional()
+      .describe("Group expenses by category (default) or by transaction name"),
+    limit: z.number().int().min(1).max(20).optional(),
+  })
+  .strict();
+
+export const GetNetWorthHistoryToolSchema = z
+  .object({
+    months: z
+      .number()
+      .int()
+      .min(1)
+      .max(12)
+      .optional()
+      .describe("Rolling window in months (default 12)"),
+  })
+  .strict();
+
+export const GetUpcomingBillsToolSchema = z
+  .object({
+    days: z
+      .number()
+      .int()
+      .min(1)
+      .max(90)
+      .optional()
+      .describe("Look-ahead window in days (default 30)"),
+  })
+  .strict();
+
+export const GetLargestTransactionsToolSchema = z
+  .object({
+    type: z.enum(["income", "expense", "transfer"]).optional(),
+    from: dateOnly("start").optional(),
+    to: dateOnly("end").optional(),
+    limit: z.number().int().min(1).max(20).optional(),
+  })
+  .strict();
+
+export const CreateBudgetToolSchema = z
+  .object({
+    category: z.enum(EXPENSE_CATEGORIES),
+    amount: z.number().positive().describe("Budget limit in Rupiah"),
+    periodDays: z
+      .number()
+      .int()
+      .positive()
+      .describe("Budget window: 1 daily, 7 weekly, 30 monthly, 365 yearly"),
+  })
+  .strict();
+
+export const UpdateBudgetToolSchema = z
+  .object({
+    budgetId: z.string().min(1).describe("Id from get_budgets/get_budget_status"),
+    amount: z.number().positive().optional(),
+    periodDays: z.number().int().positive().optional(),
+  })
+  .strict()
+  .refine((value) => value.amount !== undefined || value.periodDays !== undefined, {
+    message: "Provide at least one field to update",
+  });
+
+export const CreateSubscriptionToolSchema = z
+  .object({
+    name: z.string().min(1),
+    amount: z.number().positive().describe("Charge amount in Rupiah"),
+    category: z.enum(EXPENSE_CATEGORIES),
+    periodDays: z
+      .number()
+      .int()
+      .positive()
+      .describe("Billing cycle: 7 weekly, 30 monthly, 365 yearly"),
+    startDate: dateOnly("start").optional(),
+    active: z.boolean().optional(),
+  })
+  .strict();
+
+export const UpdateSubscriptionToolSchema = z
+  .object({
+    subscriptionId: z.string().min(1),
+    name: z.string().min(1).optional(),
+    amount: z.number().positive().optional(),
+    category: z.enum(EXPENSE_CATEGORIES).optional(),
+    periodDays: z.number().int().positive().optional(),
+    startDate: dateOnly("start").optional(),
+    active: z.boolean().optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      Object.keys(value).some((key) => key !== "subscriptionId"),
+    { message: "Provide at least one field to update" },
+  );
 
 export const CreateTransactionToolSchema = z
   .object({

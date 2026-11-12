@@ -160,3 +160,93 @@ describe("CreateTransactionToolSchema", () => {
     expect(parsed.success).toBe(false);
   });
 });
+describe("analytics tool schemas", () => {
+  it("bounds the cashflow trend window", async () => {
+    const {
+      GetCashflowTrendToolSchema,
+      GetNetWorthHistoryToolSchema,
+      GetUpcomingBillsToolSchema,
+    } = await import("@/server/chat/schemas");
+
+    expect(GetCashflowTrendToolSchema.safeParse({}).success).toBe(true);
+    expect(GetCashflowTrendToolSchema.safeParse({ months: 6 }).success).toBe(true);
+    expect(GetCashflowTrendToolSchema.safeParse({ months: 13 }).success).toBe(false);
+    expect(GetNetWorthHistoryToolSchema.safeParse({ months: 12 }).success).toBe(true);
+    expect(GetNetWorthHistoryToolSchema.safeParse({ months: 0 }).success).toBe(false);
+    expect(GetUpcomingBillsToolSchema.safeParse({ days: 30 }).success).toBe(true);
+    expect(GetUpcomingBillsToolSchema.safeParse({ days: 91 }).success).toBe(false);
+  });
+
+  it("accepts a spending breakdown range", async () => {
+    const { GetSpendingBreakdownToolSchema } = await import(
+      "@/server/chat/schemas"
+    );
+
+    expect(
+      GetSpendingBreakdownToolSchema.safeParse({
+        from: "2026-08-01",
+        to: "2026-08-31",
+        groupBy: "merchant",
+        limit: 10,
+      }).success,
+    ).toBe(true);
+    expect(
+      GetSpendingBreakdownToolSchema.safeParse({ groupBy: "store" }).success,
+    ).toBe(false);
+  });
+
+  it("requires at least one field to update a budget", async () => {
+    const { UpdateBudgetToolSchema } = await import("@/server/chat/schemas");
+
+    expect(
+      UpdateBudgetToolSchema.safeParse({ budgetId: "b1", amount: 1000 }).success,
+    ).toBe(true);
+    expect(
+      UpdateBudgetToolSchema.safeParse({ budgetId: "b1" }).success,
+    ).toBe(false);
+  });
+
+  it("restricts budgets and subscriptions to expense categories", async () => {
+    const { CreateBudgetToolSchema, CreateSubscriptionToolSchema } =
+      await import("@/server/chat/schemas");
+
+    expect(
+      CreateBudgetToolSchema.safeParse({
+        category: "FoodAndDrink",
+        amount: 1000000,
+        periodDays: 30,
+      }).success,
+    ).toBe(true);
+    expect(
+      CreateBudgetToolSchema.safeParse({
+        category: "Salary",
+        amount: 1000000,
+        periodDays: 30,
+      }).success,
+    ).toBe(false);
+    expect(
+      CreateSubscriptionToolSchema.safeParse({
+        name: "Netflix",
+        amount: 149000,
+        category: "Entertainment",
+        periodDays: 30,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("requires at least one field to update a subscription", async () => {
+    const { UpdateSubscriptionToolSchema } = await import(
+      "@/server/chat/schemas"
+    );
+
+    expect(
+      UpdateSubscriptionToolSchema.safeParse({
+        subscriptionId: "s1",
+        amount: 2000,
+      }).success,
+    ).toBe(true);
+    expect(
+      UpdateSubscriptionToolSchema.safeParse({ subscriptionId: "s1" }).success,
+    ).toBe(false);
+  });
+});

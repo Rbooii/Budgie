@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
+  CUSTOM_MODEL_ID,
   DEFAULT_MODEL,
   MODEL_CHAIN,
   MODEL_LABELS,
+  isCustomModel,
   isRateLimitError,
   modelLabel,
+  modelSelectionLabel,
+  resolveChatModel,
   resolveModel,
   thinkingConfigFor,
 } from "@/lib/chat-models";
@@ -81,5 +85,22 @@ describe("thinkingConfigFor", () => {
     expect(thinkingConfigFor("gemini-3.5-flash-lite")).toEqual({
       includeThoughts: false,
     });
+  });
+});
+describe("custom model selection", () => {
+  it("resolves the custom sentinel and rejects arbitrary ids", () => {
+    expect(resolveChatModel(CUSTOM_MODEL_ID)).toBe(CUSTOM_MODEL_ID);
+    expect(resolveChatModel("gpt-4o")).toBe(DEFAULT_MODEL);
+    expect(resolveChatModel("gemini-3.5-flash-lite")).toBe(
+      "gemini-3.5-flash-lite",
+    );
+  });
+
+  it("labels a custom model with its configured label", () => {
+    expect(isCustomModel(CUSTOM_MODEL_ID)).toBe(true);
+    expect(isCustomModel(DEFAULT_MODEL)).toBe(false);
+    expect(modelSelectionLabel(CUSTOM_MODEL_ID, "My model")).toBe("My model");
+    expect(modelSelectionLabel(CUSTOM_MODEL_ID)).toBe("Your model");
+    expect(modelSelectionLabel(DEFAULT_MODEL)).toBe("Gemini 2.5 Flash");
   });
 });

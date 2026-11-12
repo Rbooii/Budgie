@@ -8,10 +8,21 @@ import { ChatToolStatus } from "@/components/chat/chat-tool-status";
 const TOOL_META: Record<string, { running: string }> = {
   get_balance_accounts: { running: "Looking up your accounts…" },
   get_transactions: { running: "Fetching your transactions…" },
+  get_financial_overview: { running: "Looking at your whole picture…" },
+  get_cashflow_trend: { running: "Checking your cashflow trend…" },
+  get_spending_breakdown: { running: "Breaking down your spending…" },
+  get_net_worth_history: { running: "Tracing your net worth…" },
+  get_budget_status: { running: "Checking your budgets…" },
+  get_upcoming_bills: { running: "Checking upcoming bills…" },
+  get_largest_transactions: { running: "Finding your biggest transactions…" },
   get_budgets: { running: "Checking your budgets…" },
   get_subscriptions: { running: "Looking up your subscriptions…" },
   get_insights: { running: "Analyzing your money…" },
   create_transaction: { running: "Adding the transaction…" },
+  create_budget: { running: "Creating the budget…" },
+  update_budget: { running: "Updating the budget…" },
+  create_subscription: { running: "Adding the subscription…" },
+  update_subscription: { running: "Updating the subscription…" },
 };
 
 export function ChatToolCard({ part }: { part: ToolUIPart }) {

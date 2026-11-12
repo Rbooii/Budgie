@@ -6,6 +6,7 @@ import {
   ArrowDownLeft,
   ArrowLeftRight,
   ArrowUpRight,
+  Store,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -13,23 +14,48 @@ import { formatDate, formatRupiah } from "@/lib/format";
 import { categoryLabel } from "@/lib/categories";
 import { categoryIcon } from "@/lib/category-icon";
 import { periodLabel } from "@/lib/budget";
+import { Sparkline } from "@/components/sparkline";
 import type {
   ChatAccountsResult,
+  ChatBudgetMutationResult,
+  ChatBudgetStatusResult,
   ChatBudgetsResult,
+  ChatCashflowTrendResult,
   ChatCreateTransactionResult,
   ChatInsightsResult,
+  ChatLargestTransactionsResult,
+  ChatNetWorthHistoryResult,
+  ChatOverviewResult,
+  ChatSpendingBreakdownResult,
+  ChatSubscriptionMutationResult,
   ChatSubscriptionsResult,
   ChatTransactionsResult,
+  ChatUpcomingBillsResult,
 } from "@/components/chat/types";
 
 const TOOL_TITLES: Record<string, string> = {
   get_balance_accounts: "Accounts",
   get_transactions: "Transactions",
+  get_financial_overview: "Overview",
+  get_cashflow_trend: "Cashflow",
+  get_spending_breakdown: "Spending",
+  get_net_worth_history: "Net worth",
+  get_budget_status: "Budgets",
+  get_upcoming_bills: "Upcoming bills",
+  get_largest_transactions: "Largest transactions",
   get_budgets: "Budgets",
   get_subscriptions: "Subscriptions",
   get_insights: "Insights",
   create_transaction: "Transaction",
+  create_budget: "Budget",
+  update_budget: "Budget",
+  create_subscription: "Subscription",
+  update_subscription: "Subscription",
 };
+
+function signedRupiah(value: number) {
+  return `${value >= 0 ? "+" : "-"}${formatRupiah(Math.abs(value))}`;
+}
 
 const TYPE_META: Record<
   string,
@@ -319,6 +345,382 @@ function InsightsResult({ data }: { data: ChatInsightsResult }) {
   );
 }
 
+function TinyStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] text-ink/35">{label}</p>
+      <p className={`truncate text-xs font-semibold tabular-nums ${tone}`}>
+        {formatRupiah(value)}
+      </p>
+    </div>
+  );
+}
+
+function OverviewResult({ data }: { data: ChatOverviewResult }) {
+  return (
+    <>
+      <div className="px-2 pt-0.5 pb-2">
+        <p className="text-[11px] text-ink/45">Net worth</p>
+        <p className="mt-0.5 text-xl font-bold tracking-tight tabular-nums text-ink">
+          {formatRupiah(data.netWorth)}
+        </p>
+      </div>
+
+      {data.accounts.slice(0, 4).map((account) => (
+        <div key={account.id} className="flex items-center gap-3 px-2 py-1.5">
+          <IconCircle tint="bg-surface text-ink/50">
+            <Wallet className="h-4 w-4" />
+          </IconCircle>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-ink">{account.name}</p>
+            <p className="truncate text-xs capitalize text-ink/45">
+              {account.type}
+            </p>
+          </div>
+          <p className="shrink-0 text-sm font-semibold tabular-nums text-ink">
+            {formatRupiah(account.balance)}
+          </p>
+        </div>
+      ))}
+
+      <div className="mx-2 my-1.5 grid grid-cols-3 gap-2 rounded-[12px] bg-surface px-2.5 py-2">
+        <TinyStat label="Income" value={data.month.income} tone="text-income" />
+        <TinyStat label="Expense" value={data.month.expense} tone="text-expense" />
+        <TinyStat
+          label="Net"
+          value={data.month.net}
+          tone={data.month.net >= 0 ? "text-brand" : "text-expense"}
+        />
+      </div>
+
+      <p className="px-2 pb-2 text-[11px] text-ink/40">
+        {data.month.label}, savings rate {data.month.savingsRate}%.{" "}
+        {data.budgets.overCount > 0
+          ? `${data.budgets.overCount} budget over.`
+          : "All budgets in range."}{" "}
+        {data.upcoming.total > 0
+          ? `${formatRupiah(data.upcoming.total)} in bills over ${data.upcoming.withinDays} days.`
+          : "No bills due in 30 days."}
+      </p>
+
+      {data.topCategories.slice(0, 3).map((category) => (
+        <div
+          key={category.category}
+          className="flex items-center gap-3 px-2 py-1.5"
+        >
+          <IconCircle tint="bg-surface text-ink/50">
+            {categoryIcon(category.category, "h-4 w-4")}
+          </IconCircle>
+          <p className="min-w-0 flex-1 truncate text-[13px] text-ink/60">
+            {category.categoryLabel}
+          </p>
+          <p className="shrink-0 text-[13px] font-semibold tabular-nums text-ink">
+            {formatRupiah(category.amount)}
+          </p>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function CashflowTrendResult({ data }: { data: ChatCashflowTrendResult }) {
+  const rows = data.months.slice(-6);
+  const max = Math.max(...rows.map((row) => Math.abs(row.net)), 1);
+
+  return (
+    <>
+      <div className="space-y-2 px-2 py-1.5">
+        {rows.map((row) => (
+          <div key={row.month}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[12px] text-ink/60">{row.label}</span>
+              <span
+                className={`text-[12px] font-semibold tabular-nums ${
+                  row.net >= 0 ? "text-brand" : "text-expense"
+                }`}
+              >
+                {signedRupiah(row.net)}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-hairline-track">
+              <div
+                className={`h-full rounded-full ${
+                  row.net >= 0 ? "bg-brand" : "bg-expense"
+                }`}
+                style={{
+                  width: `${Math.max((Math.abs(row.net) / max) * 100, 3)}%`,
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between px-2 py-1.5 text-xs">
+        <span className="text-ink/45">Total net</span>
+        <span className="font-semibold tabular-nums text-ink">
+          {signedRupiah(data.totals.net)}
+        </span>
+      </div>
+    </>
+  );
+}
+
+function SpendingBreakdownResult({
+  data,
+}: {
+  data: ChatSpendingBreakdownResult;
+}) {
+  if (data.items.length === 0) {
+    return <EmptyNote>No expenses in this period.</EmptyNote>;
+  }
+
+  return (
+    <>
+      {data.items.map((item) => (
+        <div key={item.key} className="flex items-center gap-3 px-2 py-2">
+          <IconCircle tint="bg-surface text-ink/50">
+            {data.groupBy === "category" ? (
+              categoryIcon(item.key, "h-4 w-4")
+            ) : (
+              <Store className="h-4 w-4" />
+            )}
+          </IconCircle>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-ink">{item.label}</p>
+            <p className="truncate text-xs text-ink/45">
+              {item.share}% of spending
+              {item.deltaPct !== null
+                ? `, ${item.deltaPct >= 0 ? "+" : ""}${item.deltaPct}% vs previous`
+                : ""}
+            </p>
+          </div>
+          <p className="shrink-0 text-sm font-semibold tabular-nums text-ink">
+            {formatRupiah(item.amount)}
+          </p>
+        </div>
+      ))}
+      <div className="flex items-center justify-between px-2 py-1.5 text-xs">
+        <span className="text-ink/45">Total</span>
+        <span className="font-semibold tabular-nums text-ink">
+          {formatRupiah(data.total)}
+        </span>
+      </div>
+    </>
+  );
+}
+
+function NetWorthHistoryResult({ data }: { data: ChatNetWorthHistoryResult }) {
+  return (
+    <>
+      <div className="px-2 pt-0.5 pb-2">
+        <p className="text-[11px] text-ink/45">Net worth</p>
+        <p className="mt-0.5 text-xl font-bold tracking-tight tabular-nums text-ink">
+          {formatRupiah(data.netWorth)}
+        </p>
+        <p
+          className={`mt-0.5 text-[11px] font-medium tabular-nums ${
+            data.change >= 0 ? "text-brand" : "text-expense"
+          }`}
+        >
+          {signedRupiah(data.change)} over {data.series.length} months
+        </p>
+      </div>
+      <div className="px-2 pb-1">
+        <Sparkline
+          values={data.series.map((point) => point.value)}
+          color="var(--brand)"
+          variant="paper"
+          className="h-11 w-full"
+        />
+      </div>
+    </>
+  );
+}
+
+function BudgetStatusResult({ data }: { data: ChatBudgetStatusResult }) {
+  if (data.budgets.length === 0) {
+    return <EmptyNote>No budgets yet.</EmptyNote>;
+  }
+
+  return (
+    <>
+      {data.budgets.map((budget) => (
+        <div key={budget.id} className="px-2 py-2">
+          <div className="flex items-center gap-3">
+            <IconCircle
+              tint={
+                budget.over
+                  ? "bg-expense-tint text-expense"
+                  : "bg-surface text-ink/50"
+              }
+            >
+              {categoryIcon(budget.category, "h-4 w-4")}
+            </IconCircle>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-ink">
+                {budget.categoryLabel}
+              </p>
+              <p className="text-xs text-ink/45">
+                {budget.period}, {budget.spentPct}% used
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col items-end">
+              <p className="text-sm font-semibold tabular-nums text-ink">
+                {formatRupiah(budget.spent)}
+              </p>
+              <p
+                className={`text-[11px] font-medium tabular-nums ${
+                  budget.over ? "text-expense" : "text-ink/40"
+                }`}
+              >
+                {budget.over
+                  ? `Over ${formatRupiah(Math.abs(budget.remaining))}`
+                  : `${formatRupiah(budget.remaining)} left`}
+              </p>
+            </div>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-hairline-track">
+            <div
+              className={`h-full rounded-full ${
+                budget.over ? "bg-expense" : "bg-brand"
+              }`}
+              style={{ width: `${Math.min(budget.spentPct, 100)}%` }}
+            />
+          </div>
+          {budget.projectedOver && (
+            <p className="mt-1 text-[11px] text-expense/80">
+              Pace projects {formatRupiah(budget.projectedSpend)} by period end.
+            </p>
+          )}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function UpcomingBillsResult({ data }: { data: ChatUpcomingBillsResult }) {
+  if (data.items.length === 0) {
+    return <EmptyNote>No bills due in this window.</EmptyNote>;
+  }
+
+  return (
+    <>
+      {data.items.map((bill) => (
+        <div key={bill.id} className="flex items-center gap-3 px-2 py-2">
+          <IconCircle tint="bg-transfer-tint text-transfer">
+            {categoryIcon(bill.category, "h-4 w-4")}
+          </IconCircle>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-ink">{bill.name}</p>
+            <p className="truncate text-xs text-ink/45">
+              {formatDate(bill.nextBillingDate)}, {bill.period}
+            </p>
+          </div>
+          <p className="shrink-0 text-sm font-semibold tabular-nums text-transfer">
+            {formatRupiah(bill.amount)}
+          </p>
+        </div>
+      ))}
+      <div className="flex items-center justify-between px-2 py-1.5 text-xs">
+        <span className="text-ink/45">Total next {data.withinDays} days</span>
+        <span className="font-semibold tabular-nums text-ink">
+          {formatRupiah(data.total)}
+        </span>
+      </div>
+    </>
+  );
+}
+
+function LargestTransactionsResult({
+  data,
+}: {
+  data: ChatLargestTransactionsResult;
+}) {
+  if (data.items.length === 0) {
+    return <EmptyNote>No transactions in this period.</EmptyNote>;
+  }
+
+  return (
+    <>
+      {data.items.slice(0, 6).map((transaction) => (
+        <TransactionLine
+          key={transaction.id}
+          name={transaction.name}
+          amount={transaction.amount}
+          type={transaction.type}
+          subtitle={`${transaction.account ?? "Deleted account"}${
+            transaction.toAccount ? ` to ${transaction.toAccount}` : ""
+          }, ${transaction.categoryLabel}`}
+          caption={formatDate(transaction.date)}
+        />
+      ))}
+    </>
+  );
+}
+
+function WriteSuccess({
+  title,
+  detail,
+}: {
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="m-1 flex items-center justify-between gap-3 rounded-[16px] bg-income-tint px-3.5 py-2.5">
+      <p className="text-[13px] font-semibold text-income">{title}</p>
+      <p className="min-w-0 truncate text-[13px] font-medium text-ink">
+        {detail}
+      </p>
+    </div>
+  );
+}
+
+function BudgetMutationResult({ data }: { data: ChatBudgetMutationResult }) {
+  if (!data.ok) {
+    return (
+      <div className="m-1 flex items-start gap-2 rounded-[16px] bg-expense-tint px-3.5 py-2.5 text-expense">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <p className="text-[13px] font-medium">{data.error}</p>
+      </div>
+    );
+  }
+  return (
+    <WriteSuccess
+      title="Budget saved"
+      detail={`${data.budget.categoryLabel}, ${formatRupiah(data.budget.amount)} ${data.budget.period}`}
+    />
+  );
+}
+
+function SubscriptionMutationResult({
+  data,
+}: {
+  data: ChatSubscriptionMutationResult;
+}) {
+  if (!data.ok) {
+    return (
+      <div className="m-1 flex items-start gap-2 rounded-[16px] bg-expense-tint px-3.5 py-2.5 text-expense">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <p className="text-[13px] font-medium">{data.error}</p>
+      </div>
+    );
+  }
+  return (
+    <WriteSuccess
+      title="Subscription saved"
+      detail={`${data.subscription.name}, ${formatRupiah(data.subscription.amount)} ${data.subscription.period}`}
+    />
+  );
+}
+
 function CreateTransactionResult({
   data,
 }: {
@@ -360,6 +762,45 @@ export function ChatToolResult({
       break;
     case "get_transactions":
       content = <TransactionsResult data={output as ChatTransactionsResult} />;
+      break;
+    case "get_financial_overview":
+      content = <OverviewResult data={output as ChatOverviewResult} />;
+      break;
+    case "get_cashflow_trend":
+      content = <CashflowTrendResult data={output as ChatCashflowTrendResult} />;
+      break;
+    case "get_spending_breakdown":
+      content = (
+        <SpendingBreakdownResult data={output as ChatSpendingBreakdownResult} />
+      );
+      break;
+    case "get_net_worth_history":
+      content = (
+        <NetWorthHistoryResult data={output as ChatNetWorthHistoryResult} />
+      );
+      break;
+    case "get_budget_status":
+      content = <BudgetStatusResult data={output as ChatBudgetStatusResult} />;
+      break;
+    case "get_upcoming_bills":
+      content = <UpcomingBillsResult data={output as ChatUpcomingBillsResult} />;
+      break;
+    case "get_largest_transactions":
+      content = (
+        <LargestTransactionsResult data={output as ChatLargestTransactionsResult} />
+      );
+      break;
+    case "create_budget":
+    case "update_budget":
+      content = <BudgetMutationResult data={output as ChatBudgetMutationResult} />;
+      break;
+    case "create_subscription":
+    case "update_subscription":
+      content = (
+        <SubscriptionMutationResult
+          data={output as ChatSubscriptionMutationResult}
+        />
+      );
       break;
     case "get_budgets":
       content = <BudgetsResult data={output as ChatBudgetsResult} />;

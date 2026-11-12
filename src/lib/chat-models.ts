@@ -23,6 +23,30 @@ export function resolveModel(input: unknown): ChatModelId {
   return DEFAULT_MODEL;
 }
 
+/** The body may ask for a built-in model or the user's own provider. */
+export const CUSTOM_MODEL_ID = "custom";
+
+export type ChatModelSelection = ChatModelId | typeof CUSTOM_MODEL_ID;
+
+export function isCustomModel(
+  model: ChatModelSelection,
+): model is typeof CUSTOM_MODEL_ID {
+  return model === CUSTOM_MODEL_ID;
+}
+
+export function resolveChatModel(input: unknown): ChatModelSelection {
+  if (input === CUSTOM_MODEL_ID) return CUSTOM_MODEL_ID;
+  return resolveModel(input);
+}
+
+export function modelSelectionLabel(
+  model: ChatModelSelection,
+  customLabel?: string | null,
+): string {
+  if (isCustomModel(model)) return customLabel?.trim() || "Your model";
+  return modelLabel(model);
+}
+
 export function isRateLimitError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   const haystack = message.toLowerCase();

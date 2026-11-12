@@ -7,6 +7,8 @@ import { transactions } from "@/server/routes/transactions";
 import { subscriptions } from "@/server/routes/subscriptions";
 import { user } from "@/server/routes/user";
 import { plus, plusWebhook } from "@/server/routes/plus";
+import { chatThreads } from "@/server/routes/chat-threads";
+import { chatProvider } from "@/server/routes/chat-provider";
 import type { AppEnv } from "@/server/middleware/auth";
 
 const base = new Hono<AppEnv>();
@@ -41,6 +43,8 @@ export const app = base
   .route("/balance-accounts", balanceAccounts)
   .route("/transactions", transactions)
   .route("/subscriptions", subscriptions)
+  .route("/chat/threads", chatThreads)
+  .route("/chat-provider", chatProvider)
   .notFound((c) => c.json({ error: "Not found" }, 404))
   .onError((err, c) => {
     console.error("[api] unhandled error", err);

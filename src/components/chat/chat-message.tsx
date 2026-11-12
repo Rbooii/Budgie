@@ -9,6 +9,7 @@ import {
   type UIMessage,
 } from "ai";
 import { Check, Copy, RefreshCw } from "lucide-react";
+import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { ChatThinking } from "@/components/chat/chat-thinking";
 import { ChatToolCard } from "@/components/chat/chat-tool-card";
 import { ChatToolStatus } from "@/components/chat/chat-tool-status";
@@ -80,18 +81,11 @@ export function ChatMessage({
         if (isTextUIPart(part)) {
           const isLastPart = i === message.parts.length - 1;
           return (
-            <div
+            <ChatMarkdown
               key={i}
-              className="w-full text-[15px] leading-relaxed text-ink whitespace-pre-wrap"
-            >
-              {part.text}
-              {streaming && isLastPart && (
-                <span
-                  aria-hidden="true"
-                  className="chat-caret ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[0.15em] rounded-full bg-brand"
-                />
-              )}
-            </div>
+              text={part.text}
+              streaming={streaming && isLastPart}
+            />
           );
         }
         if (isReasoningUIPart(part)) {

@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
+  clearActiveThreadId,
   clearChat,
+  clearLegacyChatMessages,
+  loadActiveThreadId,
   loadChatDraft,
-  loadChatMessages,
   loadChatModel,
+  loadLegacyChatMessages,
+  saveActiveThreadId,
   saveChatDraft,
-  saveChatMessages,
   saveChatModel,
 } from "@/lib/chat-storage";
 
@@ -20,51 +23,62 @@ beforeEach(() => {
 });
 
 describe("chat-storage", () => {
-  it("round-trips messages and draft for a user", () => {
-    saveChatMessages("user-1", [message("a"), message("b")]);
-    saveChatDraft("user-1", "half typed…");
-
-    expect(loadChatMessages("user-1").map((m) => m.id)).toEqual(["a", "b"]);
-    expect(loadChatDraft("user-1")).toBe("half typed…");
+  it("round-trips the draft for a user", () => {
+    saveChatDraft("user-1", "half typed");
+    expect(loadChatDraft("user-1")).toBe("half typed");
   });
 
-  it("keeps messages and drafts isolated per user", () => {
-    saveChatMessages("user-1", [message("a")]);
+  it("keeps drafts isolated per user", () => {
     saveChatDraft("user-1", "mine");
-
-    expect(loadChatMessages("user-2")).toEqual([]);
     expect(loadChatDraft("user-2")).toBe("");
   });
 
-  it("returns empty for absent or corrupt data", () => {
-    expect(loadChatMessages("user-1")).toEqual([]);
-    expect(loadChatDraft("user-1")).toBe("");
+  it("round-trips the active thread id", () => {
+    saveActiveThreadId("user-1", "thread-1");
+    expect(loadActiveThreadId("user-1")).toBe("thread-1");
 
-    window.localStorage.setItem("budgie.chat.user-1.messages", "{not json");
-    window.localStorage.setItem("budgie.chat.user-1.draft", "ok");
-    expect(loadChatMessages("user-1")).toEqual([]);
+    clearActiveThreadId("user-1");
+    expect(loadActiveThreadId("user-1")).toBeNull();
   });
 
-  it("returns empty when the stored value is not an array", () => {
-    window.localStorage.setItem("budgie.chat.user-1.messages", '"nope"');
-    expect(loadChatMessages("user-1")).toEqual([]);
-  });
-
-  it("caps stored messages to the latest 200", () => {
+  it("reads legacy messages once and caps them at 200", () => {
     const many = Array.from({ length: 250 }, (_, i) => message(`m${i}`));
-    saveChatMessages("user-1", many);
-    expect(loadChatMessages("user-1")).toHaveLength(200);
-    expect(loadChatMessages("user-1")[0].id).toBe("m50");
+    window.localStorage.setItem(
+      "budgie.chat.user-1.messages",
+      JSON.stringify(many),
+    );
+
+    const legacy = loadLegacyChatMessages("user-1");
+    expect(legacy).toHaveLength(200);
+    expect((legacy[0] as { id: string }).id).toBe("m50");
+
+    clearLegacyChatMessages("user-1");
+    expect(loadLegacyChatMessages("user-1")).toEqual([]);
   });
 
-  it("clears messages and draft", () => {
-    saveChatMessages("user-1", [message("a")]);
+  it("returns empty for absent or corrupt legacy data", () => {
+    expect(loadLegacyChatMessages("user-1")).toEqual([]);
+    window.localStorage.setItem("budgie.chat.user-1.messages", "{not json");
+    expect(loadLegacyChatMessages("user-1")).toEqual([]);
+    window.localStorage.setItem("budgie.chat.user-1.messages", '"nope"');
+    expect(loadLegacyChatMessages("user-1")).toEqual([]);
+  });
+
+  it("clears draft, legacy messages and active thread but keeps the model", () => {
     saveChatDraft("user-1", "draft");
+    saveActiveThreadId("user-1", "thread-1");
+    window.localStorage.setItem(
+      "budgie.chat.user-1.messages",
+      JSON.stringify([message("a")]),
+    );
+    saveChatModel("user-1", "gemini-3.5-flash-lite");
 
     clearChat("user-1");
 
-    expect(loadChatMessages("user-1")).toEqual([]);
     expect(loadChatDraft("user-1")).toBe("");
+    expect(loadActiveThreadId("user-1")).toBeNull();
+    expect(loadLegacyChatMessages("user-1")).toEqual([]);
+    expect(loadChatModel("user-1")).toBe("gemini-3.5-flash-lite");
   });
 });
 
@@ -93,7 +107,7 @@ describe("chat-storage model", () => {
     expect(loadChatModel("user-1")).toBe("gemini-2.5-flash");
   });
 
-  it("expires a saved model after 12 hours", () => {
+  it("expires a saved built-in model after 12 hours", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-18T00:00:00"));
     saveChatModel("user-1", "gemini-3.5-flash-lite");
@@ -105,9 +119,12 @@ describe("chat-storage model", () => {
     expect(loadChatModel("user-1")).toBe("gemini-2.5-flash");
   });
 
-  it("resets the model on clear", () => {
-    saveChatModel("user-1", "gemini-3.5-flash-lite");
-    clearChat("user-1");
-    expect(loadChatModel("user-1")).toBe("gemini-2.5-flash");
+  it("keeps a custom model selection without expiry", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-18T00:00:00"));
+    saveChatModel("user-1", "custom");
+
+    vi.setSystemTime(new Date("2026-08-20T00:00:00"));
+    expect(loadChatModel("user-1")).toBe("custom");
   });
 });

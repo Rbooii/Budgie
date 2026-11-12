@@ -132,45 +132,56 @@ to the whole app, not only the landing. In short:
 
 ## 17. Chat UI (auth-gated `/chat`)
 
-`src/components/chat/` is the Budgie AI assistant surface. The register is
-**quiet and app-native on Budgie tokens** — no sparkles, no AI iconography, no
-per-message avatars: full-bleed column, quiet header, plain suggestion chips,
-assistant prose with hover actions, tool widgets built from the same list rows
-as the app, and a model-aware composer. The tokens stay in force — `brand`
-(user bubble, send, streaming caret), `surface` trays, the 3 semantic tokens
-(`income` / `expense` / `transfer`), `tabular-nums`, `formatRupiah`, motion
-≤200ms `ease-out`, `motion-reduce` respected. The thread paints `bg-chat`
-(#FCFAF7 light / #16151A dark), the composer/bubbles `bg-card`.
+`src/components/chat/` is the Budgie AI assistant surface. The anatomy follows
+modern AI apps (history rail, centered thread, floating composer, markdown)
+while the register stays **quiet and app-native on Budgie tokens** — no
+sparkles, no AI iconography, no per-message avatars. The tokens stay in force —
+`brand` (user bubble, send, streaming caret), `surface` trays, the 3 semantic
+tokens (`income` / `expense` / `transfer`), `tabular-nums`, `formatRupiah`,
+motion ≤200ms `ease-out`, `motion-reduce` respected. The whole surface is
+`bg-screen` (the same page background as the dashboard), the thread is
+transparent, and the composer, suggestion tiles and tool widgets use `bg-card`.
+The old `bg-chat` column is no longer used here.
 
 ### Layout — full-bleed (`PageShell flush`)
 
 `/chat` renders `<PageShell flush>` (no page padding, `h-[100dvh]
 overflow-hidden`, mobile tab-bar clearance via `--app-tabbar-h`) directly into
 `<ChatView>`. There is **no `AccountTab` and no page `<h1>`** on this route —
-the chat owns the viewport, like Claude/ChatGPT. `ChatView` is
-`mx-auto flex h-full w-full max-w-3xl flex-col`:
+the chat owns the viewport. `ChatView` is a full-height row:
 
 ```
-├─ header (shrink-0): app-icon tile + "Budgie Assistant" + subtitle + [New chat ○]
-├─ thread (relative flex-1 min-h-0)
-│   ├─ .chat-scroll overflow-y-auto — the only scroll area
-│   │   └─ role="log" aria-live="polite" feed: gap-4 — empty state / bubbles /
-│   │      thinking / tool cards / typing
-│   └─ "Latest" pill (absolute bottom-4 center) when scrolled >56px from bottom
-└─ composer (shrink-0): error callout / lighter-model notice + ChatInput +
-   "Budgie can make mistakes…" caption
+├─ thread column (flex-1)
+│   ├─ header (shrink-0): app mark + thread title + model label;
+│   │   right group = [history ○] (mobile only) + [New chat ○] (the only one)
+│   ├─ thread (relative flex-1 min-h-0)
+│   │   ├─ .chat-scroll overflow-y-auto — the only scroll area
+│   │   │   └─ centered max-w-3xl role="log" feed: empty state / bubbles /
+│   │   │      markdown / thinking / tool cards / typing
+│   │   └─ "Latest" pill (absolute bottom-4 center) when scrolled >56px
+│   └─ composer (shrink-0, centered max-w-3xl): error callout /
+│       lighter-model notice + ChatInput + mistakes caption
+├─ history rail (desktop ≥lg, 268px, border-l, on the right): Chats,
+│   Today / Yesterday / Earlier groups, delete on hover, 2-day caption
+└─ mobile history sheet (right drawer, Escape/backdrop closes)
 ```
+
+The mobile root is `h-[calc(100dvh-var(--app-tabbar-h))]`, desktop
+`md:h-[100dvh]`, so the composer is always pinned above the tab bar instead of
+floating with the message content.
 
 The old runtime `getBoundingClientRect` height measuring is gone — the shell
 owns the height, so the page never scrolls.
 
 ### Header
 
-App-icon mark (`/android-chrome-192x192.png`, 30px `rounded-[9px]`) + 14px
-semibold "Budgie Assistant" + 11px `text-black/40` subtitle ("Ask about your
-money or log a transaction"). Right: a single 36px circle button —
-`SquarePen` **New chat** (`aria-label="New chat"`). The old duplicate Clear
-button was removed — both actions cleared the same conversation.
+App-icon mark (`/android-chrome-192x192.png`, 30px `rounded-[9px]`) + the
+active thread title (14px semibold, truncated; fallback "Budgie Assistant") +
+the active model label (11px `text-ink/40`). The right group holds the mobile
+history toggle (`History`, `aria-label="Open chat history"`) and the **single**
+`SquarePen` **New chat** (`aria-label="New chat"`). The rail and the mobile
+drawer have no New chat button. New chat starts a fresh conversation; it never
+deletes the previous thread.
 
 ### Empty state (`ChatEmptyState`)
 
@@ -180,20 +191,20 @@ this morning/afternoon/evening/late night?"** (time-of-day computed
 post-mount; `userName` comes from the RSC). Subtitle: "Ask about your
 balances, spending and budgets — or record a transaction in plain words."
 
-Below, the four suggestions are **plain capsule chips** (centered
-`flex flex-wrap justify-center gap-2 max-w-lg`): `rounded-full border
-border-black/10 bg-white px-4 py-2 text-sm font-medium text-black/70`, hover
-`bg-card text-ink`. No icon tiles, no hint copy, no serif greeting.
+Below, the four suggestions are a **2×2 tile grid** (`grid grid-cols-1
+sm:grid-cols-2 gap-2 max-w-lg`): `rounded-[20px] border border-hairline
+bg-card p-4 text-left text-sm font-medium leading-snug text-ink/70`, hover
+`bg-hover text-ink`. No icon tiles, no hint copy, no serif greeting.
 
 ### Bubbles & states
 
 | Element | Style |
 | ------- | ----- |
 | User bubble | right-aligned `max-w-[85%] sm:max-w-[340px] rounded-[20px] rounded-br-[6px] bg-brand px-4 py-2.5 text-[15px] text-white` (iMessage tail kept) |
-| Assistant | full-width `text-[15px] leading-relaxed` prose — **no avatar, no bubble** |
+| Assistant | full-width `text-[15px] leading-relaxed` **markdown prose** (`ChatMarkdown`: paragraphs, lists, bold, inline code, fenced code, blockquote, GFM tables/links) — **no avatar, no bubble** |
 | Message gap | `gap-4`; every message enters with `stepReveal` 180ms, `motion-reduce` off |
 | Actions | under an assistant message: **Copy** (clipboard → "Copied" for 1.5s) and **Regenerate** (last assistant message only, `aria-label="Regenerate response"`) — 11px ghost pills, `-ml-2` |
-| Streaming caret | 2px `bg-brand` pill appended to the last text part while `status === "streaming"` (`.chat-caret`, static, no blink) |
+| Streaming caret | 2px `bg-brand` pill appended to the last text part while `status === "streaming"` (`.chat-caret`, static, no blink). Streaming text stays plain (`whitespace-pre-wrap`) so the caret stays attached; completed messages switch to markdown. |
 | Typing | white bubble with tail (no avatar), static `Thinking` text, `role="status" aria-label="Budgie is thinking"` |
 | Thinking (`ChatThinking`) | streaming: neutral `Loader2` (`text-black/30`) + "Thinking…" 13px `text-ink/45`; done: plain chevron + "Thought for a moment" text button → 13px `text-ink/45` reasoning |
 | Tool running (`ChatToolStatus`) | inline neutral row (no card) — `Loader2` + per-tool label, 13px `text-ink/45` |
@@ -225,40 +236,78 @@ card-per-item, no sparkles.
   (10/12px tinted), top categories rows (max 5, neutral circles).
 - **create_transaction** — success: a transaction row + green "Added" caption;
   failure: `rounded-[16px] bg-expense-tint` callout + `AlertTriangle`.
+- **get_financial_overview** — net-worth hero, up to 4 account rows, a quiet
+  Income/Expense/Net stat tray, a one-line budget/bill summary, and up to 3
+  top-category rows.
+- **get_cashflow_trend** — up to 6 monthly rows with a signed net and a
+  semantic mini bar, plus a total-net row.
+- **get_spending_breakdown** — category (or `Store` for merchant) rows with
+  share, period-over-period delta and amount, plus a total.
+- **get_net_worth_history** — net-worth hero + signed change + the paper
+  `Sparkline`.
+- **get_budget_status** — budget rows with limit/spent, remaining or "Over",
+  the 6px progress track, and a pace projection when it exceeds the limit.
+- **get_upcoming_bills** — subscription rows with next date and a window total.
+- **get_largest_transactions** — the same transaction rows as `get_transactions`
+  (up to 6).
+- **create_budget / update_budget / create_subscription / update_subscription**
+  — compact `bg-income-tint` "saved" row or the standard red callout on failure.
 
 Widgets are static (no navigation/sheets) and unknown tools render nothing.
 
 ### Composer (`ChatInput`)
 
-Bordered card (`rounded-[24px] border-black/10 bg-white`, deep soft shadow;
-focus deepens the hairline + a 4px `ring-black/[0.04]`):
-- Textarea `placeholder="Ask about your money…"`, `text-[15px]`, auto-grows
-  1–6 lines (`max-h-[160px]`), `px-4 pt-3.5`; `Enter` sends, `Shift+Enter`
-  newline.
+Bordered card (`rounded-[28px] border-hairline bg-card`, soft shadow; focus
+deepens the hairline + a 4px `ring-ink/[0.04]`):
+- Textarea `placeholder="Ask Budgie about your money…"`, `text-[15px]`,
+  auto-grows 1–6 lines (`max-h-[160px]`), `px-4 pt-3.5`; `Enter` sends,
+  `Shift+Enter` newline.
 - Bottom row: **left = `ChatModelMenu`** — a 28px chip (model label +
   `ChevronDown`, `aria-label="Select model. Current: …"`) whose panel opens
   **upward** (`bottom-full mb-2`) listing `MODEL_CHAIN` with a `Check` on the
-  active model. **right = send**: 36px circle, `bg-brand text-white`
-  when sendable, `bg-black/[0.06] text-black/30` when empty, swaps to a dark
-  `Square` stop while streaming; disabled in the error state.
-- Caption below the card: 11px `text-black/35` "Budgie can make mistakes.
+  active model, then a divider and the custom-provider entry ("Your model" or
+  "Connect a model") plus "Manage model". **right = send**: 36px circle,
+  `bg-brand text-white` when sendable, `bg-hairline-track text-ink/30` when
+  empty, swaps to a dark `Square` stop while streaming; disabled in the error
+  state.
+- Caption below the card: 11px `text-ink/35` "Budgie can make mistakes.
   Double-check the important numbers."
+- `ChatProviderDialog` (from the model menu or Profile → Settings): endpoint,
+  write-only API key, model id, optional label, Save / Test / Disconnect. The
+  key is stored encrypted server-side and never returned; production endpoints
+  must be public HTTPS.
 
-### Persistence & Clear chat
+### Persistence, history & model fallback
 
-- Messages + draft persist in `localStorage`
-  (`budgie.chat.{userId}.messages` / `.draft`); restored post-hydration.
-- **New chat** clears the conversation, storage, and the model choice; the
-  model persists separately in `budgie.chat.{userId}.model` (12h).
+- **Threads live server-side** (`ChatThread`, owner-scoped, last 48 hours).
+  The first send creates a thread (`POST /api/chat/threads`), the client sends
+  `threadId` in the chat body, and `streamText(...).toUIMessageStreamResponse({
+  originalMessages, onFinish })` saves the completed `UIMessage[]`.
+- The rail lists Today / Yesterday / Earlier and only non-empty threads. The
+  active thread is restored from `?thread=<id>` or
+  `budgie.chat.{userId}.activeThread`; expired threads fall back to a new chat.
+- Local storage is limited to the **draft**, the **active thread id** and the
+  **model selection** (`budgie.chat.{userId}.draft | .activeThread | .model`).
+  The old single-conversation `messages` key is read once and shown as an
+  unsaved legacy conversation. **New chat** clears the draft + active pointer
+  and keeps every saved thread; it does not delete history.
 - **Auto-downgrade** — on a rate-limit error the client regenerates with
   `gemini-3.5-flash-lite` and shows the notice (see ARCHITECTURE.md §22).
+  Custom-provider selections are deliberate and do not auto-downgrade.
 
 ### Gotchas
 
-- Assistant text is plain `whitespace-pre-wrap` — no markdown dependency.
-- Icons only from `lucide-react`; no new colors beyond the tokens above.
+- Assistant text renders **markdown** (`react-markdown` + `remark-gfm`, no raw
+  HTML); streaming stays plain so the caret stays attached. User bubbles stay
+  plain `whitespace-pre-wrap`.
+- The chat surface is full-bleed `bg-screen`; do not bring back the narrow
+  `bg-chat` column. The rail/drawer are the only additional chrome.
 - The time-of-day greeting must not be computed during SSR; compute it in an
   effect.
+- Threads are retained for exactly 2 days and pruned lazily on list/create;
+  do not add infinite history without revisiting the privacy decision.
+- The model key is write-only. Never return it in a GET, never log it, and
+  validate custom endpoints (HTTPS + no private hosts in production).
 - Never re-introduce a second clear button, a serif greeting, or a page
   `AccountTab`/`h1` on `/chat`.
 - **No AI slop**: see [`ANTI_SLOP.md`](./ANTI_SLOP.md). No `Sparkles` or

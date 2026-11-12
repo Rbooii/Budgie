@@ -70,9 +70,9 @@ Budgie is a calm, minimal **Indonesian personal-finance app** (Rupiah-first). Us
 | 17 | Profile — identity card, Plus membership card | ✅ | ✅ | §9.5 |
 | 18 | Budgie Plus — 3-step QRIS checkout (mock Midtrans), 3s status polling, downgrade | ✅ | ✅ (see §5.2 + §16 mock note) | §9.5 |
 | 19 | PDF export (all / filtered / date range) | ✅ | ✅ (PDFKit) | §11 |
-| 20 | AI chat assistant (Gemini, 6 tools, thinking UI, tool cards, model fallback) | ✅ | ✅ | §7, §9.6 |
+| 20 | AI chat assistant (Gemini + custom provider, extended tools, thinking UI, tool cards, model fallback, 2-day history) | ✅ | ✅ | §7, §9.6 |
 | 21 | Premade categories (21, per-type) — no free-text categories | ✅ | ✅ | §5.6.3, §6.3 |
-| 22 | Chat persistence + input draft + clear chat + model choice | ✅ | ✅ | §12 |
+| 22 | Chat history (server, 2 days) + input draft + clear chat + model choice | ✅ | ✅ | §12 |
 | 23 | Public marketing landing page | ✅ | ❌ (not in scope) | — |
 
 ### 2.2 Feature details (behavior contracts)
@@ -590,13 +590,16 @@ Request body:
   "id": "<uuid chatId>",
   "messages": [ /* UIMessage[] — the full conversation */ ],
   "trigger": "submit-message",
-  "model": "gemini-2.5-flash"          // allowlisted: "gemini-2.5-flash" | "gemini-3.5-flash-lite"
+  "model": "gemini-2.5-flash",         // "gemini-2.5-flash" | "gemini-3.5-flash-lite" | "custom"
+  "threadId": "<optional server thread id>"
 }
 ```
 
-- `messages` = the whole conversation as `UIMessage[]` (each message has `id`, `role` (`"system"|"user"|"assistant"`), `parts`). The web client re-sends the whole array so multi-step tool calls resume.
+- `messages` = the whole conversation as `UIMessage[]` (each message has `id`, `role` (`"system"|"user"|"assistant"`), `parts`). The client re-sends the whole array so multi-step tool calls resume.
 - The user message part is `{ "type": "text", "text": "..." }`.
-- Non-200: `401` plain `"Unauthorized"`, `400` plain `"Bad request"`, provider errors arrive as an `error` chunk.
+- `model: "custom"` asks the server to use the user's OpenAI-compatible provider (configured on the web). If it is not configured the route returns `400`.
+- `threadId` is optional; when present the server persists the completed `UIMessage[]` (2-day retention) and returns `404` if it is not owned by the session user.
+- Non-200: `401` plain `"Unauthorized"`, `400` plain `"Bad request"` / `"Custom model is not connected"`, `404` plain `"Chat thread not found"`, provider errors arrive as an `error` chunk.
 
 ### 7.2 Response — SSE framing
 
@@ -647,7 +650,18 @@ enum UIPart: Codable {
 - Keep the last **200** messages locally (mirror `src/lib/chat-storage.ts`).
 - Before sending, prune like the server does (`prepareMessagesForApi`): send only the **last 10** messages; among those, keep tool parts only in the **last 2** and reasoning parts only in the **last 1**. (The server also prunes, but pruning client-side saves bandwidth.)
 
-### 7.5 The 6 tools (input schema + output JSON)
+### 7.5 The tools (input schema + output JSON)
+
+The tool set expanded beyond the original 6. Read tools:
+`get_balance_accounts`, `get_transactions`, `get_financial_overview`,
+`get_cashflow_trend`, `get_spending_breakdown`, `get_net_worth_history`,
+`get_budget_status`, `get_upcoming_bills`, `get_largest_transactions`,
+`get_insights`, `get_budgets`, `get_subscriptions`.
+Write tools: `create_transaction`, `create_budget`, `update_budget`,
+`create_subscription`, `update_subscription` (no destructive tools).
+Full Zod schemas: `src/server/chat/schemas.ts`; compact outputs are rendered by
+`src/components/chat/chat-tool-result.tsx`. The system prompt also receives a
+compact `getFinancialOverview` snapshot on every request.
 
 **`get_balance_accounts`** — no args.
 Output:
@@ -658,12 +672,13 @@ Output:
 ```
 
 **`get_transactions`** — args: `{ "type"?: "income|expense|transfer", "category"?: Category, "query"?: string, "from"?: "YYYY-MM-DD", "to"?: "YYYY-MM-DD", "limit"?: 1...30 }`.
-Output (note: **no** `id`, `adminFee`, `toAccount` on the wire):
+Output (now includes `id`, `adminFee`, `toAccount`):
 
 ```json
 { "count": 47,
-  "items": [ { "name": "Grocery run", "amount": 250000, "type": "expense",
-               "category": "FoodAndDrink", "date": "ISO", "account": "BCA" | null } ] }
+  "items": [ { "id": "...", "name": "Grocery run", "amount": 250000, "type": "expense",
+               "category": "FoodAndDrink", "date": "ISO", "adminFee": 0,
+               "account": "BCA" | null, "toAccount": null } ] }
 ```
 
 **`get_budgets`** — no args.
@@ -969,17 +984,22 @@ Contents: a transactions table (name, category, account, date, amount) + a summa
 
 ## 12. Local Persistence
 
-Web uses `localStorage`; on iOS:
+Chat **history now lives server-side** (2-day retention). On iOS:
 
-| Web key | iOS storage | Content |
+| Web key / API | iOS storage | Content |
 | --- | --- | --- |
-| `budgie.chat.{userId}.messages` | File in Application Support (JSON), keyed by userId | `UIMessage[]`, cap **200** |
+| `GET /api/chat/threads` + `/api/chat/threads/:id` | server (source of truth) | thread metadata + `UIMessage[]` (200 cap, 48h) |
 | `budgie.chat.{userId}.draft` | `UserDefaults` | composer draft string |
-| `budgie.chat.{userId}.model` | `UserDefaults` | `{ model, savedAt }`, **12h validity** |
+| `budgie.chat.{userId}.model` | `UserDefaults` | `{ model, savedAt }`, **12h validity**; `custom` persists |
+| `budgie.chat.{userId}.activeThread` | `UserDefaults` | last active thread id |
 | balance-mask toggle | `@AppStorage` / `UserDefaults` | net-worth eye state (default masked) |
 | session cookie | **Keychain** | `better-auth.session_token` (name + value) |
 
-"Clear chat" clears messages + draft + resets model choice to default.
+Create a thread on the first send (`POST /api/chat/threads`), pass its id as
+`threadId` in the chat request, and reload the list on `scenePhase` active and
+after each turn. "New chat" starts a new thread; it does not delete history.
+Deleting a thread calls `DELETE /api/chat/threads/:id`. Threads older than 48h
+are pruned server-side and disappear from the rail.
 
 ---
 
@@ -1063,7 +1083,7 @@ Budgie/
 13. **Chat SSE:** parse `data:` frames, skip `[DONE]`; `text-delta` is **word-chunked**; `reasoning-*` only on the primary model; stop after 3 steps; `finishReason` may be `"length"` (truncated) — UI should handle gracefully.
 14. **Chat 401/400** are plain-text bodies (`"Unauthorized"`/`"Bad request"`) — don't JSON-decode them.
 15. **Model fallback:** one downgrade max, 12h persistence, `isRateLimitError` matching (`429|quota|resource_exhausted|rate limit`).
-16. **Chat persistence** must be per-user (key by `userId`) and capped (200 messages).
+16. **Chat history** is server-side, owner-scoped, and pruned after 2 days (200 messages per thread); local storage is only the draft, active thread id and model choice.
 17. **One green CTA per screen** (web §12 rule) — e.g. don't show both "Upgrade" and another success button on Profile.
 18. **Rupiah formatting:** id-ID locale (`Rp 1.250.000,00`) with 2 fraction digits; `monospacedDigit` everywhere money renders.
 19. **Never invent colors:** Budgie palette only (§8.1); Liquid Glass adds material/translucency, not new hues.

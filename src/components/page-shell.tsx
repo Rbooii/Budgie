@@ -18,7 +18,7 @@ export function PageShell({
       <div
         className={
           flush
-            ? "flex-1 min-w-0 h-[100dvh] overflow-hidden pb-[var(--app-tabbar-h)] md:pb-0"
+            ? "flex-1 min-w-0 min-h-0 h-[100dvh] overflow-hidden pb-[var(--app-tabbar-h)] md:pb-0 flex flex-col"
             : "flex-1 min-h-screen py-6 md:py-10 px-4 sm:px-8 md:px-12 lg:px-20 pb-[calc(var(--app-tabbar-h)_+_1.5rem)] md:pb-10"
         }
       >

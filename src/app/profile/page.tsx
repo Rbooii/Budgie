@@ -11,6 +11,7 @@ import { PageShell } from "@/components/page-shell";
 import { PageSkeleton } from "@/components/page-skeleton";
 import UpgradePlusButton from "@/components/upgradePlusButton";
 import { ThemePicker } from "@/components/theme-picker";
+import { ChatProviderSettings } from "@/components/chat/chat-provider-settings";
 import { formatRupiah } from "@/lib/format";
 
 const FIRST_MONTH = 24500;
@@ -178,14 +179,18 @@ async function ProfileContent() {
       >
         <h3 className="text-xl font-semibold tracking-tight">Settings</h3>
 
-        <div className="mt-6 rounded-[20px] bg-surface px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium">Appearance</p>
-            <p className="text-xs text-ink/40 mt-0.5">
-              Follows your device by default
-            </p>
+        <div className="mt-6 flex flex-col gap-3">
+          <div className="rounded-[20px] bg-surface px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">Appearance</p>
+              <p className="text-xs text-ink/40 mt-0.5">
+                Follows your device by default
+              </p>
+            </div>
+            <ThemePicker />
           </div>
-          <ThemePicker />
+
+          <ChatProviderSettings />
         </div>
       </div>
     </>

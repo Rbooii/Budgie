@@ -2,9 +2,28 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const { mockUseChat } = vi.hoisted(() => ({
+const { mockUseChat, mockApi } = vi.hoisted(() => ({
   mockUseChat: {
     useChat: vi.fn(),
+  },
+  mockApi: {
+    chat: {
+      threads: {
+        $get: vi.fn(),
+        $post: vi.fn(),
+        ":id": {
+          $get: vi.fn(),
+          $patch: vi.fn(),
+          $delete: vi.fn(),
+        },
+      },
+    },
+    "chat-provider": {
+      $get: vi.fn(),
+      $put: vi.fn(),
+      $delete: vi.fn(),
+      test: { $post: vi.fn() },
+    },
   },
 }));
 
@@ -12,12 +31,51 @@ vi.mock("@ai-sdk/react", () => ({
   useChat: mockUseChat.useChat,
 }));
 
+vi.mock("@/lib/api-client", () => ({ api: mockApi }));
+
 import { ChatView } from "@/components/chat/chat-view";
-import { loadChatDraft, loadChatMessages } from "@/lib/chat-storage";
 
 const USER_ID = "user-1";
 const PRIMARY_MODEL = "gemini-2.5-flash";
 const LITE_MODEL = "gemini-3.5-flash-lite";
+
+function jsonResponse(data: unknown, status = 200) {
+  return Promise.resolve(
+    new Response(JSON.stringify(data), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
+
+function emptyResponse(status = 204) {
+  return Promise.resolve(new Response(null, { status }));
+}
+
+function provider(configured: boolean, label: string | null = null) {
+  return {
+    configured,
+    baseUrl: configured ? "https://api.example.com/v1" : null,
+    model: configured ? "my-model" : null,
+    label,
+    hasKey: configured,
+  };
+}
+
+function summary(
+  id = "thread-1",
+  title = "How much did I spend?",
+) {
+  const now = new Date().toISOString();
+  return {
+    id,
+    title,
+    model: PRIMARY_MODEL,
+    messageCount: 2,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 const defaultChat = {
   sendMessage: vi.fn(),
@@ -89,6 +147,32 @@ function assistantMessages() {
 beforeEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
+  window.history.replaceState(null, "", "/chat");
+
+  mockApi.chat.threads.$get.mockImplementation(() =>
+    jsonResponse({ threads: [] }),
+  );
+  mockApi.chat.threads.$post.mockImplementation(() =>
+    jsonResponse({ thread: summary("thread-1", "New chat") }, 201),
+  );
+  mockApi.chat.threads[":id"].$get.mockImplementation(() =>
+    jsonResponse({ thread: { ...summary(), messages: [] } }),
+  );
+  mockApi.chat.threads[":id"].$patch.mockImplementation(() =>
+    jsonResponse({ ok: true }),
+  );
+  mockApi.chat.threads[":id"].$delete.mockImplementation(() => emptyResponse());
+
+  mockApi["chat-provider"].$get.mockImplementation(() =>
+    jsonResponse(provider(false)),
+  );
+  mockApi["chat-provider"].$put.mockImplementation(() =>
+    jsonResponse(provider(true, "My model")),
+  );
+  mockApi["chat-provider"].$delete.mockImplementation(() => emptyResponse());
+  mockApi["chat-provider"].test.$post.mockImplementation(() =>
+    jsonResponse({ ok: true }),
+  );
 });
 
 afterEach(() => {
@@ -97,37 +181,68 @@ afterEach(() => {
 });
 
 describe("ChatView", () => {
-  it("shows the empty state with a greeting and all four suggestion chips", () => {
+  it("shows the empty state with a greeting and all four suggestion tiles", () => {
     renderChat();
     expect(screen.getByText(/hi arco, how can i help/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/how much did i spend this month/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/how much did i spend this month/i)).toBeInTheDocument();
     expect(screen.getByText(/what's my net worth/i)).toBeInTheDocument();
     expect(screen.getByText(/show my budgets/i)).toBeInTheDocument();
     expect(screen.getByText(/record that i bought coffee/i)).toBeInTheDocument();
   });
 
-  it("renders a single New chat action and no redundant clear button", () => {
+  it("renders exactly one New chat action and no redundant clear button", () => {
     renderChat({ messages: assistantMessages() });
-    expect(screen.getAllByRole("button", { name: /new chat/i })).toHaveLength(1);
+    expect(
+      screen.getAllByRole("button", { name: /new chat/i }),
+    ).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /clear chat/i })).toBeNull();
   });
 
-  it("shows the active model in the composer menu", () => {
-    renderChat();
-    expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
-      "Gemini 2.5 Flash",
+  it("pins the chat surface to the mobile viewport above the tab bar", () => {
+    const { container } = renderChat();
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain(
+      "h-[calc(100dvh-var(--app-tabbar-h))]",
     );
+    expect(root.className).toContain("md:h-[100dvh]");
   });
 
-  it("sends the prompt text with the current model when a suggestion chip is clicked", async () => {
+  it("opens the right-side history drawer", async () => {
+    renderChat();
+    await userEvent.click(
+      screen.getByRole("button", { name: /open chat history/i }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Chat history" });
+    expect(dialog.className).toContain("right-0");
+    expect(
+      screen.getAllByRole("button", { name: "New chat" }),
+    ).toHaveLength(1);
+  });
+
+  it("shows the active model in the composer menu", async () => {
+    renderChat();
+    await waitFor(() => {
+      expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
+        "Gemini 2.5 Flash",
+      );
+    });
+  });
+
+  it("creates a thread and sends the prompt with the current model", async () => {
     renderChat();
     await userEvent.click(screen.getByText(/what's my net worth/i));
-    expect(defaultChat.sendMessage).toHaveBeenCalledWith(
-      { text: "What's my net worth?" },
-      { body: { model: PRIMARY_MODEL } },
-    );
+
+    await waitFor(() => {
+      expect(mockApi.chat.threads.$post).toHaveBeenCalledWith({
+        json: { title: "What's my net worth?", model: PRIMARY_MODEL },
+      });
+    });
+    await waitFor(() => {
+      expect(defaultChat.sendMessage).toHaveBeenCalledWith(
+        { text: "What's my net worth?" },
+        { body: { model: PRIMARY_MODEL, threadId: "thread-1" } },
+      );
+    });
   });
 
   it("manually switches the model and persists it", async () => {
@@ -140,14 +255,15 @@ describe("ChatView", () => {
         window.localStorage.getItem(`budgie.chat.${USER_ID}.model`) ?? "{}",
       ).model,
     ).toBe(LITE_MODEL);
-    expect(screen.queryByText(/switched to a lighter model/i)).toBeNull();
 
-    const input = screen.getByPlaceholderText(/ask about your money/i);
+    const input = screen.getByPlaceholderText(/ask budgie about your money/i);
     await userEvent.type(input, "hello{enter}");
-    expect(defaultChat.sendMessage).toHaveBeenCalledWith(
-      { text: "hello" },
-      { body: { model: LITE_MODEL } },
-    );
+    await waitFor(() => {
+      expect(defaultChat.sendMessage).toHaveBeenCalledWith(
+        { text: "hello" },
+        { body: { model: LITE_MODEL, threadId: "thread-1" } },
+      );
+    });
   });
 
   it("renders user and assistant messages with thinking, tool result and text", () => {
@@ -158,7 +274,30 @@ describe("ChatView", () => {
     expect(screen.getByText("Accounts")).toBeInTheDocument();
     expect(screen.getByText("Mandiri")).toBeInTheDocument();
     expect(screen.getAllByText("Rp 1.500.000.00").length).toBeGreaterThan(0);
-    expect(screen.getByText("You have Rp 1.500.000.00 in total.")).toBeInTheDocument();
+    expect(
+      screen.getByText("You have Rp 1.500.000.00 in total."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders assistant markdown", () => {
+    renderChat({
+      messages: [
+        {
+          id: "a1",
+          role: "assistant",
+          parts: [
+            {
+              type: "text",
+              text: "**Food** was the biggest:\n\n- Coffee\n- Lunch",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByText("Food").tagName).toBe("STRONG");
+    expect(screen.getByText("Coffee").tagName).toBe("LI");
+    expect(screen.getByText("Lunch").tagName).toBe("LI");
   });
 
   it("copies the assistant message to the clipboard", async () => {
@@ -183,7 +322,7 @@ describe("ChatView", () => {
       screen.getByRole("button", { name: /regenerate response/i }),
     );
     expect(defaultChat.regenerate).toHaveBeenCalledWith({
-      body: { model: PRIMARY_MODEL },
+      body: { model: PRIMARY_MODEL, threadId: null },
     });
   });
 
@@ -210,7 +349,9 @@ describe("ChatView", () => {
 
   it("expands the reasoning text when the thinking toggle is clicked", async () => {
     renderChat({ messages: assistantMessages() });
-    expect(screen.queryByText("I should check their accounts.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("I should check their accounts."),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByText("Thought for a moment"));
     expect(screen.getByText("I should check their accounts.")).toBeInTheDocument();
@@ -242,9 +383,9 @@ describe("ChatView", () => {
         { id: "u1", role: "user", parts: [{ type: "text", text: "hi" }] },
       ],
     });
-    expect(
-      screen.getByRole("status", { name: /thinking/i }),
-    ).toHaveTextContent("Thinking");
+    expect(screen.getByRole("status", { name: /thinking/i })).toHaveTextContent(
+      "Thinking",
+    );
   });
 
   it("shows a stop button instead of the send button while streaming", () => {
@@ -255,31 +396,33 @@ describe("ChatView", () => {
 
   it("sends a typed message on Enter with the current model and clears the input", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/ask about your money/i);
+    const input = screen.getByPlaceholderText(/ask budgie about your money/i);
 
     await userEvent.type(input, "hello budgie{enter}");
 
-    expect(defaultChat.sendMessage).toHaveBeenCalledWith(
-      { text: "hello budgie" },
-      { body: { model: PRIMARY_MODEL } },
-    );
+    await waitFor(() => {
+      expect(defaultChat.sendMessage).toHaveBeenCalledWith(
+        { text: "hello budgie" },
+        { body: { model: PRIMARY_MODEL, threadId: "thread-1" } },
+      );
+    });
     expect(input).toHaveValue("");
   });
 
   it("does not send empty input", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/ask about your money/i);
+    const input = screen.getByPlaceholderText(/ask budgie about your money/i);
     await userEvent.type(input, "   {enter}");
     expect(defaultChat.sendMessage).not.toHaveBeenCalled();
   });
 
   it("renders an error callout and regenerates on retry", async () => {
-    renderChat({ error: new Error("boom") });
+    renderChat({ error: new Error("boom"), messages: assistantMessages() });
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /retry/i }));
     expect(defaultChat.regenerate).toHaveBeenCalledWith({
-      body: { model: PRIMARY_MODEL },
+      body: { model: PRIMARY_MODEL, threadId: null },
     });
   });
 
@@ -328,7 +471,9 @@ describe("ChatView", () => {
 
   it("disables the input while the chat is in error state", () => {
     renderChat({ error: new Error("boom"), status: "error" });
-    expect(screen.getByPlaceholderText(/ask about your money/i)).toBeDisabled();
+    expect(
+      screen.getByPlaceholderText(/ask budgie about your money/i),
+    ).toBeDisabled();
   });
 
   it("shows a jump-to-latest pill when the user scrolls away and hides it on click", async () => {
@@ -348,7 +493,6 @@ describe("ChatView", () => {
     const pill = await screen.findByRole("button", { name: /latest/i });
     expect(pill).toBeInTheDocument();
 
-    // jsdom has no smooth scrolling — simulate reaching the bottom.
     await userEvent.click(pill);
     scroller.scrollTop = 600;
     fireEvent.scroll(scroller);
@@ -357,38 +501,66 @@ describe("ChatView", () => {
     );
   });
 
-  it("restores saved messages and draft from localStorage on mount", async () => {
+  it("resumes the active thread and renders its title", async () => {
     const saved = assistantMessages();
     window.localStorage.setItem(
-      `budgie.chat.${USER_ID}.messages`,
-      JSON.stringify(saved),
+      `budgie.chat.${USER_ID}.activeThread`,
+      "thread-1",
     );
-    window.localStorage.setItem(`budgie.chat.${USER_ID}.draft`, "half typed");
+    mockApi.chat.threads.$get.mockImplementation(() =>
+      jsonResponse({ threads: [summary("thread-1", "Saved chat")] }),
+    );
+    mockApi.chat.threads[":id"].$get.mockImplementation(() =>
+      jsonResponse({
+        thread: { ...summary("thread-1", "Saved chat"), messages: saved },
+      }),
+    );
 
     const { setMessages } = renderChat();
     await waitFor(() => expect(setMessages).toHaveBeenCalledWith(saved));
-    expect(screen.getByPlaceholderText(/ask about your money/i)).toHaveValue(
-      "half typed",
-    );
+    expect(screen.getAllByText("Saved chat").length).toBeGreaterThan(0);
   });
 
-  it("persists messages to localStorage once hydrated", async () => {
-    renderChat({ messages: assistantMessages() });
+  it("selects a thread from the history rail", async () => {
+    mockApi.chat.threads.$get.mockImplementation(() =>
+      jsonResponse({ threads: [summary("thread-2", "Older chat")] }),
+    );
+    const saved = assistantMessages();
+    mockApi.chat.threads[":id"].$get.mockImplementation(() =>
+      jsonResponse({
+        thread: { ...summary("thread-2", "Older chat"), messages: saved },
+      }),
+    );
+
+    const { setMessages } = renderChat();
+    await screen.findByText("Older chat");
+    await userEvent.click(screen.getByText("Older chat"));
+
+    await waitFor(() => expect(setMessages).toHaveBeenCalledWith(saved));
+  });
+
+  it("deletes a thread from the history rail", async () => {
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    mockApi.chat.threads.$get.mockImplementation(() =>
+      jsonResponse({ threads: [summary("thread-2", "Older chat")] }),
+    );
+
+    renderChat();
+    await screen.findByText("Older chat");
+    await userEvent.click(
+      screen.getByRole("button", { name: /delete older chat/i }),
+    );
 
     await waitFor(() => {
-      expect(
-        window.localStorage.getItem(`budgie.chat.${USER_ID}.messages`),
-      ).not.toBeNull();
+      expect(mockApi.chat.threads[":id"].$delete).toHaveBeenCalledWith({
+        param: { id: "thread-2" },
+      });
     });
-    const stored = JSON.parse(
-      window.localStorage.getItem(`budgie.chat.${USER_ID}.messages`) ?? "[]",
-    );
-    expect(stored.map((m: { id: string }) => m.id)).toEqual(["u1", "a1"]);
   });
 
   it("persists the input draft as the user types", async () => {
     renderChat();
-    const input = screen.getByPlaceholderText(/ask about your money/i);
+    const input = screen.getByPlaceholderText(/ask budgie about your money/i);
 
     await userEvent.type(input, "spending");
     await waitFor(() => {
@@ -398,19 +570,24 @@ describe("ChatView", () => {
     });
   });
 
-  it("clears messages and storage when New chat is clicked", async () => {
+  it("clears the draft and active thread but keeps history on New chat", async () => {
     const { setMessages } = renderChat({ messages: assistantMessages() });
+    window.localStorage.setItem(`budgie.chat.${USER_ID}.draft`, "typed draft");
     window.localStorage.setItem(
-      `budgie.chat.${USER_ID}.draft`,
-      "typed draft",
+      `budgie.chat.${USER_ID}.activeThread`,
+      "thread-1",
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /new chat/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /new chat/i }),
+    );
 
     expect(setMessages).toHaveBeenCalledWith([]);
-    expect(window.localStorage.getItem(`budgie.chat.${USER_ID}.messages`)).toBeNull();
-    expect(loadChatDraft(USER_ID)).toBe("");
-    expect(loadChatMessages(USER_ID)).toEqual([]);
+    expect(window.localStorage.getItem(`budgie.chat.${USER_ID}.draft`)).toBe("");
+    expect(
+      window.localStorage.getItem(`budgie.chat.${USER_ID}.activeThread`),
+    ).toBeNull();
+    expect(mockApi.chat.threads[":id"].$delete).not.toHaveBeenCalled();
   });
 
   it("auto-downgrades to the lite model and regenerates on a quota error", async () => {
@@ -421,7 +598,7 @@ describe("ChatView", () => {
 
     await waitFor(() => {
       expect(defaultChat.regenerate).toHaveBeenCalledWith({
-        body: { model: LITE_MODEL },
+        body: { model: LITE_MODEL, threadId: null },
       });
     });
     expect(
@@ -444,7 +621,7 @@ describe("ChatView", () => {
     expect(screen.queryByText(/switched to a lighter model/i)).toBeNull();
   });
 
-  it("restores a previously saved lite model and shows the notice", async () => {
+  it("restores a previously saved lite model", async () => {
     window.localStorage.setItem(
       `budgie.chat.${USER_ID}.model`,
       JSON.stringify({ model: LITE_MODEL, savedAt: Date.now() }),
@@ -452,18 +629,10 @@ describe("ChatView", () => {
 
     renderChat();
     await waitFor(() => {
-      expect(screen.getByText(/switched to a lighter model/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
+        "Gemini 3.5 Flash Lite",
+      );
     });
-    expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
-      "Gemini 3.5 Flash Lite",
-    );
-
-    const input = screen.getByPlaceholderText(/ask about your money/i);
-    await userEvent.type(input, "hello{enter}");
-    expect(defaultChat.sendMessage).toHaveBeenCalledWith(
-      { text: "hello" },
-      { body: { model: LITE_MODEL } },
-    );
   });
 
   it("does not downgrade past the last model in the chain", async () => {
@@ -478,8 +647,37 @@ describe("ChatView", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/switched to a lighter model/i)).toBeInTheDocument();
+      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     });
     expect(defaultChat.regenerate).not.toHaveBeenCalled();
+  });
+
+  it("opens the provider dialog from the model menu", async () => {
+    renderChat();
+    await waitFor(() =>
+      expect(screen.getByLabelText(/select model/i)).toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByLabelText(/select model/i));
+    await userEvent.click(screen.getByText("Connect a model"));
+
+    expect(
+      await screen.findByRole("heading", { name: "Your model" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists the configured custom model", async () => {
+    mockApi["chat-provider"].$get.mockImplementation(() =>
+      jsonResponse(provider(true, "My model")),
+    );
+    renderChat();
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/select model/i)).toHaveTextContent(
+        "Gemini 2.5 Flash",
+      ),
+    );
+    await userEvent.click(screen.getByLabelText(/select model/i));
+    expect(screen.getByText("My model")).toBeInTheDocument();
+    expect(screen.getByText("Manage model")).toBeInTheDocument();
   });
 });

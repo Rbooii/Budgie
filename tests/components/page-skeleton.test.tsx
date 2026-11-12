@@ -44,9 +44,10 @@ describe("PageSkeleton", () => {
 
   it("renders the full-height chat column with composer", () => {
     const { container } = render(<PageSkeleton variant="chat" />);
-    expect(countClass(container, "max-w-3xl")).toBe(1);
+    expect(countClass(container, "max-w-3xl")).toBeGreaterThanOrEqual(2);
     expect(countClass(container, "h-[92px]")).toBe(1);
-    expect(countClass(container, "h-full")).toBeGreaterThanOrEqual(1);
+    expect(countClass(container, "w-[268px]")).toBe(1);
+    expect(countClass(container, "min-h-0")).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the add-transaction wizard card", () => {

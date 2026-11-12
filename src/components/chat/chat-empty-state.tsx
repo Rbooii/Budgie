@@ -38,13 +38,13 @@ export function ChatEmptyState({
         in plain words.
       </p>
 
-      <div className="mt-7 flex w-full max-w-lg flex-wrap justify-center gap-2">
+      <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
         {suggestions.map((prompt) => (
           <button
             key={prompt}
             type="button"
             onClick={() => onPick(prompt)}
-            className="rounded-full border border-hairline bg-card px-4 py-2 text-sm font-medium text-ink/70 transition hover:bg-hover hover:text-ink active:scale-[0.98]"
+            className="rounded-[20px] border border-hairline bg-card p-4 text-left text-sm font-medium leading-snug text-ink/70 transition hover:bg-hover hover:text-ink active:scale-[0.99]"
           >
             {prompt}
           </button>

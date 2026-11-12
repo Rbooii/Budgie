@@ -2134,11 +2134,14 @@ from `FAQ_ITEMS`. Supporting files: `sitemap.ts`, `robots.ts`,
 ## 22. Chat AI Assistant (frontend + backend)
 
 The chat page (`/chat`) is an AI financial assistant powered by the **Vercel
-AI SDK v7** + **Google Gemini 2.5 Flash**. It can read the user's real data
-through tools and record transactions. It deliberately follows a **different
-HTTP shape** than the REST resources: a dedicated Next.js Route Handler
-(`src/app/api/chat/route.ts`) instead of a Hono router — same reasoning as
-`/api/auth/*` (see §14). All backend logic still lives in `src/server/`.
+AI SDK v7**. It uses the built-in **Google Gemini** chain by default and can
+switch to a user-supplied **OpenAI-compatible provider** (endpoint + API key,
+encrypted at rest). It can read the user's real data through an expanded tool
+set, record transactions, and manage budgets/subscriptions. It deliberately
+follows a **different HTTP shape** than the REST resources: a dedicated Next.js
+Route Handler (`src/app/api/chat/route.ts`) instead of a Hono router — same
+reasoning as `/api/auth/*` (see §14). All backend logic still lives in
+`src/server/`.
 
 ### Why a dedicated Route Handler (not Hono)
 
@@ -2158,32 +2161,51 @@ HTTP shape** than the REST resources: a dedicated Next.js Route Handler
 
 `/chat` is the only route using `<PageShell flush>`: the shell drops all
 vertical padding and pins the content to `h-[100dvh] overflow-hidden` with the
-`--app-tabbar-h` clearance, so `ChatView` becomes a three-part flex column
-(header / `flex-1 min-h-0` scroll thread / composer) and the **page never
-scrolls** — the message list is the only scroll area. `AccountTab` and the
-`<h1>` were removed from this route (Claude/ChatGPT anatomy); `userName` is
-passed from the RSC for the empty-state greeting. The former runtime
-`getBoundingClientRect` height measuring is gone. The composer's model chip
-(`ChatModelMenu`, opens upward) replaces the old centered header menu, and
-"New chat" is the single header action.
+`--app-tabbar-h` clearance, so `ChatView` fills the viewport and the **page
+never scrolls** — the message list is the only scroll area. The surface is
+full-bleed `bg-screen` (matching the dashboard), not a narrow `bg-chat` column.
+On desktop a 268px history rail sits on the right (border-l); on mobile it
+becomes a right drawer. The thread column is header / `flex-1 min-h-0` scroll
+thread / composer, all centered at `max-w-3xl`. The mobile chat root uses
+`h-[calc(100dvh-var(--app-tabbar-h))]` (desktop `md:h-[100dvh]`) so the
+composer stays pinned above the tab bar. There is exactly one New chat button,
+in the header; the rail and drawer do not repeat it. `AccountTab` and the `<h1>` were removed
+from this route; `userName` is passed from the RSC for the empty-state greeting.
+The composer's model chip (`ChatModelMenu`, opens upward) selects a built-in
+model or the custom provider, and "New chat" starts a fresh thread without
+deleting history.
 
 ### Architecture
 
 ```
 src/app/chat/page.tsx            # RSC: auth gate + <PageShell flush><ChatView userId userName/></PageShell>
-                                 #   no AccountTab / page h1 — the chat owns the viewport
 src/components/chat/             # "use client" chat UI (see §17 UI_DESIGN.md)
+  ├─ chat-view.tsx               # useChat + threads + provider + restore/save
+  ├─ chat-history.tsx            # desktop rail + mobile drawer
+  ├─ chat-markdown.tsx           # react-markdown + remark-gfm
+  ├─ chat-provider-dialog.tsx    # custom endpoint/key/model dialog
+  └─ chat-provider-settings.tsx  # Profile → Settings row
 src/app/api/chat/route.ts        # POST handler: session → streamText → toUIMessageStreamResponse
-src/lib/chat-models.ts           # MODEL_CHAIN / resolveModel / isRateLimitError / thinkingConfigFor (client + server)
+src/lib/chat-models.ts           # MODEL_CHAIN / CUSTOM_MODEL_ID / resolveChatModel / thinkingConfigFor
+src/lib/chat-history.ts          # 2-day constants, threadTitle, shared thread types
+src/lib/chat-storage.ts          # draft + active thread + model selection (localStorage)
 src/server/chat/
-  ├─ system.ts                   # buildSystemPrompt({ userName, now })
-  ├─ schemas.ts                  # CreateTransactionToolSchema + GetTransactionsToolSchema
+  ├─ system.ts                   # buildSystemPrompt({ userName, now, snapshot })
+  ├─ schemas.ts                  # all read + write tool schemas
   ├─ prepare.ts                  # prepareMessagesForApi — last-10 window + old tool/reasoning strip
+  ├─ provider.ts                 # SSRF-safe custom provider factory + connection test
   └─ tools.ts                    # createChatTools(userId) → AI SDK tool() set
 src/server/services/
-  ├─ insights.ts                 # getFinancialInsights(userId) — net worth + month aggregates
-  ├─ budgets.ts                  # + listBudgetsWithSpent(userId) (per-category aggregate)
+  ├─ analytics.ts                # overview, cashflow trend, spending breakdown,
+  │                              # net-worth history, budget status, upcoming bills,
+  │                              # largest transactions + prompt snapshot formatter
+  ├─ chat-threads.ts             # 2-day thread persistence + ownership
+  ├─ chat-provider.ts            # encrypted provider config
+  ├─ insights.ts                 # getFinancialInsights(userId)
+  ├─ budgets.ts                  # + listBudgetsWithSpent(userId)
   └─ (existing)                  # balance-accounts, transactions, subscriptions
+src/server/crypto.ts             # AES-256-GCM provider-key encryption
+src/server/routes/chat-threads.ts + routes/chat-provider.ts
 ```
 
 ### The tools (`createChatTools(userId)`)
@@ -2191,17 +2213,38 @@ src/server/services/
 | Tool | What it does | Backing service |
 | ---- | ------------ | --------------- |
 | `get_balance_accounts` | Accounts + balances + total | `listBalanceAccounts` |
-| `get_transactions` | Filtered search (type/category/query/date/limit), capped list + `count` | `listTransactions` |
+| `get_transactions` | Filtered search (type/category/query/date/limit), capped list + `count` (includes `id`, `adminFee`, `toAccount`) | `listTransactions` |
+| `get_financial_overview` | One-call picture: net worth, accounts, month cashflow, budgets, upcoming bills, top categories, recent rows | `getFinancialOverview` |
+| `get_insights` | Compact net worth + month totals + top categories | `getFinancialInsights` |
+| `get_cashflow_trend` | Monthly income/expense/transfer fees/net for N months | `getCashflowTrend` |
+| `get_spending_breakdown` | Category or merchant totals, share, count, previous-period delta, budget | `getSpendingBreakdown` |
+| `get_net_worth_history` | Rolling monthly net-worth series + total change | `getNetWorthHistory` |
+| `get_budget_status` | Limits, spent, remaining/over, percent, pace projection | `getBudgetStatus` |
+| `get_upcoming_bills` | Active subscriptions due within N days | `getUpcomingBills` |
+| `get_largest_transactions` | Largest rows in a period, optionally by type | `getLargestTransactions` |
 | `get_budgets` | Budgets with spent-in-period | `listBudgetsWithSpent` |
 | `get_subscriptions` | Subscriptions + next billing date | `listSubscriptions` + `nextBillingDate` |
-| `get_insights` | Net worth, month income/expense, top categories | `getFinancialInsights` |
-| `create_transaction` | Records a transaction (validated), returns `{ ok, transaction \| error }` | `createTransaction` |
+| `create_transaction` | Records a transaction (validated) | `createTransaction` |
+| `create_budget` / `update_budget` | Create/update a category budget | `createBudget` / `updateBudget` |
+| `create_subscription` / `update_subscription` | Create/update a recurring subscription | `createSubscription` / `updateSubscription` |
 
 Tools are `userId`-scoped via closure (never accept a `userId` from the model).
 They import **services directly** — the only Prisma-touching layer — and return
-**compact JSON** so the model gets small tool results. `create_transaction`
-wraps service errors (`"Account not found"`, `"Insufficient balance"`, schema
-violations) into `{ ok: false, error }` so the model narrates them naturally.
+**compact JSON** so the model gets small tool results. Capping rules: months
+≤ 12, days ≤ 90, breakdown rows ≤ 20, transaction rows ≤ 30, largest rows ≤ 20.
+Write tools wrap service errors (`"Account not found"`, `"Insufficient
+balance"`, duplicate budget/subscription, schema violations) into
+`{ ok: false, error }` so the model narrates them naturally. No destructive
+tool exists (no delete transaction/budget/subscription).
+
+### Financial snapshot in the prompt
+
+Every request builds `getFinancialOverview(userId)` in parallel before the
+stream and injects `formatFinancialSnapshot(overview)` into the system prompt:
+net worth, accounts, this month's cashflow, budgets (with overruns), upcoming
+bills, top categories, recent transactions. It is marked as possibly stale and
+kept compact (~1–2 KB). This gives the model context even when a custom model
+does not support tool calling, and saves a round-trip for broad questions.
 
 ### Create-transaction safety
 
@@ -2209,7 +2252,50 @@ The tool executes **immediately** (single step, no confirm card), guarded by a
 system-prompt rule: the model must already have explicit user intent in the
 conversation; if ambiguous it asks first. It must fetch a real
 `balanceAccountId` via `get_balance_accounts` — never fabricate one. The
-transaction is reversible (delete rebalances the account per §17).
+transaction is reversible (delete rebalances the account per §17). Budget and
+subscription writes follow the same rule and require the real id from a read
+tool.
+
+### Chat history (2 days)
+
+`ChatThread` stores `{ userId, title, model, messages Json, messageCount }`.
+`messages` is the complete `UIMessage[]` (text, reasoning, tool parts), capped
+at 200. The client creates a thread on the first send
+(`POST /api/chat/threads`), sends `threadId` in the chat body, and the route
+saves the finished conversation in
+`toUIMessageStreamResponse({ originalMessages, onFinish })`. The client also
+PATCHes the user message immediately so the rail is accurate if the tab closes
+mid-turn.
+
+- `GET /api/chat/threads` — non-empty threads updated in the last 48 hours.
+- `GET /api/chat/threads/:id` — messages + metadata (owner-only, 404 otherwise).
+- `POST/PATCH/DELETE /api/chat/threads[/:id]` + `DELETE /api/chat/threads`.
+- `pruneExpiredChatThreads` deletes `updatedAt < now - 2 days` lazily on
+  list/create. `src/lib/chat-history.ts` owns the constants.
+- The rail groups Today / Yesterday / Earlier; `?thread=<id>` and
+  `budgie.chat.{userId}.activeThread` restore the active thread.
+- `messageCount = 0` threads are hidden (a failed first send leaves no row in
+  the list).
+
+### Custom OpenAI-compatible provider
+
+`ChatProviderConfig` is one row per user: `baseUrl`, `model`, `label`, and the
+AES-256-GCM ciphertext/iv/tag of the API key. `src/server/crypto.ts` derives
+the key with HKDF from `AI_KEY_ENCRYPTION_SECRET` (fallback
+`BETTER_AUTH_SECRET`). The key is write-only: `GET /api/chat-provider` returns
+only `{ configured, baseUrl, model, label, hasKey }`.
+
+The client sends `model: "custom"`; the route loads/decrypts the config and
+builds `createOpenAICompatible({ name, baseURL, apiKey, fetch }).chatModel()`.
+Gemini provider options/thinking are skipped for custom models and the
+rate-limit auto-downgrade only applies to the built-in chain.
+
+`assertSafeProviderUrl` (in `src/server/chat/provider.ts`) is an SSRF guard:
+HTTPS only in production, no URL credentials, reject localhost/private/
+link-local/metadata literals and DNS names that resolve to private addresses.
+Local development may point at localhost/LAN HTTP endpoints. The guarded
+`fetch` re-validates every request. `POST /api/chat-provider/test` runs a tiny
+`generateText` (max 16 tokens, 15s timeout) to verify URL/key/model.
 
 ### Model fallback (free-tier quota)
 
@@ -2218,9 +2304,10 @@ Gemini free tier caps requests **per model per project** (e.g. 20/day for
 to a cheaper model on a quota error:
 
 - `src/lib/chat-models.ts` holds `MODEL_CHAIN = ["gemini-2.5-flash",
-  "gemini-3.5-flash-lite"]`. The client always sends `body.model` (allowlisted
-  server-side by `resolveModel` — unknown values fall back to the default, so a
-  client can't force an arbitrary model).
+  "gemini-3.5-flash-lite"]` plus the `"custom"` sentinel. The client always
+  sends `body.model`, resolved server-side by `resolveChatModel`; unknown values
+  fall back to the default, so a client cannot force an arbitrary model or
+  provider.
 - `isRateLimitError(error)` matches `429` / `quota` / `RESOURCE_EXHAUSTED` /
   `rate limit` in the error message (the wire-level error is a plain `Error`).
 - On such an error, `ChatView` bumps the model index, persists the choice
@@ -2248,7 +2335,8 @@ to a cheaper model on a quota error:
    defaults to 10 rows (max 30) with slimmed fields.
 3. **`get_insights` returns aggregates, not rows** — cheapest path for
    "how am I doing?" questions.
-4. **`stopWhen: stepCountIs(3)`** — bounds the agentic multi-step loop.
+4. **`stopWhen: stepCountIs(4)`** — bounds the agentic multi-step loop (read,
+detail, write, answer).
 5. **`maxOutputTokens: 640`** + a "2-3 short sentences" brevity rule.
 6. **Capped thinking budget** — 256 on the primary (streams reasoning for the
    Thinking UI), disabled on the lite model.
@@ -2260,26 +2348,49 @@ to a cheaper model on a quota error:
 
 ```ts
 // src/app/api/chat/route.ts
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 export const maxDuration = 30;   // streaming can exceed the 15s default
 
 export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return new Response("Unauthorized", { status: 401 });
-  const model = resolveModel(body.model);                     // allowlisted
-  const messages = prepareMessagesForApi(body.messages);      // token-pruned
+
+  const body = await req.json();
+  const selection = resolveChatModel(body.model);            // built-in | "custom"
+  const threadId = body.threadId ?? null;
+  if (threadId) {
+    const thread = await getChatThread(session.user.id, threadId);
+    if (!thread) return new Response("Chat thread not found", { status: 404 });
+  }
+
+  const model = isCustomModel(selection)
+    ? createCustomChatModel(await getChatProviderSecret(session.user.id))
+    : google(selection);
+
+  const overview = await getFinancialOverview(session.user.id);
+  const messages = prepareMessagesForApi(body.messages);     // token-pruned
   const result = streamText({
-    model: google(model),
-    instructions: buildSystemPrompt({ userName, now: new Date() }),
+    model,
+    instructions: buildSystemPrompt({
+      userName: session.user.name ?? "there",
+      now: new Date(),
+      snapshot: formatFinancialSnapshot(overview),
+    }),
     messages: await convertToModelMessages(messages),
     tools: createChatTools(session.user.id),
-    stopWhen: stepCountIs(3),
+    stopWhen: stepCountIs(4),
     maxOutputTokens: 640,
-    providerOptions: { google: { thinkingConfig: thinkingConfigFor(model) } },
+    providerOptions: isCustomModel(selection)
+      ? undefined
+      : { google: { thinkingConfig: thinkingConfigFor(selection) } },
     experimental_transform: smoothStream({ chunking: "word", delayInMs: 8 }),
   });
-  return result.toUIMessageStreamResponse();
+
+  return result.toUIMessageStreamResponse({
+    originalMessages: body.messages,
+    onFinish: async ({ messages }) => {
+      if (threadId) await saveChatThreadMessages(session.user.id, threadId, messages);
+    },
+  });
 }
 ```
 
@@ -2289,9 +2400,10 @@ multi-step tool calls resume correctly across turns.
 
 ### Gotchas
 
-- **Env:** `GOOGLE_GENERATIVE_AI_API_KEY` (Google AI Studio key). Missing → the
-  route streams a provider error → the UI shows the §7.6 error callout with
-  Retry. Also set it in Vercel (§12.5 table).
+- **Env:** `GOOGLE_GENERATIVE_AI_API_KEY` (Google AI Studio key) and
+  `AI_KEY_ENCRYPTION_SECRET` (provider-key encryption; falls back to
+  `BETTER_AUTH_SECRET`). Missing Google key → provider error + Retry callout.
+  Also set them in Vercel (§12.5 table).
 - **Free-tier quotas are per model.** `gemini-2.5-flash` caps around 20
   requests/day; `gemini-3.5-flash-lite` has its own (much higher) bucket — the
   auto-downgrade in `ChatView` is what dodges the cap. The chosen model is
@@ -2311,8 +2423,16 @@ multi-step tool calls resume correctly across turns.
 - **Never send other users' data** — every tool is userId-scoped and the model
   never receives a raw Prisma row, only the compact tool output.
 - **`pruneMessages`/`convertToModelMessages` are async** — `await` them.
-- **Tests** mock `@ai-sdk/react`'s `useChat` (`vi.hoisted`) and the service
-  modules for tools — no network, no DB.
+- **Tests** mock `@ai-sdk/react`'s `useChat` (`vi.hoisted`), `@/lib/api-client`
+  for threads/provider calls, and the service modules for tools — no network,
+  no DB.
+- **Custom models must support OpenAI-compatible tool calling** to read
+  accounts; the snapshot still lets them answer basic questions. The provider
+  key is never returned or logged. In production, localhost/private endpoints
+  are rejected by design (the server performs the request).
+- **Assistant markdown** is rendered with `react-markdown` + `remark-gfm`; raw
+  HTML is not enabled. While streaming the text stays plain so the static caret
+  stays attached.
 
 ---
 
