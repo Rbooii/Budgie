@@ -347,6 +347,35 @@ describe("ChatView", () => {
     expect(container.querySelector(".chat-caret")).not.toBeNull();
   });
 
+  it("shows a fallback and retry when the model stops without text", async () => {
+    renderChat({
+      messages: [
+        {
+          id: "a1",
+          role: "assistant",
+          parts: [
+            {
+              type: "reasoning",
+              text: "I was still thinking.",
+              state: "done",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(
+      screen.getByText(/the model stopped before answering/i),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /retry response/i }),
+    );
+    expect(defaultChat.regenerate).toHaveBeenCalledWith({
+      body: { model: PRIMARY_MODEL, threadId: null },
+    });
+  });
+
   it("expands the reasoning text when the thinking toggle is clicked", async () => {
     renderChat({ messages: assistantMessages() });
     expect(

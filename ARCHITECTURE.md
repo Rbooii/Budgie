@@ -2145,7 +2145,7 @@ reasoning as `/api/auth/*` (see §14). All backend logic still lives in
 
 ### Why a dedicated Route Handler (not Hono)
 
-- **Per-route `maxDuration = 30`.** Gemini 2.5 thinking + tool loops regularly
+- **Per-route `maxDuration = 60`.** Reasoning models + tool loops regularly
   exceed Vercel's 15s default. A dedicated route file can set it; the Hono
   catch-all (`src/app/api/[[...route]]/route.ts`) cannot set it per-path.
 - **The stream protocol passes through untouched.** `toUIMessageStreamResponse()`
@@ -2315,9 +2315,11 @@ to a cheaper model on a quota error:
   restores the primary), shows a "Switched to a lighter model" notice, and
   auto-retries via `regenerate({ body: { model } })`. It downgrades at most
   once; if the lite model also 429s, the standard error callout + Retry stays.
-- `thinkingConfigFor(model)` — primary keeps streaming reasoning for the
-  Thinking UI (budget capped at 256); the lite model disables it entirely
-  (saves reasoning tokens).
+- `thinkingConfigFor(model)` — primary Gemini 2.5 Flash sets
+  `thinkingBudget: 0` (thinking off); the Gemini 3+ lite model uses
+  `thinkingLevel: "minimal"`. Custom providers get the provider option
+  `reasoningEffort: "low"` via `CUSTOM_PROVIDER_OPTIONS` (sent to the API as
+  `reasoning_effort`).
 - The composer shows the **active model** at all times: `modelLabel(model)`
   (`MODEL_LABELS` in `src/lib/chat-models.ts` → "Gemini 2.5 Flash" /
   "Gemini 3.5 Flash Lite") renders in the `ChatModelMenu` chip (bottom-left of
@@ -2335,11 +2337,15 @@ to a cheaper model on a quota error:
    defaults to 10 rows (max 30) with slimmed fields.
 3. **`get_insights` returns aggregates, not rows** — cheapest path for
    "how am I doing?" questions.
-4. **`stopWhen: stepCountIs(4)`** — bounds the agentic multi-step loop (read,
-detail, write, answer).
-5. **`maxOutputTokens: 640`** + a "2-3 short sentences" brevity rule.
-6. **Capped thinking budget** — 256 on the primary (streams reasoning for the
-   Thinking UI), disabled on the lite model.
+4. **Answer-aware stop condition** — `src/server/chat/stop.ts` keeps the tool
+   loop going while a step still has tool calls and stops once a step has no
+   tool calls (hard cap 8). A fixed `stepCountIs(4)` used to stop right after
+   the fourth tool result, before the answer.
+5. **No output token cap** — `maxOutputTokens` is not set. The prompt keeps
+   answers brief; a low cap cut reasoning models off mid-thinking.
+6. **Lowest reasoning** — Gemini 2.5 Flash uses `thinkingBudget: 0`, Gemini 3+
+   lite uses `thinkingLevel: "minimal"`, and custom providers receive the
+   `reasoningEffort: "low"` provider option (mapped to `reasoning_effort`).
 7. **`smoothStream`** — word-chunked transform (8ms delay) for a natural
    typewriter feel instead of token bursts (no token cost).
 8. **Parallel tool calls** — Gemini fires independent reads in one round-trip.
@@ -2348,7 +2354,7 @@ detail, write, answer).
 
 ```ts
 // src/app/api/chat/route.ts
-export const maxDuration = 30;   // streaming can exceed the 15s default
+export const maxDuration = 60;   // reasoning models can run long
 
 export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -2377,17 +2383,20 @@ export async function POST(req: Request) {
     }),
     messages: await convertToModelMessages(messages),
     tools: createChatTools(session.user.id),
-    stopWhen: stepCountIs(4),
-    maxOutputTokens: 640,
+    stopWhen: ({ steps }) => shouldStopChat({ steps }), // final answer, cap 8
     providerOptions: isCustomModel(selection)
-      ? undefined
+      ? CUSTOM_PROVIDER_OPTIONS             // reasoning_effort: "low"
       : { google: { thinkingConfig: thinkingConfigFor(selection) } },
     experimental_transform: smoothStream({ chunking: "word", delayInMs: 8 }),
   });
 
   return result.toUIMessageStreamResponse({
     originalMessages: body.messages,
-    onFinish: async ({ messages }) => {
+    generateMessageId: () => generateId(),
+    onFinish: async ({ messages, finishReason, isAborted }) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[chat] finished", { finishReason, isAborted });
+      }
       if (threadId) await saveChatThreadMessages(session.user.id, threadId, messages);
     },
   });

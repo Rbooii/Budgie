@@ -74,15 +74,16 @@ describe("isRateLimitError", () => {
 });
 
 describe("thinkingConfigFor", () => {
-  it("caps thinking on the primary model", () => {
+  it("turns thinking off on the primary model", () => {
     expect(thinkingConfigFor("gemini-2.5-flash")).toEqual({
-      thinkingBudget: 256,
-      includeThoughts: true,
+      thinkingBudget: 0,
+      includeThoughts: false,
     });
   });
 
-  it("disables thinking on the lite model", () => {
+  it("uses the minimal thinking level on the lite model", () => {
     expect(thinkingConfigFor("gemini-3.5-flash-lite")).toEqual({
+      thinkingLevel: "minimal",
       includeThoughts: false,
     });
   });

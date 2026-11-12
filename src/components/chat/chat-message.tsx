@@ -118,6 +118,23 @@ export function ChatMessage({
           )}
         </div>
       )}
+
+      {!streaming && !plainText && message.parts.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink/45">
+          <span>The model stopped before answering.</span>
+          {canRegenerate && onRegenerate && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              aria-label="Retry response"
+              className="flex h-7 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium text-ink/35 transition hover:bg-hover hover:text-ink/60 active:scale-95"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

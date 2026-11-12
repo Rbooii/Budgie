@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  CUSTOM_PROVIDER_OPTIONS,
+  CUSTOM_PROVIDER_OPTIONS_KEY,
   assertSafeProviderUrl,
   isPrivateAddress,
   normalizeBaseUrl,
@@ -93,5 +95,13 @@ describe("provider URL validation", () => {
     expect(normalizeBaseUrl("https://api.openai.com/v1/")).toBe(
       "https://api.openai.com/v1",
     );
+  });
+});
+
+describe("custom provider request options", () => {
+  it("requests the lowest reasoning effort", () => {
+    expect(CUSTOM_PROVIDER_OPTIONS).toEqual({
+      [CUSTOM_PROVIDER_OPTIONS_KEY]: { reasoningEffort: "low" },
+    });
   });
 });

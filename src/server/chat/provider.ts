@@ -3,7 +3,24 @@ import { isIP } from "node:net";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateText, type LanguageModel } from "ai";
 
-const REQUEST_TIMEOUT_MS = 25_000;
+export const CUSTOM_PROVIDER_NAME = "budgie-user-provider";
+
+/**
+ * The provider options key is camelized by @ai-sdk/openai-compatible; using the
+ * raw hyphenated name logs a deprecation warning.
+ */
+export const CUSTOM_PROVIDER_OPTIONS_KEY = "budgieUserProvider";
+
+/**
+ * Lowest reasoning effort for user models (DeepSeek and other compatible APIs).
+ * The openai-compatible provider maps `reasoningEffort` to the API's
+ * `reasoning_effort` request field.
+ */
+export const CUSTOM_PROVIDER_OPTIONS = {
+  [CUSTOM_PROVIDER_OPTIONS_KEY]: { reasoningEffort: "low" },
+} as const;
+
+const REQUEST_TIMEOUT_MS = 60_000;
 const TEST_TIMEOUT_MS = 15_000;
 
 type Resolver = (hostname: string) => Promise<string[]>;
@@ -192,7 +209,7 @@ export function createCustomChatModel(config: {
   model: string;
 }): LanguageModel {
   const provider = createOpenAICompatible({
-    name: "budgie-user-provider",
+    name: CUSTOM_PROVIDER_NAME,
     baseURL: normalizeBaseUrl(config.baseUrl),
     apiKey: config.apiKey,
     includeUsage: true,

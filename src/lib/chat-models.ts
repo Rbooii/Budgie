@@ -59,12 +59,20 @@ export function isRateLimitError(error: unknown): boolean {
   );
 }
 
-export function thinkingConfigFor(model: ChatModelId): {
+export type ChatThinkingConfig = {
   thinkingBudget?: number;
+  thinkingLevel?: "minimal" | "low" | "medium" | "high";
   includeThoughts?: boolean;
-} {
+};
+
+/**
+ * Lowest practical reasoning. Gemini 2.5 Flash accepts a zero budget to turn
+ * thinking off; Gemini 3+ uses thinkingLevel instead. Keeping this low prevents
+ * long reasoning runs from ending before the answer.
+ */
+export function thinkingConfigFor(model: ChatModelId): ChatThinkingConfig {
   if (model === DEFAULT_MODEL) {
-    return { thinkingBudget: 256, includeThoughts: true };
+    return { thinkingBudget: 0, includeThoughts: false };
   }
-  return { includeThoughts: false };
+  return { thinkingLevel: "minimal", includeThoughts: false };
 }

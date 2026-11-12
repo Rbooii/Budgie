@@ -210,6 +210,7 @@ bg-card p-4 text-left text-sm font-medium leading-snug text-ink/70`, hover
 | Tool running (`ChatToolStatus`) | inline neutral row (no card) — `Loader2` + per-tool label, 13px `text-ink/45` |
 | Tool error | `rounded-[16px] bg-expense-tint text-expense` + `AlertTriangle` |
 | Error surface | `role="alert"` red callout above the composer: `AlertTriangle` + "Something went wrong" + capsule "Retry" → `regenerate()` |
+| Stopped early | If an assistant message ends with reasoning/tool parts but no text: plain 13px `text-ink/45` "The model stopped before answering." + ghost "Retry" (`aria-label="Retry response"`) → `regenerate()` |
 | Jump to latest | white capsule + `ArrowDown` + "Latest", `absolute bottom-4`, appears only when the user scrolls away (`scrollHeight - scrollTop - clientHeight >= 56`) |
 
 ### Tool result widgets (`ChatToolResult`)

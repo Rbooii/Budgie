@@ -2,8 +2,8 @@ import { headers } from "next/headers";
 import {
   convertToModelMessages,
   generateId,
+  isTextUIPart,
   smoothStream,
-  stepCountIs,
   streamText,
   type UIMessage,
 } from "ai";
@@ -18,8 +18,10 @@ import { createChatTools } from "@/server/chat/tools";
 import { buildSystemPrompt } from "@/server/chat/system";
 import { prepareMessagesForApi } from "@/server/chat/prepare";
 import {
+  CUSTOM_PROVIDER_OPTIONS,
   createCustomChatModel,
 } from "@/server/chat/provider";
+import { shouldStopChat } from "@/server/chat/stop";
 import { getChatProviderSecret } from "@/server/services/chat-provider";
 import {
   getChatThread,
@@ -32,7 +34,7 @@ import {
 
 // `cacheComponents` forbids the `runtime`/`dynamic` segment configs; Route
 // Handlers stay dynamic and on the Node.js runtime by default.
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 type ChatRequestBody = {
   messages?: unknown[];
@@ -97,10 +99,11 @@ export async function POST(req: Request) {
     }),
     messages: await convertToModelMessages(messages),
     tools: createChatTools(userId),
-    stopWhen: stepCountIs(4),
-    maxOutputTokens: 640,
+    // Continue the tool loop until the model writes a step with no tool calls.
+    // `stepCountIs(4)` used to stop right after the fourth tool result.
+    stopWhen: ({ steps }) => shouldStopChat({ steps }),
     providerOptions: isCustomModel(selection)
-      ? undefined
+      ? CUSTOM_PROVIDER_OPTIONS
       : {
           google: {
             thinkingConfig: thinkingConfigFor(selection),
@@ -112,7 +115,27 @@ export async function POST(req: Request) {
   return result.toUIMessageStreamResponse({
     originalMessages: uiMessages,
     generateMessageId: () => generateId(),
-    onFinish: async ({ messages: finishedMessages }) => {
+    onFinish: async ({
+      messages: finishedMessages,
+      finishReason,
+      isAborted,
+    }) => {
+      const lastAssistant = [...finishedMessages]
+        .reverse()
+        .find((message) => message.role === "assistant");
+      const hasAnswer =
+        lastAssistant?.parts.some(
+          (part) => isTextUIPart(part) && part.text.trim().length > 0,
+        ) ?? false;
+
+      if (process.env.NODE_ENV !== "production" && !hasAnswer) {
+        console.warn("[chat] finished without a text answer", {
+          finishReason,
+          isAborted,
+          messages: finishedMessages.length,
+        });
+      }
+
       if (!threadId) return;
       try {
         await saveChatThreadMessages(userId, threadId, finishedMessages);

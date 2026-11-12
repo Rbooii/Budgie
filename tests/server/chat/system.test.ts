@@ -49,6 +49,11 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("get_upcoming_bills");
   });
 
+  it("limits tool chattiness and internal reasoning", () => {
+    expect(prompt).toContain("Do not call more than 3 tools in one turn");
+    expect(prompt).toContain("Keep internal reasoning brief");
+  });
+
   it("formats money as Rupiah", () => {
     expect(prompt).toContain("Rp 1.234.567");
   });

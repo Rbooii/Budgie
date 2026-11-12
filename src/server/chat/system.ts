@@ -38,6 +38,8 @@ export function buildSystemPrompt({
     "- get_largest_transactions for extremes and anomalies.",
     "- Call get_balance_accounts before any transaction or transfer. Never fabricate an account id.",
     "- Use the exact category enum from the tool schema. Food & Drink is FoodAndDrink.",
+    "- For a broad question, start with get_financial_overview. Do not call more than 3 tools in one turn; if the snapshot or the first tool result is enough, answer immediately.",
+    "- Keep internal reasoning brief. Do not narrate which tool you are about to call or repeat tool results back to yourself.",
     "- If a tool returns ok:false, relay the reason plainly and suggest the fix. Never retry a failed write with guessed data.",
     "",
     "Writing data:",

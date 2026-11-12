@@ -258,9 +258,10 @@ streaming a Vercel AI SDK UI message stream.
 - `400` when `messages` is missing/not an array, or when a custom model is
   requested but not connected; `404` for an unknown `threadId`; `401` (plain
   text) without a session.
-- `maxDuration = 30`. Tools call the same services as the REST API, so their
+- `maxDuration = 60`. Tools call the same services as the REST API, so their
   output shapes mirror the endpoints above. The assistant opts into a compact
-  financial snapshot in the system prompt on every request.
+  financial snapshot in the system prompt on every request. The tool loop uses
+  an answer-aware stop condition (hard cap 8); no `maxOutputTokens` cap is set.
 
 ### 2.9 `/api/chat/threads`
 
